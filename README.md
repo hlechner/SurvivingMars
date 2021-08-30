@@ -10,14 +10,15 @@ You are not allowed to modify or redistribute any part of this source code excep
 
 
 
-
 USE OF THIS SOURCE CODE IS GOVERNED BY THE FOLLOWING LICENSE
 ------------
 
-Haemimont Games AD grants to you a perpetual, worldwide, non-exclusive, no-charge, and royalty-free license to reproduce and use this Source Code for reference purposes and embedding in Surviving Mars mods. No other distribution or modification of the Source Code is permitted.
+Paradox Interactive AB grants to you a worldwide, non-exclusive, no-charge, and royalty-free license to reproduce and use this Source Code for reference purposes and embedding in Surviving Mars mods. No other distribution or modification of the Source Code is permitted.
 
 The source code is made available strictly on an "AS IS" BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
 
 If any provision of this License is held to be unenforceable or invalid, that provision will be enforced to the maximum extent possible and the other provisions will remain in full force and effect.
 
-This License is governed by and construed in accordance with the laws of Bulgaria. The parties of this License submit all their disputes arising out of or in connection with this License to the exclusive jurisdiction of the Sofia City Court, Bulgaria.
+Use of mods for any Paradox Interactive game is regulated by the Mod Policy, which can be found here https://www.paradoxplaza.com/mod-static-info-ca.html
+
+This License is governed by and construed in accordance with the laws of Sweden. The parties of this License submit all their disputes arising out of or in connection with this License to the exclusive jurisdiction of the Stockholm District Court, Sweden.
