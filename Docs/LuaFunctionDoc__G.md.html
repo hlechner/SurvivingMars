@@ -1,36 +1,5 @@
 # Documentation for *_G*
 
-## AddCustomGameNotification
-
-Display a custom on-screen notification.<br>
-
-void **AddCustomGameNotification**(string id, string title, string text, string image, function callback, table params)
-string id
-: unique identifier of the notification.
-
-string title
-: title of the notification.
-
-string text
-: body text of the notification.
-
-string image
-: path to the notification icon.
-
-function callback
-: optional. Function called when the user clicks the notification.
-
-table params
-: optional. additional parameters.
-
-Additional parameters are supplied to the translatable texts, but can also be used to tweak the functionality of the notification:<br>
-- _'cycle_objs'_ will cause the camera to cycle through a list of _GameObjects_ or _points_ when the user clicks the notification.<br>
-- _'priority'_ changes the priority of the notification (choose between _"Normal"_, _"Important"_ and _"Critical"_; default=_"Normal"_).<br>
-- _'dismissable'_ dictates the dismissability of the notification (default=_true_)<br>
-- _'close_on_read'_ will cause the notification to disappear when the user clicks on it (default=_false_).<br>
-- _'expiration'_ is the amount of time (in _milliseconds_) that the notification will stay on the screen (default=_-1_).<br>
-- _'game_time'_ decides if the expiration countdown is done in _RealTime_ or _GameTime_ (default=_false_).<br>
-
 ## AddCustomOnScreenNotification
 
 Display a custom on-screen notification.<br>
@@ -53,6 +22,9 @@ function callback
 
 table params
 : optional. additional parameters.
+
+string map_id
+: map the notification belongs to.
 
 Additional parameters are supplied to the translatable texts, but can also be used to tweak the functionality of the notification:<br>
 - _'cycle_objs'_ will cause the camera to cycle through a list of _GameObjects_ or _points_ when the user clicks the notification.<br>
@@ -155,7 +127,7 @@ _returns_ bool interior
 Check for a dome at given object or point location.<br>
 Procedure that uses the object grid or a fast surface collision test with the dome glass if the pos is at the dome border.<br>
 
-object **GetDomeAtPoint**(pos)
+object **GetDomeAtPoint**(object_hex_grid, pos)
 point pos
 : point or object which location to be checked.
 
@@ -395,28 +367,6 @@ int indent
 
 _returns_ string code
 : the supplied value, converted to Lua code.
-
-
-## WaitCustomPopup
-
-Displays a custom popup and waits for the players response.<br>
-This function should always be called from within a GameTime thread.<br>
-
-int choice **WaitCustomPopup**(string title, string text, table choices, window parent)
-string title
-: title of the popup.
-
-string text
-: body text of the popup.
-
-table choices
-: array of up to four choices for the user.
-
-window parent
-: parent window (this is optional only ingame).
-
-_returns_ int choice
-: The users choice.
 
 
 ## WaitCustomPopupNotification

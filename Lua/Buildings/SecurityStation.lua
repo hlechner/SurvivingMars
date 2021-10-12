@@ -24,3 +24,7 @@ end
 function SecurityStation:GetNotAdjustedRenegades()
 	return T{727, "Renegades in the Dome <right><number>",number = #(self.parent_dome.labels.Renegade or empty_table)}
 end
+
+function SecurityStation:GetDamageDecrease()
+	return self.working and self.performance or 0 
+end

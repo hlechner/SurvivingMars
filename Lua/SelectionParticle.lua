@@ -76,15 +76,17 @@ function AddSelectionParticlesToObj(obj)
 	local s_s = SelectionShapes[e]
 	local x, y, z = obj:GetVisualPosXYZ()
 	local a = obj:GetSelectionAngle()
+	local map_id = obj:GetMapID()
 	
 	if #s == 1 then
-		table.insert(particles, PlaceParticles("Selection_Buildings_Single"))
+		local particle = PlaceParticlesIn("Selection_Buildings_Single", map_id)
+		table.insert(particles, particle)
 		a = a + 30*60 -- fix wrong particle form (Iva made me do it)
 	elseif s_s then
 		local names = particle_name_override[e] or particle_name_override.Default
 		local p
 		for _, name in ipairs(names) do
-			p = PlaceParticles(name)
+			p = PlaceParticlesIn(name, map_id)
 			p:SetPolylineAsString(s_s)
 			table.insert(particles, p)
 		end

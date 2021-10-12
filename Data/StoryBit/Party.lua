@@ -19,6 +19,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(949723673521, --[[voice:narrator]] "The door of the command room opens and you’re hit by the loud noise. A party!"),
 	group = "Colonists",
 	id = "Party",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625144391,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "morale_bonus",
 		'Value', 10,
@@ -32,7 +40,7 @@ PlaceObj('StoryBit', {
 		'Value', 15,
 	}),
 	PlaceObj('StoryBitReply', {
-		'Text', T(446442320434, --[[StoryBit Party Text]] "I expect the maintenance and efficiency reports on my desk by 1100 local time."),
+		'Text', T(446442320434, --[[StoryBit Party Text]] "I expect the maintenance and efficiency reports on my desk by 11:00 local time."),
 	}),
 	PlaceObj('StoryBitOutcome', {
 		'Prerequisites', {},

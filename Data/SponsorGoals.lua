@@ -36,7 +36,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while state.progress < state.target do
 	WaitMsg("ConstructionComplete")
-	state.progress = UICity:CountBuildings()
+	state.progress = UIColony:CountBuildings()
 end
 return true
 end,
@@ -47,7 +47,7 @@ end,
 
 PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
-for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 	if dome.labels.Martianborn then
 		return true
 	end
@@ -70,7 +70,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while state.progress < state.target do
 	Sleep(500)
-	local colonists = UICity.labels.Colonist or empty_table
+	local colonists = UIColony:GetCityLabels("Colonist") or empty_table
 	state.progress = #colonists
 end
 return true
@@ -85,7 +85,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	local count = 0
-	local domes = UICity.labels.Dome or empty_table
+	local domes = UIColony:GetCityLabels("Dome") or empty_table
 	for _, dome in ipairs(domes) do
 		for _, colonist in ipairs(dome.labels.Colonist or empty_table) do
 			if colonist.specialist ~= "none" then
@@ -113,7 +113,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	local count = 0
-	local domes = UICity.labels.Dome or empty_table
+	local domes = UIColony:GetCityLabels("Dome") or empty_table
 	for _, dome in ipairs(domes) do
 		for _, colonist in ipairs(dome.labels.Colonist or empty_table) do
 			if colonist.stat_health >= lower_bound 
@@ -144,7 +144,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	local count = 0
-	local domes = UICity.labels.Dome or empty_table
+	local domes = UIColony:GetCityLabels("Dome") or empty_table
 	for _, dome in ipairs(domes) do
 		for _, colonist in ipairs(dome.labels.Colonist or empty_table) do
 			if colonist.specialist == param2 then
@@ -172,7 +172,7 @@ state.progress = 0
 while state.progress < state.target do
 	Sleep(500)
 	local count = 0
-	local colonists = UICity.labels.Colonist or empty_table
+	local colonists = UIColony:GetCityLabels("Colonist") or empty_table
 	for _, colonist in ipairs(colonists) do
 		if colonist.traits[param2] then
 			count = count + 1
@@ -209,8 +209,8 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	local progress = 0
-	for idx, tech in ipairs(UICity.tech_field[param2] or empty_table) do
-		if UICity.tech_status[tech].researched then
+	for idx, tech in ipairs(UIColony.tech_field[param2] or empty_table) do
+		if UIColony.tech_status[tech].researched then
 			progress = progress + 1
 		end
 	end
@@ -233,7 +233,7 @@ state.progress = 0
 while true do
 	local defs = TechDef
 	local progress = 0
-	for tech, status in pairs(UICity.tech_status) do
+	for tech, status in pairs(UIColony.tech_status) do
 		if status.researched and defs[tech] then
 			progress = progress + 1
 		end
@@ -254,13 +254,13 @@ PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
 local timeout = tonumber(param1)
 while true do
-	if UICity.day > timeout then
+	if UIColony.day > timeout then
 		return false
 	end
-	if #UICity.labels.Dome > 0 then
+	if #UIColony:GetCityLabels("Dome") > 0 then
 		return true
 	end
-	local wait_time = const.DayDuration - (UICity.hour*const.HourDuration + UICity.minute*const.MinuteDuration)
+	local wait_time = const.DayDuration - (UIColony.hour*const.HourDuration + UIColony.minute*const.MinuteDuration)
 	WaitMsg("ConstructionComplete", wait_time)
 end
 end,
@@ -312,14 +312,14 @@ PlaceObj('SponsorGoals', {
 local timeout = tonumber(param2)
 state.target = tonumber(param1)
 while true do	
-	if UICity.day > timeout then
+	if UIColony.day > timeout then
 		return false
 	end
 	state.progress = DepletedDeposits
 	if state.progress >= state.target then
 		return true
 	end	
-	local wait_time = const.DayDuration - (UICity.hour*const.HourDuration + UICity.minute*const.MinuteDuration)
+	local wait_time = const.DayDuration - (UIColony.hour*const.HourDuration + UIColony.minute*const.MinuteDuration)
 	WaitMsg("DepositDepleted", wait_time)
 end
 end,
@@ -330,7 +330,8 @@ end,
 
 PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
-local count = MapCount("map", "SubsurfaceDeposit", function(o) return o.revealed and o.resource ~= "Anomaly" end)
+local realm = GetRealmByID(MainMapID)
+local count = realm:MapCount("map", "SubsurfaceDeposit", function(o) return o.revealed and o.resource ~= "Anomaly" end)
 state.target = tonumber(param1)
 state.progress = count
 while state.progress < state.target do
@@ -352,7 +353,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	state.progress = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 		local number_residents = #(dome.labels.Colonist or empty_table)
 		state.progress = Max(number_residents,state.progress)
 		if number_residents >= state.target then
@@ -372,7 +373,7 @@ PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
 state.target = tonumber(param1)
 state.progress = 0
-for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 	if not dome.destroyed and dome.labels.Spire then
 		state.progress = state.progress + 1
 		if state.progress >= state.target then
@@ -385,7 +386,7 @@ while true do
 	local template = BuildingTemplates[bld.template_name] 
 	if ok and template and template.dome_spot == "Spire" then
 		local count = 0
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+		for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 			if not dome.destroyed and dome.labels.Spire then
 				count = count +1
 				state.progress = count
@@ -407,7 +408,7 @@ PlaceObj('SponsorGoals', {
 state.target = tonumber(param1)/1000000 
 state.progress = 0
 while true do
-	local export_funding = (UICity.funding_gain_total or empty_table)["Export"] or 0
+	local export_funding = (UIColony.funds.funding_gain_total or empty_table)["Export"] or 0
 	state.progress = export_funding / 1000000
 	if state.progress >=  state.target then return true end 
 	WaitMsg("FundingChanged")
@@ -423,12 +424,12 @@ PlaceObj('SponsorGoals', {
 local timeout = tonumber(param2)
 state.target = tonumber(param1)
 while true do
-	if UICity.day > timeout then 
+	if UIColony.day > timeout then 
 		return false
 	end
-	state.progress = (UICity.total_export or 0)/const.ResourceScale
+	state.progress = (MainCity.total_export or 0)/const.ResourceScale
 	if state.progress >= state.target then return true end
-	local wait_time = const.DayDuration - (UICity.hour*const.HourDuration + UICity.minute*const.MinuteDuration)
+	local wait_time = const.DayDuration - (UIColony.hour*const.HourDuration + UIColony.minute*const.MinuteDuration)
 	WaitMsg("MarkPreciousMetalsExport", wait_time)
 end
 end,
@@ -447,7 +448,7 @@ local labels = {"MetalsExtractor", "PreciousMetalsExtractor"}
 while true do
 	amount = 0
 	for _, label in ipairs(labels) do
-		for _, extractor in ipairs(UICity.labels[label] or empty_table) do
+		for _, extractor in ipairs(UIColony:GetCityLabels(label) or empty_table) do
 			if extractor.performance and extractor.performance >= performance then
 				amount = amount + 1
 				 state.progress = amount
@@ -473,7 +474,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	local count = 0
-	local domes = UICity.labels.Dome or empty_table
+	local domes = UIColony:GetCityLabels("Dome") or empty_table
 	for _, dome in ipairs(domes) do
 		for _, colonist in ipairs(dome.labels.Colonist or empty_table) do
 			if colonist.traits.Founder then
@@ -506,7 +507,7 @@ state.target = param1_num
 state.progress = 0
 while state.progress < param1_num do
 	Sleep(500)	
-	state.progress = UICity:GetEstimatedRP()
+	state.progress = UIColony:GetEstimatedRP()
 end
 return true
 end,
@@ -519,17 +520,17 @@ PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
 local param1_num = tonumber(param1)
 state.target = param1_num /1000000 
-local initial_funding = UICity:GetTotalFundingGain()
+local initial_funding = UIColony.funds:GetTotalFundingGain()
 state.progress = initial_funding/1000000
 while state.progress < state.target do
 	WaitMsg("FundingChanged")
-	local amount = UICity:GetTotalFundingGain() - initial_funding
+	local amount = UIColony.funds:GetTotalFundingGain() - initial_funding
 	if GameTime() > 1 then
 		if amount > 0 then
 			state.progress = amount/1000000
 		end
 	else	
-		initial_funding = UICity:GetTotalFundingGain()
+		initial_funding = UIColony.funds:GetTotalFundingGain()
 	end
 end
 return true
@@ -551,8 +552,8 @@ for i = 0, param2_num - 1 do
 end
 local funding_until_today = 0
 while true do
-	local funding_gain_before_change = UICity:GetTotalFundingGain()
-	local wait_time = const.DayDuration - (UICity.hour*const.HourDuration + UICity.minute*const.MinuteDuration)
+	local funding_gain_before_change = UIColony.funds:GetTotalFundingGain()
+	local wait_time = const.DayDuration - (UIColony.hour*const.HourDuration + UIColony.minute*const.MinuteDuration)
 	local ok = WaitMsg("FundingChanged", wait_time)
 	if not ok then
 		funding_until_today = funding_until_today + past_days_funding[idx]
@@ -561,7 +562,7 @@ while true do
 		past_days_funding[idx] = 0
 		state.progress = funding_until_today/1000000
 	elseif GameTime() > 1 then
-		local amount_gained = UICity:GetTotalFundingGain() - funding_gain_before_change 
+		local amount_gained = UIColony.funds:GetTotalFundingGain() - funding_gain_before_change 
 		-- calculating the amount gained this way, because if more than 1 "FundingChanged" message are being fired at the same time, some may not be registered properly
 		if amount_gained > 0 then
 			past_days_funding[idx] = past_days_funding[idx] + amount_gained
@@ -586,7 +587,7 @@ state.GetProgressText = function(self) return FormatResourceValueMaxResource(emp
 while true do
 	Sleep(500)
 	state.progress = 0
-	local grids = UICity.electricity or empty_table
+	local grids = MainCity.electricity or empty_table
 	for i = 1, #grids do
 		state.progress = state.progress + grids[i].production
 	end
@@ -605,7 +606,7 @@ PlaceObj('SponsorGoals', {
 state.target = tonumber(param1) 
 state.progress = 0
 local  max_connections = 0
-for _, dome in ipairs(UICity.labels.Dome) do
+for _, dome in ipairs(UIColony:GetCityLabels("Dome")) do
 	local connections = GetNumDomesConnectedToDome(dome)
 	if connections >= state.target and connections > state.progress then 
 		state.progress = connections
@@ -628,7 +629,7 @@ end,
 PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
 local param1_num = tonumber(param1)
-local wait_time = const.DayDuration - (UICity.hour*const.HourDuration + UICity.minute*const.MinuteDuration)
+local wait_time = const.DayDuration - (UIColony.hour*const.HourDuration + UIColony.minute*const.MinuteDuration)
 local ok = WaitMsg("ColonistsLanded", wait_time+ (param1_num - 2)*const.DayDuration)
 return ok
 end,
@@ -643,7 +644,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	state.progress = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 		state.progress = state.progress + #(dome.labels.Martianborn or empty_table)
 	end
 	if state.progress >= state.target then
@@ -663,7 +664,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	state.progress = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 		for _, martianborn in ipairs(dome.labels.Martianborn or empty_table) do
 			if martianborn.specialist ~= "none" then
 				state.progress = state.progress + 1
@@ -688,7 +689,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	state.progress = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 		for _, martianborn in ipairs(dome.labels.Martianborn or empty_table) do
 			if martianborn.specialist == param2 then
 				state.progress = state.progress + 1
@@ -713,15 +714,15 @@ local timeout = tonumber(param2)
 state.target = tonumber(param1)
 state.progress = 0
 while true do
-	if UICity.day > timeout then
+	if UIColony.day > timeout then
 		return false
 	end
 	state.progress = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 		state.progress = state.progress + #(dome.labels.Martianborn or empty_table)
 	end
 	if state.progress >= state.target then return true end
-	local wait_time = const.DayDuration - (UICity.hour*const.HourDuration + UICity.minute*const.MinuteDuration)
+	local wait_time = const.DayDuration - (UIColony.hour*const.HourDuration + UIColony.minute*const.MinuteDuration)
 	WaitMsg("ColonistBorn",wait_time)
 end
 end,
@@ -735,10 +736,10 @@ PlaceObj('SponsorGoals', {
 state.target = tonumber(param1) 
 state.progress = 0
 while true do
-	--state.progress =  #(UICity.labels[param2] or empty_table) 
+	--state.progress =  #(MainCity.labels[param2] or empty_table) 
 	--not using building labels directly because they count destroyed buildings as well
 	state.progress = 0
-	for _, building in ipairs(UICity.labels[param2] or empty_table) do
+	for _, building in ipairs(UIColony:GetCityLabels(param2) or empty_table) do
 		if not building.destroyed then
 			state.progress = state.progress + 1
 		end
@@ -761,7 +762,7 @@ while true do
 	--not using building labels directly because they count destroyed buildings as well
 	completed = 0
 	for i = 1, #factories do
-		for _, single_factory in ipairs(UICity.labels[factories[i]] or empty_table) do
+		for _, single_factory in ipairs(UIColony:GetCityLabels(factories[i]) or empty_table) do
 			if not single_factory.destroyed and built_factories[i] ~= true then
 				built_factories[i] = true
 				completed = completed + 1
@@ -806,7 +807,11 @@ state.GetTargetText = function(self) return FormatResourceValueMaxResource(empty
 state.GetProgressText = function(self) return FormatResourceValueMaxResource(empty_table, self.progress) end
 state.progress = 0
 while true do
-	state.progress = (g_ResourceProducedTotal[param2] or 0) + (UICity.gathered_resources_total[param2] or 0)
+	local new_resources = 0
+	for _,city in ipairs(Cities) do
+		new_resources = new_resources + (city.gathered_resources_total[param2] or 0)
+	end
+	state.progress = (g_ResourceProducedTotal[param2] or 0) + new_resources
 	if state.progress >= state.target then
 		return true
 	end
@@ -824,16 +829,22 @@ state.target = tonumber(param1)  * const.ResourceScale
 state.GetTargetText = function(self) return FormatResourceValueMaxResource(empty_table, self.target) end
 state.GetProgressText = function(self) return FormatResourceValueMaxResource(empty_table, self.progress) end
 state.progress = 0
-local current_sol = UICity.day
+local current_sol = UIColony.day
 local offset = 0
 while state.progress < state.target do
 	Sleep(500)
-	if current_sol < UICity.day then
-		current_sol = UICity.day
+	if current_sol < UIColony.day then
+		current_sol = UIColony.day
 		state.progress = 0
 		offset = g_ResourceProducedTotal[param2] or 0
-	end	 
-	state.progress = (g_ResourceProducedTotal[param2] or 0) - offset + (UICity.gathered_resources_today[param2] or 0)
+	end
+	
+	local new_resources = 0
+	for _,city in ipairs(Cities) do
+		new_resources = new_resources + (city.gathered_resources_today[param2] or 0)
+	end
+	
+	state.progress = (g_ResourceProducedTotal[param2] or 0) - offset + new_resources
 end
 return true
 end,
@@ -874,7 +885,7 @@ end,
 PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
 while true do
-	if UICity.labels[param1] then
+	if #UIColony:GetCityLabels(param1) > 0 then
 		return true
 	end
 	WaitMsg("ConstructionComplete")
@@ -889,7 +900,7 @@ PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
 while true do
 	local count = 0
-	local colonists = UICity.labels.Colonist or empty_table
+	local colonists = UIColony:GetCityLabels("Colonist") or empty_table
 	for _, colonist in ipairs(colonists) do
 		if colonist.traits[param1] and colonist.traits[param2] and colonist.specialist == param3 then
 			return true
@@ -906,9 +917,9 @@ end,
 PlaceObj('SponsorGoals', {
 	Completed = function (self, state,  param1, param2, param3)
 state.target = tonumber(param1)/1000000
-state.progress = (UICity:GetTotalFundingGain() - UICity.funding)/1000000
+state.progress = (UIColony.funds:GetTotalFundingGain() - UIColony.funds.funding)/1000000
 while state.progress < state.target do
-	local ok, city, amount = WaitMsg("FundingChanged")
+	local ok, colony, amount = WaitMsg("FundingChanged")
 	if amount < 0 then
 		state.progress = state.progress - amount/1000000
 	end
@@ -926,7 +937,7 @@ state.target = tonumber(param1)
 state.progress = 0
 while true do
 	local amount = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony:GetCityLabels("Dome") or empty_table) do
 		if dome.working then
 			amount = amount + 1
 		end

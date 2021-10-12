@@ -89,6 +89,31 @@ function GetEntityPeripheralHexShape(entity)
 	return HexPeripheralShapes[entity] or HexSurroundingsCheckShape
 end
 
+function SnapWorldToHexAngle(angle)
+	local snap_angle = 60 * 60
+	return DivRound(angle, snap_angle) * snap_angle
+end
+
+function SnapWorldToHex(pos)
+	local x,y = HexToWorld(WorldToHex(pos))
+	return point(x, y, pos:z())
+end
+
+function ValidateEachShapeHexPos(shape_data, pos, angle, callback)
+	local dir = HexAngleToDirection(angle)
+	local q, r = WorldToHex(pos)
+	local original_z = false
+	local HexRotate = HexRotate
+
+	for _, shape_pt in ipairs(shape_data) do
+		local x, y = HexRotate(shape_pt:x(), shape_pt:y(), dir)
+		if not callback(q+x, r+y) then
+			return false
+		end
+	end
+	return true
+end
+
 --Reload the hex shapes (and their interiors) for all entitees
 function RebuildHexShapes()
 	local function ProcessHexSurfaces(surface_name, proc)
@@ -237,7 +262,7 @@ function RangeHexRadius:AlignContainer()
 end
 
 function RangeHexRadius:PlaceDecal(class, suffix, container, q, r, angle)
-	local decal = PlaceObject(class..suffix)
+	local decal = PlaceObjectIn(class..suffix, self:GetMapID())
 	container:Attach(decal)
 	local x, y = HexToWorld(q, r)
 	decal:SetAttachOffset(point(x, y, 100))
@@ -321,7 +346,7 @@ DefineClass.RangeHexMovableRadius = {
 }
 
 function RangeHexMovableRadius:Init()
-	self.container = PlaceObject("RangeHexRadiusContainer")
+	self.container = PlaceObjectIn("RangeHexRadiusContainer", self:GetMapID())
 	self.container:SetGameFlags(const.gofAlwaysRenderable)
 end
 
@@ -346,6 +371,7 @@ OnMsg.EntitiesLoaded = RebuildHexShapes
 if Platform.developer then
 	local build_grid_debug_range = 10
 	GlobalVar("build_grid_debug_objs", false)
+	GlobalVar("build_grid_debug_text", false)
 	GlobalVar("build_grid_debug_thread", false)
 	GlobalVar("build_grid_debug_mode", "build_grid")
 
@@ -361,6 +387,7 @@ if Platform.developer then
 			end
 		else
 			build_grid_debug_objs = {}
+			build_grid_debug_text = {}
 			build_grid_debug_thread = CreateRealTimeThread(function()
 				local last_q, last_r
 				while build_grid_debug_objs do
@@ -373,13 +400,21 @@ if Platform.developer then
 								for z_i = z - build_grid_debug_range, z + build_grid_debug_range do
 									if q_i + r_i + z_i == 0 then
 										local c = build_grid_debug_objs[idx] or Circle:new()
+										local t = build_grid_debug_text[idx] or Text:new()
 										c:SetRadius(const.GridSpacing/2)
 										c:SetPos(point(HexToWorld(q_i, r_i)))
+										t:SetPos(point(HexToWorld(q_i, r_i)))
+										t:SetText("(" .. q_i .. ", " .. r_i .. ")")
 										if build_grid_debug_mode == "build_grid" then
-											if HexGridGetObject(ObjectGrid, q_i, r_i) then
+											if GetActiveObjectHexGrid():GetObject(q_i, r_i, "DomeInterior") then
+												c:SetColor(RGBA(0, 0, 255, 0))
+												t:SetColor(RGB(0, 0, 255))
+											elseif GetActiveObjectHexGrid():GetObject(q_i, r_i) then
 												c:SetColor(RGBA(255, 0, 0, 0))
+												t:SetColor(RGB(255, 0, 0))
 											else
 												c:SetColor(RGBA(0, 255, 0, 0))
+												t:SetColor(RGB(0, 255, 0))
 											end
 										elseif build_grid_debug_mode == "veg_grid" then
 											local x, y = HexToStorage(q_i, r_i)
@@ -390,6 +425,7 @@ if Platform.developer then
 											end
 										end
 										build_grid_debug_objs[idx] = c
+										build_grid_debug_text[idx] = t
 										idx = idx + 1
 									end
 								end
@@ -643,7 +679,7 @@ if Platform.developer then
 			local obj = Circle:new()
 			obj:SetRadius(const.GridSpacing/2)
 			local x, y = HexToWorld(q, r)
-			obj:SetPos(x, y, terrain.GetHeight(x, y) + dz)				
+			obj:SetPos(x, y, GetActiveTerrain():GetHeight(x, y) + dz)				
 			obj:SetColor(color)
 			objs[#objs + 1] = obj
 		end)

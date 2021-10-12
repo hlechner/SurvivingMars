@@ -11,18 +11,28 @@ function DontBuildHere:Init()
 end
 
 function DontBuildHere:Check(pos)
+	local object_hex_grid = GetObjectHexGrid(self)
 	local q, r = WorldToHex(pos)
-	return HexGridGetObject(ObjectGrid, q, r, "DontBuildHere") == self
+	return object_hex_grid:GetObject(q, r, "DontBuildHere") == self
 end
 
 function DontBuildHere:MarkGeyser(bbox)
-	Geysers_FillObjectGrid(ObjectGrid, bbox, self.terrain_idx, self.handle)
+	local realm = GetRealm(self)
+	local object_hex_grid = GetObjectHexGrid(self)
+	realm:Geysers_FillObjectGrid(object_hex_grid.grid, bbox, self.terrain_idx, self.handle)
 end
 
-GlobalVar("g_DontBuildHere", false)
+function SavegameFixups.MultimapDontBuildHere()
+	g_DontBuildHere = {
+		[ActiveMapID] = g_DontBuildHere,
+	}
+end
+
+GlobalVar("g_DontBuildHere", {})
 
 local GeyserQuery_func = function(victim, damage_sanity, target_dust, martianborn_strength)
-	if terrain.GetTerrainType(victim:GetVisualPos()) == g_DontBuildHere.terrain_idx then
+	local terrain = GetTerrain(victim)
+	if terrain:GetTerrainType(victim:GetVisualPos()) == g_DontBuildHere[victim:GetMapID()].terrain_idx then
 		if IsKindOf(victim, "Colonist") then
 			local traits = victim.traits
 			if not (martianborn_strength and traits.Martianborn) then
@@ -48,12 +58,13 @@ function GeyserLogic(marker, descr)
 	local radius = marker.FeatureRadius
 	local size = point(radius, radius)
 	local bbox = box(pos - size, pos + size)
-	g_DontBuildHere:MarkGeyser(bbox)
+	g_DontBuildHere[marker:GetMapID()]:MarkGeyser(bbox)
 	
 	local warm_up, geysers, spiders, dust = {}, {}, {}, {}
 	local opacity_start = {}
 	
-	local objects = MapGet(pos, radius, "GeyserObject")
+	local realm = GetRealm(marker)
+	local objects = realm:MapGet(pos, radius, "GeyserObject")
 	for _, obj in ipairs(objects) do
 		if obj:IsKindOf("GeyserWarmup") then
 			table.insert(warm_up, obj)
@@ -91,10 +102,10 @@ function GeyserLogic(marker, descr)
 			end
 		end
 	end
-	
-	while UICity do
+
+	while IsValid(marker) do
 		-- wait while dormant
-		local time_dormant = UICity:Random(descr.dormant_min, descr.dormant_max)
+		local time_dormant = SessionRandom:Random(descr.dormant_min, descr.dormant_max)
 
 		-- start cooling down of decals opacity
 		local cool_op_time = Min(descr.cool_op_time, time_dormant)
@@ -103,20 +114,20 @@ function GeyserLogic(marker, descr)
 		Sleep(time_dormant)
 		
 		-- warming up - increase spiders opacity
-		local time_warning = UICity:Random(descr.warning_min, descr.warning_max)
+		local time_warning = SessionRandom:Random(descr.warning_min, descr.warning_max)
 		play_fx(warm_up, "WarmUp", "start")
 		set_opacity(spiders, descr.warm_opacity, time_warning)
 		Sleep(time_warning)
 		play_fx(warm_up, "WarmUp", "end")
 		
 		-- active phase
-		local time_active = UICity:Random(descr.active_min, descr.active_max)
+		local time_active = SessionRandom:Random(descr.active_min, descr.active_max)
 		play_fx(geysers, "BurstOut", "start")
 		set_opacity(dust, descr.warm_opacity, descr.dust_op_time)
 		local time, dt = 0, 1000
 		while time < time_active do
-			MapForEach(pos, radius,"Colonist", "Drone", "BaseRover", GeyserQuery_func, descr.damage_sanity, descr.target_dust, UICity:IsTechResearched("MartianbornStrength"))
-			MapForEach(pos, radius, "Building", QueryBuilding_func, descr.target_dust, pos, radius )
+			realm:MapForEach(pos, radius,"Colonist", "Drone", "BaseRover", GeyserQuery_func, descr.damage_sanity, descr.target_dust, UIColony:IsTechResearched("MartianbornStrength"))
+			realm:MapForEach(pos, radius, "Building", QueryBuilding_func, descr.target_dust, pos, radius )
 			local delta = Min(time_active - time, dt)
 			Sleep(delta)
 			time = time + delta
@@ -125,9 +136,9 @@ function GeyserLogic(marker, descr)
 	end
 end
 
-function OnMsg.NewMapLoaded()
-	if not mapdata.GameLogic then return end
-	g_DontBuildHere = DontBuildHere:new{}
+function OnMsg.NewMapLoaded(map_id)
+	if not ActiveMapData.GameLogic then return end
+	g_DontBuildHere[map_id] = DontBuildHere:new({}, map_id)
 end
 
 DefineClass.PrefabFeatureChar_Geyser =
@@ -186,7 +197,7 @@ function BaseGeyser:Done()
 end
 
 function BaseGeyser:GetMarker()
-	local geysers = MapGet(true, "PrefabFeatureMarker", function(marker)
+	local geysers = GetRealm(self):MapGet(true, "PrefabFeatureMarker", function(marker)
 		return marker:GetDist2D(self) <= marker.FeatureRadius
 	end)
 	assert(#geysers > 0, "No C02 Jets marker around")
@@ -195,7 +206,7 @@ function BaseGeyser:GetMarker()
 end
 
 function BaseGeyser:GetMarkers(C02_marker, class)
-	return MapGet(C02_marker:GetPos(), C02_marker.FeatureRadius, class )
+	return GetRealm(self):MapGet(C02_marker:GetPos(), C02_marker.FeatureRadius, class )
 end
 
 function BaseGeyser:ActionBurstOutStart(obj)
@@ -219,7 +230,11 @@ DefineClass.DecGeyser =
 DefineClass.GeyserBurstOut = { __parents = { "BaseGeyser" }, play_fx = "BurstOut", base_geyser_class = "GeyserBurstOut" }
 DefineClass.DecSpider = { __parents = { "DecGeyser" } }
 DefineClass.DecDust = { __parents = { "DecGeyser" } }
-DefineClass.BaseWarmup = { __parents = { "BaseGeyser" }, play_fx = "WarmUp", base_geyser_class = "BaseWarmup" }
+DefineClass.BaseWarmup = { 
+	__parents = { "BaseGeyser" },
+	play_fx = "WarmUp",
+	base_geyser_class = "BaseWarmup",
+}
 
 DefineClass("GeyserWarmup", "BaseWarmup")
 DefineClass("Geyser_01", "GeyserBurstOut")

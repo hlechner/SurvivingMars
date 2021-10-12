@@ -12,7 +12,7 @@ PlaceObj('Scenario', {
 			'expression', "_mystery_ended = false",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Colonist and #UICity.labels.Colonist >= 100",
+			'expression', "MainCity.labels.Colonist and #MainCity.labels.Colonist >= 100",
 			'duration', 1000,
 		}),
 		PlaceObj('SA_WaitMarsTime', {
@@ -32,7 +32,7 @@ PlaceObj('Scenario', {
 			'sequence', "Cube Spawner (First)",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.mystery.spawned_cubes >= 135",
+			'expression', "UIColony.mystery.spawned_cubes >= 135",
 			'duration', 1000,
 		}),
 		PlaceObj('SA_RunSequence', {
@@ -176,14 +176,14 @@ PlaceObj('Scenario', {
 		'loop', true,
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.mystery.spawned_cubes < 10800",
+			'expression', "UIColony.mystery.spawned_cubes < 10800",
 		}),
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 1,
 			'Form', "if-then-else",
 			'end_block', 3,
 			'else_block', 2,
-			'expression', "UICity.mystery.spawned_cubes < 2700",
+			'expression', "UIColony.mystery.spawned_cubes < 2700",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 1200000,
@@ -199,7 +199,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 5,
 			'else_block', 6,
-			'expression', "UICity.mystery.spawned_cubes < 6075",
+			'expression', "UIColony.mystery.spawned_cubes < 6075",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 2400000,
@@ -237,14 +237,14 @@ PlaceObj('Scenario', {
 		'loop', true,
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.mystery.spawned_cubes < 10800",
+			'expression', "UIColony.mystery.spawned_cubes < 10800",
 		}),
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 1,
 			'Form', "if-then-else",
 			'end_block', 3,
 			'else_block', 2,
-			'expression', "UICity.mystery.spawned_cubes < 1620",
+			'expression', "UIColony.mystery.spawned_cubes < 1620",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 30000,
@@ -260,7 +260,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 5,
 			'else_block', 6,
-			'expression', "UICity.mystery.spawned_cubes < 6075",
+			'expression', "UIColony.mystery.spawned_cubes < 6075",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 360000,
@@ -341,7 +341,7 @@ PlaceObj('Scenario', {
 			'rand_duration', 600000,
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.mystery.spawned_cubes < 5500",
+			'expression', "UIColony.mystery.spawned_cubes < 5500",
 		}),
 		PlaceObj('SA_PlaceObject', {
 			'random_pos_label', "Black Monolith Pos",
@@ -361,7 +361,7 @@ PlaceObj('Scenario', {
 	}, {
 		PlaceObj('SA_WaitExpression', {
 			'description', "check with wait expression label count",
-			'expression', '#(UICity.labels.RegolithExtractor or "") > 0',
+			'expression', '#(MainCity.labels.RegolithExtractor or "") > 0',
 			'duration', 3333,
 		}),
 		PlaceObj('SA_CheckExpression', {
@@ -541,7 +541,7 @@ PlaceObj('Scenario', {
 		'name', "Message 3: Colonists believe",
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Colonist and #UICity.labels.Colonist >= 120",
+			'expression', "MainCity.labels.Colonist and #MainCity.labels.Colonist >= 120",
 			'duration', 1000,
 		}),
 		PlaceObj('SA_WaitMessage', {
@@ -625,7 +625,7 @@ PlaceObj('Scenario', {
 			'State', "Researched",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'UICity.mystery.can_destroy_cubes = true; table.insert(StorableResourcesForSession, "BlackCube")',
+			'expression', 'UIColony.mystery.can_destroy_cubes = true; table.insert(StorableResourcesForSession, "BlackCube")',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(5892, --[[Scenario Mystery 1 title]] "Power of Three: Solace in Science"),
@@ -686,7 +686,7 @@ PlaceObj('Scenario', {
 		'name', "Cube Pulse and Countdown",
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Colonist and #UICity.labels.Colonist >= 140",
+			'expression', "MainCity.labels.Colonist and #MainCity.labels.Colonist >= 140",
 			'duration', 1000,
 		}),
 		PlaceObj('SA_CheckResearch', {
@@ -725,7 +725,7 @@ PlaceObj('Scenario', {
 			'duration', 750000,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "BlackCubesSetActive(true)",
+			'expression', "BlackCubesSetActive(MainMapID, true)",
 		}),
 		PlaceObj('SA_AppendToLog', {
 			'register', "_BlackCubeMysteryLog",
@@ -774,7 +774,7 @@ PlaceObj('Scenario', {
 			'expression', 'RemoveOnScreenNotification("Mystery1Counter")',
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "BlackCubesSetActive(false)",
+			'expression', "BlackCubesSetActive(MainMapID, false)",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(5911, --[[Scenario Mystery 1 title]] "Power of Three: Construction Begins"),
@@ -788,7 +788,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 3,
 			'else_block', 2,
-			'expression', "UICity.labels.DroneHub and #UICity.labels.DroneHub>0",
+			'expression', "MainCity.labels.DroneHub and #MainCity.labels.DroneHub>0",
 		}),
 		PlaceObj('SA_PlaceObject', {
 			'check_passability', false,
@@ -862,7 +862,7 @@ PlaceObj('Scenario', {
 		'name', "Alternating Endings",
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.BlackCubeMonolith and #UICity.labels.BlackCubeMonolith>0",
+			'expression', "MainCity.labels.BlackCubeMonolith and #MainCity.labels.BlackCubeMonolith>0",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(5917, --[[Scenario Mystery 1 title]] "Power of Three: Out of the Eons"),
@@ -876,7 +876,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 3,
 			'else_block', 2,
-			'expression', "UICity.mystery.stored_cubes > UICity.mystery.destroyed_cubes + UICity.mystery.used_cubes",
+			'expression', "UIColony.mystery.stored_cubes > UIColony.mystery.destroyed_cubes + UIColony.mystery.used_cubes",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 1",
@@ -909,7 +909,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 5,
 			'else_block', 6,
-			'expression', "UICity.mystery.destroyed_cubes > UICity.mystery.used_cubes",
+			'expression', "UIColony.mystery.destroyed_cubes > UIColony.mystery.used_cubes",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 1",
@@ -971,7 +971,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 10,
 			'else_block', 9,
-			'expression', "UICity.mystery.used_cubes > 384",
+			'expression', "UIColony.mystery.used_cubes > 384",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 1",
@@ -1096,7 +1096,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 3,
 			'else_block', 2,
-			'expression', "UICity.mystery.stored_cubes >= 150",
+			'expression', "UIColony.mystery.stored_cubes >= 150",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(5930, --[[Scenario Mystery 1 title]] "Power of Three: For the Generations to Witness"),
@@ -1115,7 +1115,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 5,
 			'else_block', 6,
-			'expression', "UICity.mystery.destroyed_cubes >= 150",
+			'expression', "UIColony.mystery.destroyed_cubes >= 150",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(5933, --[[Scenario Mystery 1 title]] "Power of Three: Might Makes Right"),
@@ -1134,7 +1134,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 10,
 			'else_block', 9,
-			'expression', "UICity.mystery.used_cubes >= 150",
+			'expression', "UIColony.mystery.used_cubes >= 150",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(5936, --[[Scenario Mystery 1 title]] "Power of Three: Cult of Tomorrow"),
@@ -1182,7 +1182,7 @@ PlaceObj('Scenario', {
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 1,
 			'end_block', 2,
-			'expression', "not (UICity.labels.BlackCubeMonolith and #UICity.labels.BlackCubeMonolith>0)",
+			'expression', "not (MainCity.labels.BlackCubeMonolith and #MainCity.labels.BlackCubeMonolith>0)",
 		}),
 		PlaceObj('SA_Exec', {
 			'expression', "_megamonolith:ReturnResources()",
@@ -1207,7 +1207,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 4,
 			'else_block', 5,
-			'expression', "UICity.labels.DroneHub and #UICity.labels.DroneHub>0",
+			'expression', "MainCity.labels.DroneHub and #MainCity.labels.DroneHub>0",
 		}),
 		PlaceObj('SA_PlaceObject', {
 			'check_passability', false,

@@ -19,7 +19,7 @@ PlaceObj('Scenario', {
 			'par_val_1', "27000",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Colonist and #UICity.labels.Colonist >= 100",
+			'expression', "MainCity.labels.Colonist and #MainCity.labels.Colonist >= 100",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'wait_type', "Sols",
@@ -50,7 +50,7 @@ PlaceObj('Scenario', {
 		'autostart', true,
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#UICity.labels.MirrorSpheres >= 3",
+			'expression', "#MainCity.labels.MirrorSpheres >= 3",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'preset', "Mystery3_PowerDecoysTech",
@@ -81,7 +81,7 @@ PlaceObj('Scenario', {
 			'expression', 'MirrorSphereEvents["Resonance"] == true',
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#UICity.labels.MirrorSpheres > 2",
+			'expression', "#MainCity.labels.MirrorSpheres > 2",
 		}),
 		PlaceObj('SA_Exec', {
 			'expression', 'RemoveOnScreenNotification("Mystery3Counter")',
@@ -107,7 +107,7 @@ PlaceObj('Scenario', {
 			'sequence', "[LOG] ColdWave",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#UICity.labels.MirrorSpheres <= 0",
+			'expression', "#MainCity.labels.MirrorSpheres <= 0",
 		}),
 		PlaceObj('SA_StopDisaster', {
 			'disaster', "Cold Wave",
@@ -118,10 +118,10 @@ PlaceObj('Scenario', {
 		'autostart', true,
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#UICity.labels.MirrorSpheres > 0",
+			'expression', "#MainCity.labels.MirrorSpheres > 0",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#UICity.labels.MirrorSpheres < 1",
+			'expression', "#MainCity.labels.MirrorSpheres < 1",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 3",

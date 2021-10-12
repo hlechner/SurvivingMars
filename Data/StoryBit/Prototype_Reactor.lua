@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/hints.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('IsTechId', {
 			'Field', "Physics",
@@ -17,6 +18,10 @@ PlaceObj('StoryBit', {
 			'Condition', ">=",
 			'Amount', 1,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(136777362303, --[[StoryBit Prototype_Reactor Text]] "Our recent discovery of the “Nuclear Fusion” technology has inspired our research team and they want to try to build a prototype Fusion Reactor.\n\nThere are some concerns that our other scientific endeavors will suffer due to the distraction and a positive result is not guaranteed."),
@@ -27,6 +32,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(778981811351, --[[voice:narrator]] "Excited and nervous, the group of Scientists in your office can do little to hide their excitement. They want to build a prototype of a new kind of structure. "),
 	group = "Buildings",
 	id = "Prototype_Reactor",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143863,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamPercent', {
 		'Name', "rp_reduction",
 		'Value', -30,

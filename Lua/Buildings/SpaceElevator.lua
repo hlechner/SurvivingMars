@@ -40,14 +40,14 @@ DefineClass.SpaceElevator = {
 }
 
 function SpaceElevator:GameInit()
-	self.pod = PlaceObject("SpaceElevatorCabin")
+	self.pod = PlaceObjectIn("SpaceElevatorCabin", self:GetMapID())
 	self.pod:SetPos(self:GetPos())
 	self.pod:SetGameFlags(const.gofAlwaysRenderable)
 	
 	self.ropes = {}
 	local len = 0
 	while len < self.rope_height do
-		local rope = PlaceObject("SpaceElevatorRope")
+		local rope = PlaceObjectIn("SpaceElevatorRope", self:GetMapID())
 		rope:SetPos(self:GetPos() + point(0, 0, len))
 		rope:SetGameFlags(const.gofAlwaysRenderable)
 		len = len + self.rope_tile_len
@@ -106,7 +106,7 @@ function SpaceElevator:OrderResupply(cargo, cost)
 	if not cargo or #cargo == 0 then return end
 	
 	-- charge the cost immediately, queue the cargo
-	self.city:ChangeFunding(-cost, "Import")
+	UIColony.funds:ChangeFunding(-cost, "Import")
 	self.import_queue[#self.import_queue + 1] = cargo
 	ResetCargo()
 	
@@ -167,9 +167,10 @@ function SpaceElevator:ExportGoods()
 		
 		-- grant extra funding
 		self.city:MarkPreciousMetalsExport(self.current_export)
-		local export_funding = self.city:CalcBaseExportFunding(self.current_export)
+		local funds = UIColony.funds
+		local export_funding = funds:CalcBaseExportFunding(self.current_export)
 		if export_funding > 0 then
-			export_funding = self.city:ChangeFunding(export_funding, "Export")
+			export_funding = funds:ChangeFunding(export_funding, "Export")
 			AddOnScreenNotification("RareMetalsExport", nil, { funding = export_funding })
 		end
 		self.current_export = nil
@@ -223,7 +224,7 @@ function SpaceElevator:UnloadCargo(items)
 				unloaded = true
 			elseif IsKindOf(classdef, "OrbitalProbe") then
 				for j = 1, item.amount do
-					PlaceObject(item.class, {city = self.city})
+					PlaceObjectIn(item.class, self:GetMapID())
 				end
 				unloaded = true
 			else
@@ -236,7 +237,7 @@ function SpaceElevator:UnloadCargo(items)
 	end
 
 	if unloaded then
-		AddOnScreenNotification("SpaceElevatorDelivery", nil, {}, {self})
+		AddOnScreenNotification("SpaceElevatorDelivery", nil, {}, {self}, self:GetMapID())
 	end
 end
 
@@ -290,15 +291,19 @@ end
 
 function SpaceElevator:DisconnectFromCommandCenters()
 	Building.DisconnectFromCommandCenters(self)
-	if LRManagerInstance then
-		LRManagerInstance:RemoveBuilding(self)
+	
+	local lr_manager = GetLRManager(self)
+	if lr_manager then
+		lr_manager:RemoveBuilding(self)
 	end
 end
 
 function SpaceElevator:ConnectToCommandCenters()
 	Building.ConnectToCommandCenters(self)
-	if LRManagerInstance then
-		LRManagerInstance:AddBuilding(self)
+	
+	local lr_manager = GetLRManager(self)
+	if lr_manager then
+		lr_manager:AddBuilding(self)
 	end
 end
 
@@ -482,7 +487,7 @@ function SavegameFixups.SpaceElevatorRegiterSeeds()
 		if not self.supply["Seeds"] then
 			local was_connected = #self.command_centers > 0
 			self:DisconnectFromCommandCenters()
-			self:RegiterResourceRequest("Seeds")
+			self:RegisterResourceRequest("Seeds")
 			if was_connected then
 				self:ConnectToCommandCenters()
 			end

@@ -17,9 +17,14 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/05_mysterious_stranger.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('HasTrait', {
 			'Trait', "Empath",
+		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
 		}),
 	},
 	ScriptDone = true,
@@ -31,6 +36,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(654809155651, --[[voice:narrator]] "An Empath has suffered a sanity breakdown. Losing control over the darkest emotions, the poor soul projected them towards all people nearby."),
 	group = "Sanity Breakdown",
 	id = "ThePariah",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625148180,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "sanity_damage",
 		'Value', 10,

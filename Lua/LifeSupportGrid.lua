@@ -60,7 +60,7 @@ DefineClass.AirGridFragment = {
 -- every water grid fragment has a corresponding air grid with the same elements (because water and air run in the same pipes)
 -- adding or removing elements in the water grid does the same in the air grid
 function WaterGrid:Init()
-	self.air_grid = AirGridFragment:new{ city = self.city }
+	self.air_grid = AirGridFragment:new({ city = self.city }, self:GetMapID())
 end
 
 function WaterGrid:Done()
@@ -83,10 +83,11 @@ function WaterGrid:RemoveElement(element, update)
 	SupplyGridFragment.RemoveElement(self, element, update)
 end
 
-function WaterGrid:CreateConnection(pt1, pt2, building1, building2)
+function WaterGrid.CreateConnection(pt1, pt2, building1, building2)
 	assert(building1 and building2)
 	--local is_constr = IsKindOf(building1, "ConstructionSite") or IsKindOf(building2, "ConstructionSite")
-	SupplyGridAddConnection(SupplyGridConnections["water"], pt1, pt2)
+	local supply_connection_grid = GetSupplyConnectionGrid(building1)
+	SupplyGridAddConnection(supply_connection_grid["water"], pt1, pt2)
 	local is_pipe1 = building1:IsKindOf("LifeSupportGridElement")
 	local is_pipe2 = building2:IsKindOf("LifeSupportGridElement")
 	local b1_cs = IsKindOf(building1, "ConstructionSite")
@@ -150,7 +151,7 @@ local function connection_destroyed(building, pt1, pt2, the_other_building, test
 	end
 end
 
-function WaterGrid:DestroyConnection(pt1, pt2, building1, building2, test)
+function WaterGrid.DestroyConnection(pt1, pt2, building1, building2, test)
 	assert(building1 and building2)
 	connection_destroyed(building1, pt1, pt2, building2, test)
 	connection_destroyed(building2, pt2, pt1, building1, test)
@@ -261,19 +262,24 @@ function LifeSupportGridObject:MoveInside(dome)
 	
 	local grid = self.water.grid
 	grid:RemoveElement(self.water)
-	
-	local ls_connection_grid = SupplyGridConnections["water"]
+
+	local game_map = GetGameMap(self)
+	local supply_connection_grid = game_map.supply_connection_grid
+	local supply_overlay_grid = game_map.supply_overlay_grid
+
+	local ls_connection_grid = supply_connection_grid["water"]
 	local shape = self:GetSupplyGridConnectionShapePoints("water")
-	ApplyIDToOverlayGrid(OverlaySupplyGrid, self, shape, 15, "band")
+	ApplyIDToOverlayGrid(supply_overlay_grid, self, shape, 15, "band")
 	local connections = SupplyGridRemoveBuilding(ls_connection_grid, self, shape)
+	local object_hex_grid = GetObjectHexGrid(self)
 	-- destroy connections
 	for i = 1, #(connections or ""), 2 do
 		local pt, other_pt = connections[i], connections[i + 1]
-		local adjascents = HexGridGetObjects(ObjectGrid, other_pt, nil, nil, function(o)
+		local adjacents = object_hex_grid:GetObjectsAtPos(other_pt, nil, nil, function(o)
 			return GetGrid(o) == grid
 		end)
-		for i = 1, #adjascents do
-			WaterGrid:DestroyConnection(pt, other_pt, dome, adjascents[i])
+		for i = 1, #adjacents do
+			WaterGrid.DestroyConnection(pt, other_pt, dome, adjacents[i])
 		end
 	end
 	
@@ -302,7 +308,8 @@ function LifeSupportGridObject:PlacePipeConnection(pipe, i)
 	local cm1, cm2, cm3, cm4 = GetPipesPalette()
 	self.connections = self.connections or {}
 
-	local obj = PlaceObject(pipe[4])
+	local map_id = self:GetMapID()
+	local obj = PlaceObjectIn(pipe[4], map_id)
 	self:Attach(obj, pipe[3])
 	SetObjectPaletteRecursive(obj, cm1, cm2, cm3, cm4)
 	self.connections[i] = {obj}
@@ -310,7 +317,7 @@ function LifeSupportGridObject:PlacePipeConnection(pipe, i)
 	if pipe[5] then
 		--decor spot defined
 		local dec_data = pipe[5]
-		local dec_obj = PlaceObject(dec_data[1])
+		local dec_obj = PlaceObjectIn(dec_data[1], map_id)
 		
 		local idx = 2
 		local dec_s_e = dec_data[idx]
@@ -509,7 +516,7 @@ function LifeSupportGridElement:GetSkins()
 	local skins, palettes = {}, {}
 	local palette = {GetPipesPalette()}
 	for k, v in pairs(TubeSkins) do
-		if IsDlcAvailable(v.dlc) then
+		if IsDlcAccessible(v.dlc) then
 			table.insert(skins, k)
 			table.insert(palettes, palette)
 		end
@@ -573,11 +580,13 @@ local no_connector_versions = {
 
 function LifeSupportGridElement:GetShapeConnections()
 	local q, r = WorldToHex(self)
-	local bld = HexGetBuilding(q, r)
+	local object_hex_grid = GetObjectHexGrid(self)
+	local bld = HexGetBuilding(object_hex_grid, q, r)
 	local result = (bld == nil or bld == self) and not self.chain and (self.switched_state and full_connections_switched or full_connections) 
 						or (self.switched_state and pipe_connections_switched or pipe_connections)
 
-	local is_buildable = IsBuildableZoneQR(q, r)
+	local buildable = GetBuildableGrid(self)
+	local is_buildable = buildable:IsBuildable(q, r)
 	if not is_buildable and not self.chain then
 		result = no_connector_versions[result]
 	end
@@ -611,27 +620,31 @@ end
 function LifeSupportGridElement:DemoteConnectionMask(dir)
 	if self.pillar then return end --cant demote pillars
 	dir = dir or self:GetAngle() / (60 * 60)
-	local conn = HexGridGet(SupplyGridConnections["water"], self)
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid["water"], self)
 	if conn == 0 then return end --we aint initialized yet, we'll figure out our potential later.
 	local pipe_conn = bor(shift(1, dir), dir < 3 and shift(1, dir + 3) or shift(1, dir - 3))
 	--63, skip 7th bit (is constr bit), skip 8th bit (ConnectorMask)
 	assert(band(conn, bnot(pipe_conn), 63) == 0, "Potential connection terminated, while real connection exists!") -- make sure we're not removing actual connections
 	conn = maskset(conn, 63 * 256, shift(pipe_conn, 8)) -- replace pipe potential connections
-	HexGridSet(SupplyGridConnections["water"], self, conn)
+	HexGridSet(supply_connection_grid["water"], self, conn)
 end
 --makes connection mask represent 6 side possible connection
 function LifeSupportGridElement:PromoteConnectionMask()
-	local conn = HexGridGet(SupplyGridConnections["water"], self)
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid["water"], self)
 	if conn == 0 then return end --we aint initialized yet, we'll figure out our potential later.
 	conn = bor(conn, 63 * 256) -- mark all directions as potential connections
-	HexGridSet(SupplyGridConnections["water"], self, conn)
+	HexGridSet(supply_connection_grid["water"], self, conn)
 end
 
 function LifeSupportGridElement:CanMakePillar(excluded_obj)
 	if self.chain then return false end
 	local q, r = WorldToHex(self)
-	local bld = HexGetBuilding(q, r)
-	local is_buildable = IsBuildableZoneQR(q, r)
+	local object_hex_grid = GetObjectHexGrid(self)
+	local bld = HexGetBuilding(object_hex_grid, q, r)
+	local buildable = GetBuildableGrid(self)
+	local is_buildable = buildable:IsBuildable(q, r)
 	return self.pillar or self.force_hub or (is_buildable and (bld == nil or excluded_obj and bld == excluded_obj))
 end
 
@@ -652,10 +665,11 @@ end
 
 function LifeSupportGridElement:SetPillar(pillar)
 	self.pillar = pillar or nil
+	local flight_system = GetFlightSystem(self)
 	if pillar then
-		Flight_Mark(self)
+		flight_system:Mark(self)
 	else
-		Flight_Unmark(self)
+		flight_system:Unmark(self)
 	end
 end
 
@@ -665,7 +679,8 @@ function LifeSupportGridElement:MakeSwitch(constr_site)
 end
 
 function LifeSupportGridElement:GetNumberOfConnections()
-	local conn = HexGridGet(SupplyGridConnections["water"], self)
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid["water"], self)
 	
 	local count, first, second = 0
 	for dir = 0, 5 do
@@ -698,11 +713,13 @@ function QueueForEnableBlockPass(obj)
 end
 
 function LifeSupportGridElement:CanMakeSwitch(constr_site)
-	return SupplyGridSwitch.CanMakeSwitch(self) and self:CanMakePillar(constr_site) and IsBuildableZone(self)
+	local buildable = GetBuildableGrid(self)
+	return SupplyGridSwitch.CanMakeSwitch(self) and self:CanMakePillar(constr_site) and buildable:IsBuildableZone(self)
 end
 
 function LifeSupportGridElement:UpdateVisuals(supply_resource)
-	local conn = HexGridGet(SupplyGridConnections["water"], self)
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid["water"], self)
 	local sn = self:GetGridSkinName()
 	if self.conn == conn and self.pillar == self.last_visual_pillar and sn == self.connections_skin_name then return false end
 	self.conn = conn
@@ -744,11 +761,12 @@ function LifeSupportGridElement:UpdateVisuals(supply_resource)
 		end
 		
 		local my_q, my_r = WorldToHex(self)
+		local object_hex_grid = GetObjectHexGrid(self)
 		for dir = 0, 5 do
 			if testbit(conn, dir) then
 				local dq, dr = HexNeighbours[dir + 1]:xy()
-				local pipe = HexGetPipe(my_q + dq, my_r + dr)
-				local plug = PlaceObject(pipe and pipe.chain and pipe.chain.delta ~= 0 and skin.TubeJointSeam or skin.TubeHubPlug, nil, const.cofComponentAttach)
+				local pipe = HexGetPipe(object_hex_grid, my_q + dq, my_r + dr)
+				local plug = PlaceObjectIn(pipe and pipe.chain and pipe.chain.delta ~= 0 and skin.TubeJointSeam or skin.TubeHubPlug, self:GetMapID(), nil, const.cofComponentAttach)
 				if self:GetGameFlags(const.gofUnderConstruction) ~= 0 then
 					plug:SetGameFlags(const.gofUnderConstruction)
 				end
@@ -757,7 +775,7 @@ function LifeSupportGridElement:UpdateVisuals(supply_resource)
 				plug:SetAttachAngle(180 * 60 + dir * 60 * 60)
 				
 				if pipe and pipe.chain and pipe.chain.delta ~= 0 then
-					local tube_joint = PlaceObject(skin.TubeJoint, nil, const.cofComponentAttach)
+					local tube_joint = PlaceObjectIn(skin.TubeJoint, self:GetMapID(), nil, const.cofComponentAttach)
 					plug:Attach(tube_joint, plug:GetSpotBeginIndex("Joint"))
 					tube_joint:SetAttachAxis(axis_y)
 					local dist = const.GridSpacing * pipe.chain.length
@@ -795,17 +813,23 @@ function LifeSupportGridElement:TryConnectInDir(dir)
 	if not testbit(conn, dir) and testbit(shift(conn, -8), dir) then --not connected yet and has potential
 		local dq, dr = HexNeighbours[dir + 1]:xy()
 		local my_q, my_r = WorldToHex(self)
-		local obj = HexGetPipe(my_q + dq, my_r + dr)
+
+		local game_map = GetGameMap(self)
+		local object_hex_grid = game_map.object_hex_grid
+
+		local obj = HexGetPipe(object_hex_grid, my_q + dq, my_r + dr)
 		if obj and obj.water then
-			local his_conn = HexGridGet(SupplyGridConnections["water"], obj)
+			local supply_connection_grid = game_map.supply_connection_grid
+			local his_conn = HexGridGet(supply_connection_grid["water"], obj)
 			if testbit(shift(his_conn, -8), dir) then --he has ptoential
-				WaterGrid:CreateConnection(point(my_q, my_r), point(my_q + dq, my_r + dr), self, obj)
+				WaterGrid.CreateConnection(point(my_q, my_r), point(my_q + dq, my_r + dr), self, obj)
 					
 				if self.class == obj.class and self.water.grid ~= obj.water.grid then --both constr or both finished but diff grids, merge
 					local my_grid_count = #self.water.grid.elements
 					local his_grid_count = #obj.water.grid.elements
 					local my_grid_has_more_elements = my_grid_count > his_grid_count
-					MergeGrids(my_grid_has_more_elements and self.water.grid or obj.water.grid,
+					local supply_overlay_grid = game_map.supply_overlay_grid
+					MergeGrids(supply_overlay_grid, supply_connection_grid, my_grid_has_more_elements and self.water.grid or obj.water.grid,
 									my_grid_has_more_elements and obj.water.grid or self.water.grid)
 				elseif self.class ~= obj.class then --constr grid vs real grid, acknowledge conn
 					ConnectGrids(self.water, obj.water)
@@ -820,7 +844,7 @@ function LifeSupportGridElement:GetFlattenShape()
 end
 
 function LifeSupportGridElement:CanBreak()
-	if UICity:IsTechResearched("SuperiorPipes") then
+	if UIColony:IsTechResearched("SuperiorPipes") then
 		return false
 	end
 	return BreakableSupplyGridElement.CanBreak(self)
@@ -835,11 +859,14 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 	local z = const.InvalidZ
 	local connect_dir = dir < 3 and dir or dir - 3
 	local angle = connect_dir * 60 * 60
+	local game_map = GetGameMap(city)
+	local object_hex_grid = game_map.object_hex_grid
 	-- try to connect with previous pipe strip
-	local pipe = HexGetPipe(start_q, start_r)
-	local next_pipe = HexGetPipe(start_q + dq, start_r + dr) --if there is a next pipe we shouldnt demote to tube since connections are already set.
+	local pipe = HexGetPipe(object_hex_grid, start_q, start_r)
+	local next_pipe = HexGetPipe(object_hex_grid, start_q + dq, start_r + dr) --if there is a next pipe we shouldnt demote to tube since connections are already set.
 	if pipe and type(pipe.pillar) == "number" and pipe.pillar ~= 0 and not next_pipe then -- there is a last pilar in a pipe line
-		local conn = HexGridGet(SupplyGridConnections["water"], start_q, start_r)
+		local supply_connection_grid = GetSupplyConnectionGrid(city)
+		local conn = HexGridGet(supply_connection_grid["water"], start_q, start_r)
 		if band(conn, 63) == shift(1, dir > 2 and dir - 3 or dir + 3) then -- in our direction
 			if pipe.pillar ~= max_int then
 				last_pillar = pipe.pillar
@@ -860,7 +887,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 			cs_grp_counter_for_cost = cs_grp_counter_for_cost - 1
 			cs_grp_elements_in_this_group = #input_constr_grp - 1
 		else
-			construction_group = CreateConstructionGroup("LifeSupportGridElement", point(HexToWorld(start_q, start_r)), 3, not elements_require_construction)
+			construction_group = CreateConstructionGroup("LifeSupportGridElement", point(HexToWorld(start_q, start_r)), city:GetMapID(), 3, not elements_require_construction)
 			construction_group[1].supplied = supplied
 		end
 	end
@@ -909,19 +936,22 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 	local chunk_idx = 0
 	local can_build_anything = false
 	local chunk_has_blocked_members = false
-	
+	local realm = game_map.realm
+	local buildable = game_map.buildable
+	local terrain = game_map.terrain
+
 	for i = 0, steps do
 		local q = start_q + i * dq
 		local r = start_r + i * dr
-		local bld = HexGetBuilding(q, r)
-		local cable = HexGetCable(q, r)
-		local pipe = HexGetPipe(q, r)
+		local bld = HexGetBuilding(object_hex_grid, q, r)
+		local cable = HexGetCable(object_hex_grid, q, r)
+		local pipe = HexGetPipe(object_hex_grid, q, r)
 		local world_pos = point(HexToWorld(q, r))
-		local is_buildable = IsBuildableZoneQR(q, r)
-		local is_buildable2 = pipe and pipe.pillar or CableBuildableTest(world_pos, q, r)
-		local surf_deps = is_buildable and HexGetUnits(nil, nil, world_pos, 0, nil, function(o) return not obstructors or not table.find(obstructors, o) end, "SurfaceDeposit") or empty_table
-		local rocks = is_buildable and HexGetUnits(nil, nil, world_pos, 0, false, nil, "WasteRockObstructor") or empty_table
-		local stockpiles = is_buildable and HexGetUnits(nil, nil, world_pos, 0, false, function(obj) return obj:GetParent() == nil and IsKindOf(obj, "DoesNotObstructConstruction") and not IsKindOf(obj, "Unit") end, "ResourceStockpileBase") or empty_table
+		local is_buildable = buildable:IsBuildable(q, r)
+		local is_buildable2 = pipe and pipe.pillar or CableBuildableTest(game_map, world_pos, q, r)
+		local surf_deps = is_buildable and HexGetUnits(realm, nil, nil, world_pos, 0, nil, function(o) return not obstructors or not table.find(obstructors, o) end, "SurfaceDeposit") or empty_table
+		local rocks = is_buildable and HexGetUnits(realm, nil, nil, world_pos, 0, false, nil, "WasteRockObstructor") or empty_table
+		local stockpiles = is_buildable and HexGetUnits(realm, nil, nil, world_pos, 0, false, function(obj) return obj:GetParent() == nil and IsKindOf(obj, "DoesNotObstructConstruction") and not IsKindOf(obj, "Unit") end, "ResourceStockpileBase") or empty_table
 		local pillar = is_buildable and (i + last_pillar) % pillar_spacing or nil
 		pillar = pillar == 0 and pillar or is_buildable and i == steps and pillar or nil
 		
@@ -1029,7 +1059,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 				start_node.chunk_start = chunk
 				start_node.chunk = chunk
 				data[i].chunk = chunk
-				chunk.z1 = IsBuildableZoneQR(start_node.q, start_node.r) and GetBuildableZ(start_node.q, start_node.r) or terrain.GetHeight(HexToWorld(start_node.q, start_node.r))
+				chunk.z1 = buildable:IsBuildable(start_node.q, start_node.r) and buildable:GetZ(start_node.q, start_node.r) or terrain:GetHeight(HexToWorld(start_node.q, start_node.r))
 				chunk_has_blocked_members = false
 				
 				unbuildable_chunks[chunk_idx] = chunk
@@ -1099,7 +1129,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 				local x1, y1 = HexToWorld(cell_data.q, cell_data.r)
 				local z1 = unbuildable_chunks[chunk_idx].z1
 				local x2, y2 = HexToWorld(q, r)
-				local z2 = is_buildable and GetBuildableZ(q, r) or terrain.GetHeight(x2, y2)
+				local z2 = is_buildable and buildable:GetZ(q, r) or terrain:GetHeight(x2, y2)
 				unbuildable_chunks[chunk_idx].z2 = z2
 				unbuildable_chunks[chunk_idx].zd = z2 - z1
 				--test for pipe/cable block
@@ -1112,7 +1142,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 					end
 				else
 					--test los
-					local has_los = CheckLineOfSight(point(x1, y1, z1 + const.GroundOffsetForLosTest), point(x2, y2, z2 + const.GroundOffsetForLosTest))
+					local has_los = realm:CheckLineOfSight(point(x1, y1, z1 + const.GroundOffsetForLosTest), point(x2, y2, z2 + const.GroundOffsetForLosTest))
 					if not has_los then
 						unbuildable_chunks[chunk_idx].status = SupplyGridElementHexStatus.blocked
 					else
@@ -1127,7 +1157,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 			if data[i].chunk and data[i].chunk.chunk_end < 0 then
 				data[i].chunk.chunk_end = -(i + last_pass_idx)
 				local x, y = HexToWorld(q, r)
-				data[i].chunk.z2 = is_buildable and GetBuildableZ(q, r) or terrain.GetHeight(x, y)
+				data[i].chunk.z2 = is_buildable and buildable:GetZ(q, r) or terrain:GetHeight(x, y)
 				data[i].chunk.zd = data[i].chunk.z2 - data[i].chunk.z1
 			end
 		end
@@ -1168,7 +1198,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 			end
 			
 			if not current_group_has_hub and not has_group_with_no_hub then
-				if DoesAnyDroneControlServiceAtPoint(world_pos) then
+				if DoesAnyDroneControlServiceAtPoint(game_map.map_id, world_pos) then
 					current_group_has_hub = true
 					last_element_found_hub = true
 				end
@@ -1178,7 +1208,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 				total_chunk_cost = total_chunk_cost + 200
 			end
 			if not current_chunk_group_has_hub and not has_group_with_no_hub then
-				if DoesAnyDroneControlServiceAtPoint(world_pos) then
+				if DoesAnyDroneControlServiceAtPoint(game_map.map_id, world_pos) then
 					current_chunk_group_has_hub = true
 				end
 			end
@@ -1282,7 +1312,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 		params.chain = chain
 		params.construction_grid_skin = skin_name
 		
-		local cs = PlaceConstructionSite(city, "LifeSupportGridElement", point(HexToWorld(q, r)), angle, params, nil, chain or not IsBuildableZoneQR(q, r))
+		local cs = PlaceConstructionSite(city, "LifeSupportGridElement", point(HexToWorld(q, r)), angle, params, nil, chain or not buildable:IsBuildable(q, r))
 		if not chain and cell_data.status == SupplyGridElementHexStatus.clear then
 			cs:AppendWasteRockObstructors(cell_data.rocks)
 			cs:AppendStockpilesUnderneath(cell_data.stockpiles)
@@ -1299,12 +1329,12 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 		if c then return c end
 		local q = cell_data.q
 		local r = cell_data.r
-		local el = LifeSupportGridElement:new{ city = city, connect_dir = connect_dir, pillar = pillar, chain = chain, construction_grid_skin = skin_name }
+		local el = LifeSupportGridElement:new({ city = city, connect_dir = connect_dir, pillar = pillar, chain = chain, construction_grid_skin = skin_name }, city:GetMapID())
 		local x, y = HexToWorld(q, r)
 		el:SetPos(x, y, z)
 		el:SetAngle(angle)
 		el:SetGameFlags(const.gofPermanent)
-		if not chain and IsBuildableZoneQR(q, r) then
+		if not chain and buildable:IsBuildable(q, r) then
 			FlattenTerrainInBuildShape(nil, el)
 		end
 		SetObjectPaletteRecursive(el, cm1, cm2, cm3, cm4)
@@ -1329,7 +1359,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 			local length = chunk_data.chunk_end - chunk_data.chunk_start - 1
 			if chunk_data.place_construction_site then
 				--place constr grp, chunks are their own groups
-				local chunk_construction_group = CreateConstructionGroup("LifeSupportGridElement", point(HexToWorld(q, r)), 3, not elements_require_construction)
+				local chunk_construction_group = CreateConstructionGroup("LifeSupportGridElement", point(HexToWorld(q, r)), city:GetMapID(), 3, not elements_require_construction)
 				local chunk_group_leader = chunk_construction_group[1]
 				chunk_group_leader.supplied = supplied
 				--add pillar 1
@@ -1377,7 +1407,7 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 						
 						--new group
 						if elements_require_construction or #data[i].rocks > 0 or #data[i].stockpiles > 0 then
-							construction_group = CreateConstructionGroup("LifeSupportGridElement", point(HexToWorld(q, r)), 3, not elements_require_construction)
+							construction_group = CreateConstructionGroup("LifeSupportGridElement", point(HexToWorld(q, r)), city:GetMapID(), 3, not elements_require_construction)
 							construction_group[1].supplied = supplied
 						end
 					end
@@ -1418,646 +1448,4 @@ function PlacePipeLine(city, start_q, start_r, dir, steps, test, elements_requir
 	construction_group = clean_group(construction_group)
 	
 	return true, construction_group, obstructors, data, unbuildable_chunks, last_placed_obj, total_cost
-end
-
------ WaterProducer
---[[@@@
-@class WaterProducer
-Building derived [building template](ModItemBuildingTemplate.md.html) class. Handles water production for a building. All buildings that produce water for the water grid are either of this class or a derived class.
---]]
-DefineClass.WaterProducer = {
-	__parents = { "Building", "LifeSupportGridObject" },
-	properties = {
-		{ template = true, id = "water_production", name = T(1065, "Water production"), category = "Water Production", editor = "number", default = 10000, help = Untranslated("This is the amount produced per hour."), scale = const.ResourceScale, modifiable = true },
-	},
-	
-	is_tall = true,
-}
-
-function WaterProducer:GameInit()
-	if HintsEnabled then
-		HintTrigger("HintAirProduction")
-	end
-	
-	if not (g_ActiveHints["HintDomePlacedTooEarly"] or empty_table).disabled then
-		local has_one_air_producer
-		local a_grids = (self.city or UICity).air
-		for i = 1, #a_grids do
-			if #a_grids[i].producers > 0 then
-				has_one_air_producer = true
-				break
-			end
-		end
-		if has_one_air_producer then
-			HintDisable("HintDomePlacedTooEarly")
-			if HintsEnabled then
-				HintTrigger("HintDomes")
-			end
-		end
-	end
-end
-
-function WaterProducer:CreateLifeSupportElements()
-	self.water = NewSupplyGridProducer(self)
-	self.water:SetProduction(self.working and self.water_production or 0)
-end
-
-function WaterProducer:OnSetWorking(working)
-	Building.OnSetWorking(self, working)
-	if self.water then
-		self.water:SetProduction(working and self.water_production or 0)
-	end
-end
-
-function WaterProducer:MoveInside(dome)
-	return LifeSupportGridObject.MoveInside(self, dome)
-end
-
-function WaterProducer:OnModifiableValueChanged(prop)
-	if prop == "water_production" and self.water then
-		self.water:SetProduction(self.working and self.water_production or 0)
-	end
-end
-
-function WaterProducer:ShouldShowNotConnectedToGridSign()
-	return self:ShouldShowNotConnectedToLifeSupportGridSign()
-end
-
-function WaterProducer:ShouldShowNotConnectedToLifeSupportGridSign()
-	local not_under_dome = not self.parent_dome
-	if not_under_dome then
-		if not self:HasPipes() then
-			return true
-		end
-		if #self.water.grid.consumers <= 0 and #self.water.grid.storages <= 0 then
-			return true
-		end
-	end
-	return false
-end
-
-function WaterProducer:UpdateAttachedSigns()
-	self:AttachSign(self:ShouldShowNotConnectedToLifeSupportGridSign(), "SignNoPipeConnection")
-end
-
-function WaterProducer:GetWaterProductionText(short)
-	local real_production = self.water.production > 0 and Max(self.water.production - self.water.current_throttled_production, 0) or 0
-	local max_production = self.water.production
-	return real_production < max_production
-		and (short and T{9712, "<water(number1,number2)>", number1 = real_production, number2 = max_production} or T{482, "Water production<right><water(number1,number2)>", number1 = real_production, number2 = max_production})
-		or (short and T{9713, "<water(number)>", number = real_production} or T{483, "Water production<right><water(number)>", number = real_production})
-end
-
-function WaterProducer:GetUISectionWaterProductionRollover()
-	local lines = {
-		T{479, "Production capacity<right><water(production)>", self.water},
-		T{480, "Production per Sol<right><water(ProductionEstimate)>", self.water},
-		T{481, "Lifetime production<right><water(production_lifetime)>", self.water},					
-	}	
-	AvailableDeposits(self, lines)
-	if self:HasMember("wasterock_producer") and self.wasterock_producer then
-		lines[#lines +1] = T(469, "<newline><center><em>Storage</em>")
-		lines[#lines +1] = T{471, "Waste Rock<right><wasterock(GetWasterockAmountStored,wasterock_max_storage)>", self}
-	end
-	return table.concat(lines, "<newline><left>")
-end
-
-
-
------ AirProducer
---[[@@@
-@class AirProducer
-Building derived [building template](ModItemBuildingTemplate.md.html) class. Handles air production for a building. All buildings that provide air to the air grid are either of this class or a derived class.
---]]
-DefineClass.AirProducer = {
-	__parents = { "Building", "LifeSupportGridObject" },
-	properties = {
-		{ template = true, id = "air_production", name = T(1066, "Oxygen production"), category = "Oxygen production", editor = "number", default = 10000, scale = const.ResourceScale, modifiable = true  },
-	},
-	
-	is_tall = true,
-}
-
-function AirProducer:GameInit()
-	if not (g_ActiveHints["HintDomePlacedTooEarly"] or empty_table).disabled then
-		local has_one_water_producer
-		local w_grids = (self.city or UICity).water
-		for i = 1, #w_grids do
-			if #w_grids[i].producers > 0 then
-				has_one_water_producer = true
-				break
-			end
-		end
-		if has_one_water_producer then
-			HintDisable("HintDomePlacedTooEarly")
-			if HintsEnabled then
-				HintTrigger("HintDomes")
-			end
-		end
-	end
-end
-
-function AirProducer:CreateLifeSupportElements()
-	self.air = NewSupplyGridProducer(self)
-	self.air:SetProduction(self.working and self.air_production or 0)
-end
-
-function AirProducer:OnSetWorking(working)
-	Building.OnSetWorking(self, working)
-	if self.air then
-		self.air:SetProduction(working and self.air_production or 0)
-	end
-end
-
-function AirProducer:MoveInside(dome)
-	return LifeSupportGridObject.MoveInside(self, dome)
-end
-
-function AirProducer:OnModifiableValueChanged(prop)
-	if prop == "air_production" and self.air then
-		self.air:SetProduction(self.working and self.air_production or 0)
-	end
-end
-
-function AirProducer:ShouldShowNotConnectedToGridSign()
-	return self:ShouldShowNotConnectedToLifeSupportGridSign()
-end
-
-function AirProducer:ShouldShowNotConnectedToLifeSupportGridSign()
-	local not_under_dome = not self.parent_dome
-	if not_under_dome then
-		if not self:HasPipes() then
-			return true
-		end
-		if #self.air.grid.consumers <= 0 and #self.air.grid.storages <= 0 then
-			return true
-		end
-	end
-	return false
-end
-
-function AirProducer:UpdateAttachedSigns()
-	self:AttachSign(self:ShouldShowNotConnectedToLifeSupportGridSign(), "SignNoPipeConnection")
-end
-
-function AirProducer:GetAirProduction()
-	return self.air.production
-end
-
-function AirProducer:GetUISectionAirProductionRollover()
-	return T{484, "Production per Sol<right><air(ProductionEstimate)>", self.air} .. "<newline><left>" ..
-	T{485, "Lifetime production<right><air(production_lifetime)>", self.air}
-end
-
-
------ LifeSupportConsumer
---[[@@@
-@class LifeSupportConsumer
-Building derived [building template](ModItemBuildingTemplate.md.html) class. Handles air and water consumption. An object of this class may consume only water or only air or both. All buildings that consume air or water in whatever fassion are of this class or a derived class.
---]]
-DefineClass.LifeSupportConsumer = {
-	__parents = { "Building", "LifeSupportGridObject"},
-
-	properties = {
-		{ template = true, id = "water_consumption", name = T(656, "Water consumption"),  category = "Consumption", editor = "number", default = 10000, scale = const.ResourceScale, modifiable = true, min = 0, },
-		{ template = true, id = "air_consumption",   name = T(1067, "Oxygen consumption"), category = "Consumption", editor = "number", default = 10000, scale = const.ResourceScale, modifiable = true, min = 0, },
-		{ template = true, id = "disable_water_consumption", name = T(12289, "Disable Water Consumption"), no_edit = true, modifiable = true, editor = "number", default = 0, help = "So consumption can be turned off with modifiers"},
-		{ template = true, id = "disable_air_consumption", name = T(12290, "Disable Oxygen Consumption"), no_edit = true, modifiable = true, editor = "number", default = 0, help = "So consumption can be turned off with modifiers"},
-	},
-	
-	is_tall = true,
-	is_lifesupport_consumer = true,
-}
-
-function LifeSupportConsumer:CreateLifeSupportElements()
-	if self.water_consumption > 0 then
-		self.water = NewSupplyGridConsumer(self)
-		self.water:SetConsumption(self.water_consumption)
-	end
-	if self.air_consumption > 0 then
-		self.air = NewSupplyGridConsumer(self) or nil
-		self.air:SetConsumption(self.air_consumption)
-	end
-end
-
-function LifeSupportConsumer:SetSupply(resource, amount)
-	if resource == "air" and self.air or resource == "water" and self.water then
-		self:Gossip("SetSupply", resource, amount)
-		self:UpdateWorking()
-	end
-end
-
-function LifeSupportConsumer:SetPriority(priority)
-	Building.SetPriority(self, priority)
-	if self.water then self.water:SetPriority(priority) end
-	if self.air then self.air:SetPriority(priority) end
-end
-
-function LifeSupportConsumer:HasAir()
-	local air = self.air
-	return self.air_consumption == 0 or (air and air.current_consumption >= air.consumption and self.air_consumption <= air.consumption)
-end
-
-function LifeSupportConsumer:HasWater()
-	local water = self.water
-	return self.water_consumption == 0 or (water and water.current_consumption >= water.consumption and self.water_consumption <= water.consumption)
-end
-
-function LifeSupportConsumer:GetWorkNotPossibleReason()
-	if not self:HasAir() then
-		return "NoOxygen"
-	end
-	if not self:HasWater() then
-		return "NoWater"
-	end
-	return Building.GetWorkNotPossibleReason(self)
-end
-
-function LifeSupportConsumer:MoveInside(dome)
-	return LifeSupportGridObject.MoveInside(self, dome)
-end
-
-function LifeSupportConsumer:OnModifiableValueChanged(prop)
-	if prop == "water_consumption" or prop == "air_consumption" then
-		self:UpdateConsumption()
-	elseif prop == "disable_water_consumption" then
-		if self.disable_water_consumption >= 1 then
-			self:SetBase("water_consumption", 0)
-		else
-			self:RestoreBase("water_consumption")
-		end
-	elseif prop == "disable_air_consumption" then
-		if self.disable_air_consumption >= 1 then
-			self:SetBase("air_consumption", 0)
-		else
-			self:RestoreBase("air_consumption")
-		end
-	end
-end
-
-function LifeSupportConsumer:NeedsAir()
-	local needs_air = false
-	if self.air and self.air.consumption > 0 then
-		needs_air = true
-	end
-	return needs_air
-end
-
-function LifeSupportConsumer:NeedsWater()
-	local needs_water = false
-	if self.water and self.water.consumption and self.water.consumption > 0 then
-		needs_water = true
-	end
-	return needs_water
-end
-
-function LifeSupportConsumer:ShouldShowNoWaterSign()
-	return self:NeedsWater() and self:IsWorkPermitted() and not self:HasWater()
-end
-
-function LifeSupportConsumer:ShouldShowNoAirSign()
-	return self:NeedsAir() and self:IsWorkPermitted() and not self:HasAir()
-end
-
-function LifeSupportConsumer:ShouldShowNotConnectedToGridSign()
-	return self:ShouldShowNotConnectedToLifeSupportGridSign()
-end
-
-function LifeSupportConsumer:ShouldShowNotConnectedToLifeSupportGridSign()
-	local not_under_dome = not self.parent_dome
-	if not_under_dome then
-		local needs_water, needs_air = self:NeedsWater(), self:NeedsAir()
-		if (needs_water or needs_air) and not self:HasPipes() then
-			return true
-		end
-		if needs_water and #self.water.grid.producers <= 0 then
-			return true
-		end
-		if needs_air and #self.air.grid.producers <= 0 then
-			return true
-		end
-	end
-	return false
-end
-
-function LifeSupportConsumer:UpdateAttachedSigns()
-	self:AttachSign(self:ShouldShowNotConnectedToLifeSupportGridSign(), "SignNoPipeConnection")
-	if self.water then
-		self:AttachSign(self:ShouldShowNoWaterSign(), "SignNoWater")
-	end
-	if self.air then
-		self:AttachSign(self:ShouldShowNoAirSign(), "SignNoOxygen")
-	end
-end
-
------ WaterStorage
---[[@@@
-@class WaterStorage
-Building derived [building template](ModItemBuildingTemplate.md.html) class. Handles water storage.
---]]
-DefineClass.WaterStorage = {
-	__parents = {"Building", "LifeSupportGridObject"},
-	properties = {
-		{ template = true, id = "max_water_charge", name = T(29, "Max water consumption while charging"), category = "Storage", editor = "number", default = 1000, help = "This is the amount of water the battery can charge per hour.", scale = const.ResourceScale  },
-		{ template = true, id = "max_water_discharge", name = T(1068, "Max water output while discharging"), category = "Storage", editor = "number", default = 1000, help = "This is the amount of air the battery can discharge per hour.", scale = const.ResourceScale  },
-		{ template = true, id = "water_conversion_efficiency", name = T(1069, "Conversion efficiency % of water (charging)"), category = "Storage", editor = "number", default = 100, help = "(100 - this number)% will go to waste when charging." },
-		{ template = true, id = "water_capacity", name = T(30, "Water Capacity"), editor = "number", category = "Storage", default = 10000, scale = const.ResourceScale, modifiable = true  },
-		{ id = "StoredWater", name = T(33, "Stored Water"), editor = "number", default = 0, scale = const.ResourceScale, no_edit = true },
-	},
-	
-	is_tall = true,
-}
-
-function WaterStorage:CreateLifeSupportElements()
-	self.water = NewSupplyGridStorage(self, self.water_capacity, self.max_water_charge, self.max_water_discharge, self.water_conversion_efficiency, 20)
-	self.water:SetStoredAmount(self.StoredWater, "water")
-end
-
-function WaterStorage:OnModifiableValueChanged(prop)
-	if self.water
-		and (prop == "max_water_charge"
-		or prop == "max_water_discharge"
-		or prop == "water_conversion_efficiency"
-		or prop == "water_capacity") then
-		
-		self.water.charge_efficiency = self.water_conversion_efficiency
-		self.water.storage_capacity = self.water_capacity
-		if self.water.grid and self.water.current_storage > self.water_capacity then
-			local delta = self.water.current_storage - self.water_capacity
-			self.water.current_storage = self.water_capacity
-			self.water.grid.current_storage = self.water.grid.current_storage - delta
-		end
-		
-		self.water:UpdateStorage()
-	end
-end
-
-function WaterStorage:MoveInside(dome)
-	return LifeSupportGridObject.MoveInside(self, dome)
-end
-
-function WaterStorage:OnSetWorking(working)
-	Building.OnSetWorking(self, working)
-
-	local water = self.water
-	if working then
-		water:UpdateStorage()
-	else
-		water:SetStorage(0, 0)
-	end
-end
-
-function WaterStorage:ShouldShowNotConnectedToGridSign()
-	return self:ShouldShowNotConnectedToLifeSupportGridSign()
-end
-
-function WaterStorage:ShouldShowNotConnectedToLifeSupportGridSign()
-	local not_under_dome = not self.parent_dome
-	if not_under_dome then
-		if not self:HasPipes() then
-			return true
-		end
-		if #self.water.grid.producers <= 0 then
-			return true
-		end
-	end
-	return false
-end
-
-function WaterStorage:UpdateAttachedSigns()
-	self:AttachSign(self:ShouldShowNotConnectedToLifeSupportGridSign(), "SignNoPipeConnection")
-end
-
-function WaterStorage:CheatFill()
-	self.water:SetStoredAmount(self.water_capacity, "water")
-end
-
-function WaterStorage:CheatEmpty()
-	self.water:SetStoredAmount(0, "water")
-end
-
-function WaterStorage:GetStoredWater()
-	return self.water.current_storage
-end
-
-function WaterStorage:NeedsWater()
-	return true
-end
-
-function WaterStorage:NeedsAir()
-	return false
-end
-
------ AirStorage
---[[@@@
-@class AirStorage
-Building derived [building template](ModItemBuildingTemplate.md.html) class. Handles air storage.
---]]
-DefineClass.AirStorage = {
-	__parents = {"Building", "LifeSupportGridObject"},
-	properties = {
-		{ template = true, id = "max_air_charge", name = T(1070, "Max Oxygen consumption while charging"), category = "Storage", editor = "number", default = 1000, help = "This is the amount of Oxygen the battery can charge per hour.", scale = const.ResourceScale  },
-		{ template = true, id = "max_air_discharge", name = T(1071, "Max Oxygen output while discharging"), category = "Storage", editor = "number", default = 1000, help = "This is the amount of Oxygen the battery can discharge per hour.", scale = const.ResourceScale  },
-		{ template = true, id = "air_conversion_efficiency", name = T(1072, "Conversion Oxygen efficiency % (charging)"), category = "Storage", editor = "number", default = 100, help = "(100 - this number)% will go to waste when charging." },
-		{ template = true, id = "air_capacity", name = T(1073, "Oxygen Capacity"), editor = "number", category = "Storage", default = 10000, scale = const.ResourceScale, modifiable = true  },
-		{ id = "StoredAir", name = T(1074, "Stored Air"), editor = "number", default = 0, scale = const.ResourceScale, no_edit = true },
-	},
-	
-	is_tall = true,
-}
-
-function AirStorage:CreateLifeSupportElements()
-	self.air = NewSupplyGridStorage(self, self.air_capacity, self.max_air_charge, self.max_air_discharge, self.air_conversion_efficiency, 20)
-	self.air:SetStoredAmount(self.StoredAir, "air")
-end
-
-function AirStorage:OnModifiableValueChanged(prop)
-	if self.air
-		and (prop == "max_air_charge"
-		or prop == "max_air_discharge"
-		or prop == "air_conversion_efficiency"
-		or prop == "air_capacity") then
-		
-		self.air.charge_efficiency = self.air_conversion_efficiency
-		self.air.storage_capacity = self.air_capacity
-		if self.air.grid and self.air.current_storage > self.air_capacity then
-			local delta = self.air.current_storage - self.air_capacity
-			self.air.current_storage = self.air_capacity
-			self.air.grid.current_storage = self.air.grid.current_storage - delta
-		end
-		
-		self.air:UpdateStorage()
-	end
-end
-
-function AirStorage:OnSetWorking(working)
-	Building.OnSetWorking(self, working)
-
-	local air = self.air
-	if working then
-		air:UpdateStorage()
-	else
-		air:SetStorage(0, 0)
-	end
-end
-
-function AirStorage:MoveInside(dome)
-	return LifeSupportGridObject.MoveInside(self, dome)
-end
-
-function AirStorage:ShouldShowNotConnectedToGridSign()
-	return self:ShouldShowNotConnectedToLifeSupportGridSign()
-end
-
-function AirStorage:ShouldShowNotConnectedToLifeSupportGridSign()
-	local not_under_dome = not self.parent_dome
-	if not_under_dome then
-		if not self:HasPipes() then
-			return true
-		end
-		if #self.air.grid.producers <= 0 then
-			return true
-		end
-	end
-	return false
-end
-
-function AirStorage:UpdateAttachedSigns()
-	self:AttachSign(self:ShouldShowNotConnectedToLifeSupportGridSign(), "SignNoPipeConnection")
-end
-
-function AirStorage:CheatFill()
-	self.air:SetStoredAmount(self.air_capacity, "air")
-end
-
-function AirStorage:CheatEmpty()
-	self.air:SetStoredAmount(0, "air")
-end
-
-function AirStorage:GetStoredAir()
-	return self.air.current_storage
-end
-
-function AirStorage:NeedsWater()
-	return false
-end
-
-function AirStorage:NeedsAir()
-	return true
-end
-
------ StorageWithIndicator
---[[@@@
-@class StorageWithIndicator
-Building derived [building template](ModItemBuildingTemplate.md.html) class. Helper class that manages storage building animated attachement according to stored amount. For example the WaterTank class inherits both this class and the [WaterStorage](LuaFunctionDoc_WaterStorage.md.html) class.
---]]
-local StorageIndicatorAnimDuration = 3333 --100 frames at 30fps
-
-DefineClass.StorageWithIndicators = {
-	__parents = { "Building" },
-	indicated_resource = false,
-	indicator_class = false,
-}
-
-function StorageWithIndicators:GameInit()
-	self:ResetIndicatorAnimations()
-end
-
-function StorageWithIndicators:ResetIndicatorAnimations(indicator_class)
-	indicator_class = indicator_class or self.indicator_class
-	for _,attach in ipairs(self:GetAttaches(indicator_class) or empty_table) do
-		attach:SetAnimSpeed(1, 0)
-		attach:SetAnimPhase(1, 0)
-	end
-end
-
-function StorageWithIndicators:BuildingUpdate(dt)
-	--Happens once every 30 seconds (see Building.building_update_time)
-	self:UpdateIndicators()
-end
-
-function StorageWithIndicators:OnSkinChanged()
-	Building.OnSkinChanged(self)
-	self:ResetIndicatorAnimations()
-	self:UpdateIndicators()
-end
-
-function StorageWithIndicators:UpdateIndicators()
-	local res = self.indicated_resource
-	res = res and self[res]
-	if not res then return end
-	for _,attach in ipairs(self:GetAttaches(self.indicator_class) or empty_table) do
-		local phase = MulDivRound(res.current_storage, StorageIndicatorAnimDuration, res.storage_capacity)
-		attach:SetAnimPhase(1, phase)
-	end
-end
-
-function OnMsg.DataLoaded()
-	local descendants = ClassDescendantsList("StorageWithIndicators")
-	local idle_state_idx = GetStateIdx("idle")
-	
-	--tracks problems with descendants that do not have an entity assigned
-	local unassigned_problems = {}
-	--tracks problems with indicator entities with incorrect anim. duration
-	local duration_problems = {}
-	
-	for _,class in ipairs(descendants) do
-		local classdef = g_Classes[class]
-		--doesn't have an indicator class
-		if classdef.indicator_class == false then
-			unassigned_problems[class] = true
-		else
-			local indicator_class = g_Classes[classdef.indicator_class]
-			local indicator_entity = indicator_class:GetEntity()
-			local dur = GetAnimDuration(indicator_entity, idle_state_idx)
-			--has incorrect animation duration
-			if dur ~= StorageIndicatorAnimDuration then
-				duration_problems[indicator_entity] = true
-			end
-		end
-	end
-	
-	if next(unassigned_problems) then
-		print(string.format("WARNING: The following resource storage buildings should have indicators, but do not have an assigned indicator class:\n%s",
-			table.concat(table.keys(unassigned_problems), ", ")))
-	end
-	if next(duration_problems) then
-		print(string.format("WARNING:The following entites are used for resource storage building indicators, but have incorrect animation durations:\n%s",
-			table.concat(table.keys(duration_problems), ", ")))
-		print(string.format("Their animation duration must be %s", StorageIndicatorAnimDuration))
-	end
-end
-
------ WaterTank
-
-DefineClass.WaterTank = {
-	__parents = { "WaterStorage", "StorageWithIndicators", "ColdSensitive" },
-	indicated_resource = "water",
-	indicator_class = "WaterTankFloat",
-	building_update_time = 10000,
-}
-
------ WaterTankLarge
-
-DefineClass.WaterTankLarge = {
-	__parents = { "WaterStorage", "StorageWithIndicators", "ColdSensitive" },
-	indicated_resource = "water",
-	indicator_class = "WaterTankLargeFloat",
-	building_update_time = 10000,
-}
-
------ OxygenTank
-
-DefineClass.OxygenTank = {
-	__parents = { "AirStorage", "StorageWithIndicators" },
-	indicated_resource = "air",
-	indicator_class = "AirTankArrow",
-}
-
-DefineClass.OxygenTankLarge = {
-	__parents = { "OxygenTank" },
-}
-
-function OxygenTankLarge:GetEntityNameForPipeConnections(grid_skin_name)
-	return grid_skin_name ~= "Default" and "Moxie" .. grid_skin_name or "Moxie"
 end

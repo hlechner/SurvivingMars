@@ -188,9 +188,9 @@ function GetBuildingTechsStatus(building, category)
 			enabled = false
 			rollover_t = false
 			break
-		elseif UICity:IsTechResearched(rinfo.tech) then
+		elseif UIColony:IsTechResearched(rinfo.tech) then
 			-- continue
-		elseif rinfo.hide or not UICity:IsTechDiscovered(rinfo.tech) then
+		elseif rinfo.hide or not UIColony:IsTechDiscovered(rinfo.tech) then
 			shown = false
 			enabled = false
 			rollover_t = false
@@ -230,7 +230,7 @@ function GetGridElementConstructionCost(class_name, is_passage, multiplier)
 	local class = is_passage and BuildingTemplates[class_name] or g_Classes[class_name]
 	multiplier = multiplier or 100
 	for _,resource in ipairs(ConstructionResourceList) do
-		local number = UICity:GetConstructionCost(class, resource)
+		local number = UIColony.construction_cost:GetConstructionCost(class, resource)
 		if number > 0 then
 			cost[resource] = MulDivRound(number, multiplier, 100)
 		end
@@ -247,7 +247,7 @@ function GetGridElementConstructionCostDescription(class, is_passage)
 	local text = ""
 	local cost1= {}
 	for _,resource in ipairs(ConstructionResourceList) do
-		local number = UICity:GetConstructionCost(class, resource)
+		local number = UIColony.construction_cost:GetConstructionCost(class, resource)
 		if number and number>0 then
 			cost1[#cost1+1] = FormatResource(empty_table,number, resource)
 		end		
@@ -296,7 +296,7 @@ function GetConstructionDescription(class, cost1, dont_modify) --class is a buil
 		else
 			local cost1= {}
 			for _,resource in ipairs(ConstructionResourceList) do
-				local number = UICity:GetConstructionCost(class, resource, not dont_modify and modifier_obj or nil)
+				local number = UIColony.construction_cost:GetConstructionCost(class, resource, not dont_modify and modifier_obj or nil)
 				if number and number>0 then
 					cost1[#cost1+1] =  FormatResource(empty_table, number, resource)
 				end		
@@ -433,7 +433,7 @@ function BuildingInfoLine(template_name, dont_modify)
 		local text = ""
 		local cost1= {}
 		for _,resource in ipairs(ConstructionResourceList) do
-			local number = UICity:GetConstructionCost(class, resource)
+			local number = UIColony.construction_cost:GetConstructionCost(class, resource)
 			if number and number>0 then
 				cost1[#cost1+1] = FormatResource(empty_table, number, resource)
 			end		
@@ -446,7 +446,7 @@ function BuildingInfoLine(template_name, dont_modify)
 	else
 		local texts = {}
 		for _,resource in ipairs(ConstructionResourceList) do
-			local number = UICity:GetConstructionCost(class, resource, GetModifierObject(class) )
+			local number = UIColony.construction_cost:GetConstructionCost(class, resource, GetModifierObject(class) )
 			if number and number>0 then
 				texts[#texts+1] =  FormatResource(empty_table, number, resource)
 			end		
@@ -514,6 +514,10 @@ function UICountItemMenu(category_id)
 end
 
 function UIGetBuildingPrerequisites(cat_id, template, bCreateItems, ignore_checks)
+	if not IsDlcAccessible(template.save_in) then
+		return false
+	end
+	
 	if not ignore_checks and (template.build_category ~= cat_id or template.hide_from_build_menu) then
 		return false
 	end
@@ -531,26 +535,26 @@ function UIGetBuildingPrerequisites(cat_id, template, bCreateItems, ignore_check
 		return false
 	end
 	
-	local wonder_exists
-	if template.wonder then
+	local already_built
+	if template.build_once then
 		if #(UICity.labels[template.id] or empty_table) > 0 then -- check buildings
-			wonder_exists = true
+			already_built = true
 		else -- check construction sites
 			local sites = UICity.labels.ConstructionSite or empty_table
 			for i = 1, #sites do 
 				local site = sites[i]
 				if site.building_class_proto.template_name == template.id then
-					wonder_exists = true
+					already_built = true
 					break
 				end
 			end
 			--not found in regular construction sites - look in those with height surfaces
-			if not wonder_exists then
+			if not already_built then
 				local sites = UICity.labels.ConstructionSiteWithHeightSurfaces or empty_table
 				for i = 1, #sites do 
 					local site = sites[i]
 					if site.building_class_proto.template_name == template.id then
-						wonder_exists = true
+						already_built = true
 						break
 					end
 				end
@@ -559,7 +563,7 @@ function UIGetBuildingPrerequisites(cat_id, template, bCreateItems, ignore_check
 	end
 	
 	local can_build, description, cost_text
-	if wonder_exists then
+	if already_built then
 		description = T(3968, "You can build this building only once.")
 		can_build = false
 	elseif available_prefabs > 0 then
@@ -632,37 +636,28 @@ function UIGetBuildingPrerequisites(cat_id, template, bCreateItems, ignore_check
 	
 	local action
 	if bCreateItems then
-		if require_prefab or available_prefabs > 0 then
-			action = function(obj, data)
+		action = function(obj, data)
+			local params, variants
+			if require_prefab or UICity:GetPrefabs(template.id) > 0 then
 				g_LastBuildItem = template.id
-				local params
 				if UICity:GetPrefabs(template.id) > 0 then
 					params = { supplied = true, prefab = true }
 				elseif not data.enabled then
 					return
 				end
-				local variants
-				if IsKindOf(data, "XWindow") then
-					local parent = GetDialog(data)
-					variants = parent:GetSubCategoryTemplates()
-				else
-					variants = data.template_variants
-				end
-				GetInGameInterface():SetMode(data.construction_mode, { template = data.name, selected_dome = obj and obj.selected_dome, template_variants = variants, params = params })
-			end
-		else
-			action = function(obj, data)
+			else
 				g_LastBuildItem = data.name
 				if not data.enabled then return end
-				local variants
-				if IsKindOf(data, "XWindow") then
-					local parent = GetDialog(data)
-					variants = parent:GetSubCategoryTemplates()
-				else
-					variants = data.template_variants
-				end
-				GetInGameInterface():SetMode(data.construction_mode, { template = data.name, selected_dome = obj and obj.selected_dome, template_variants = variants})
 			end
+			
+			if IsKindOf(data, "XWindow") then
+				local parent = GetDialog(data)
+				variants = parent:GetSubCategoryTemplates()
+			else
+				variants = data.template_variants
+			end
+			
+			GetInGameInterface():SetMode(data.construction_mode, { template = data.name, selected_dome = obj and obj.selected_dome, template_variants = variants, params = params})
 		end
 	end
 	
@@ -671,6 +666,7 @@ end
 
 local button_ease_total_duration = 150
 function XBuildMenu:EaseInButtons(buttons, start_time, open)
+	assert(#buttons > 0)
 	for i=1,#buttons do
 		buttons[i]:SetVisible(not open, "instant")
 	end
@@ -726,7 +722,9 @@ function XBuildMenu:OpenItemsInterpolation(bFirst, set_focus)
 		self.idBackground.FadeInTime = 140
 		self:StretchCloseAnimation(self.idBackground, false, self.lines_stretch_time_init, "invert")
 	
-		self:EaseInButtons(self.items, nil, "open")
+		if #self.items > 0 then
+			self:EaseInButtons(self.items, nil, "open")
+		end
 		if set_focus then
 			self.idButtonsList.RecalcVisibility = empty_func
 			self:SetInitFocus(set_focus)
@@ -797,6 +795,57 @@ function XBuildMenu:GetSubCategoryTemplates()
 		end
 	end
 	return variants
+end
+
+local function AddPassage(items)
+	local building_template = BuildingTemplates.Passage
+	local construction_cost = T(8720, "<formatedbuildinginfo('Passage')>")
+	local description = building_template.description
+	if g_Consts.InstantPassages == 0 then
+		description = description .. Untranslated("\n\n") .. construction_cost
+	end
+	local hint = ""
+	local binding = "actionBuild" .. building_template.id
+	local shortcuts = GetShortcuts(binding)
+	if shortcuts and (shortcuts[1] or shortcuts[2]) then
+		hint = T{10930, "Shortcut - <em><ShortcutName(shortcut, 'keyboard')></em>", shortcut = binding}
+	end
+	items[#items + 1] = {
+		name = "Passage",
+		display_name = building_template.display_name,
+		icon = building_template.display_icon,
+		description = description,
+		hint = hint,
+		enabled =  not g_Tutorial or (g_Tutorial.BuildMenuWhitelist and g_Tutorial.BuildMenuWhitelist[building_template.id]) or false,
+		action = function()
+			GetInGameInterface():SetMode("passage_grid", {grid_elements_require_construction = g_Consts.InstantPassages == 0})
+		end,
+		build_pos = 20,
+		close_parent = true,
+	}
+end
+
+local function AddPassageRamp(items)
+	local building_template = BuildingTemplates.PassageRamp
+	local hint = ""
+	local binding = "actionBuild" .. building_template.id
+	local shortcuts = GetShortcuts(binding)
+	if shortcuts and (shortcuts[1] or shortcuts[2]) then
+		hint = T{10930, "Shortcut - <em><ShortcutName(shortcut, 'keyboard')></em>", shortcut = binding}
+	end
+	items[#items + 1] = {
+		name = "PassageRamp",
+		display_name = building_template.display_name,
+		icon = building_template.display_icon,
+		description = T{8721, "<description>\n\n<formatedbuildinginfo('PassageRamp')>",description = building_template.description},
+		hint = hint,
+		enabled =  not g_Tutorial or (g_Tutorial.BuildMenuWhitelist and g_Tutorial.BuildMenuWhitelist[building_template.id]) or false,
+		action = function()
+			GetInGameInterface():SetMode("passage_ramp")
+		end,
+		build_pos = 21,
+		close_parent = true,
+	}
 end
 
 function UIItemMenu(category_id, bCreateItems)
@@ -1017,52 +1066,14 @@ function UIItemMenu(category_id, bCreateItems)
 		end
 	end
 	if category_id == "Domes" then
-		local building_template = BuildingTemplates.Passage
-		local construction_cost = T(8720, "<formatedbuildinginfo('Passage')>")
-		local description = building_template.description
-		if g_Consts.InstantPassages == 0 then
-			description = description .. Untranslated("\n\n") .. construction_cost
+		if IsBuildingAllowedIn(BuildingTemplates.Passage.id, {ActiveMapData.Environment}) then
+			AddPassage(items)
+			count = count + 1
 		end
-		local hint = ""
-		local binding = "actionBuild" .. building_template.id
-		local shortcuts = GetShortcuts(binding)
-		if shortcuts and (shortcuts[1] or shortcuts[2]) then
-			hint = T{10930, "Shortcut - <em><ShortcutName(shortcut, 'keyboard')></em>", shortcut = binding}
+		if IsBuildingAllowedIn(BuildingTemplates.PassageRamp.id, {ActiveMapData.Environment}) then
+			AddPassageRamp(items)
+			count = count + 1
 		end
-		items[#items + 1] = {
-			name = "Passage",
-			display_name = building_template.display_name,
-			icon = building_template.display_icon,
-			description = description,
-			hint = hint,
-			enabled =  not g_Tutorial or (g_Tutorial.BuildMenuWhitelist and g_Tutorial.BuildMenuWhitelist[building_template.id]) or false,
-			action = function()
-				GetInGameInterface():SetMode("passage_grid", {grid_elements_require_construction = g_Consts.InstantPassages == 0})
-			end,
-			build_pos = 20,
-			close_parent = true,
-		}
-		building_template = BuildingTemplates.PassageRamp
-		local hint = ""
-		local binding = "actionBuild" .. building_template.id
-		local shortcuts = GetShortcuts(binding)
-		if shortcuts and (shortcuts[1] or shortcuts[2]) then
-			hint = T{10930, "Shortcut - <em><ShortcutName(shortcut, 'keyboard')></em>", shortcut = binding}
-		end
-		items[#items + 1] = {
-			name = "PassageRamp",
-			display_name = building_template.display_name,
-			icon = building_template.display_icon,
-			description = T{8721, "<description>\n\n<formatedbuildinginfo('PassageRamp')>",description = building_template.description},
-			hint = hint,
-			enabled =  not g_Tutorial or (g_Tutorial.BuildMenuWhitelist and g_Tutorial.BuildMenuWhitelist[building_template.id]) or false,
-			action = function()
-				GetInGameInterface():SetMode("passage_ramp")
-			end,
-			build_pos = 21,
-			close_parent = true,
-		}
-		count = count + 2
 	end
 	
 	table.sortby(items, "build_pos")
@@ -1100,7 +1111,7 @@ function OpenXBuildMenu(selected_dome)
 		g_BuildMenuHUDClicksCount >= 10
 	then
 		g_BuildMenuRightClickPopupShown = true
-		ShowPopupNotification("SuggestedShortcutBuildMenu", false, false, GetInGameInterface())
+		ShowPopupNotification("SuggestedShortcutBuildMenu")
 	end
 
 	CloseDialog("GamepadIGMenu")
@@ -1112,6 +1123,12 @@ end
 function CloseXBuildMenu()
 	CloseDialog("XBuildMenu")
 end
+
+function OnMsg.PreSwitchMap(map_id)
+	CloseXBuildMenu()
+end
+
+OnMsg.MessageBoxOpened = CloseXBuildMenu()
 
 function ToggleXBuildMenu(count_right_click, close_action, ...)
 	local build_menu = GetDialog("XBuildMenu")

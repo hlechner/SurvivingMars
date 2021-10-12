@@ -38,6 +38,27 @@ PlaceObj('XTemplate', {
 			'Title', T(431862968979, --[[XTemplate CommandCenterCategories Title]] "COMMAND CENTER"),
 		}),
 		PlaceObj('XTemplateWindow', {
+			'__context', function (parent, context) return PGColonyNameObjectCreate() end,
+			'__class', "XText",
+			'Id', "idColonyName",
+			'Margins', box(64, -100, 0, 0),
+			'HAlign', "left",
+			'MaxHeight', 50,
+			'MouseCursor', "UI/Cursors/Rollover.tga",
+			'TextStyle', "PGLandingPosDetails",
+			'ContextUpdateOnOpen', true,
+			'Translate', true,
+			'Text', T(13791, --[[XTemplate CommandCenterCategories Text]] "<ColonyName>"),
+		}, {
+			PlaceObj('XTemplateFunc', {
+				'name', "OnHyperLink(self, hyperlink, argument, hyperlink_box, pos, button)",
+				'func', function (self, hyperlink, argument, hyperlink_box, pos, button)
+					local host = GetDialog(self)
+					self.context:RenameColony(host)
+				end,
+			}),
+			}),
+		PlaceObj('XTemplateWindow', {
 			'__class', "XContentTemplateList",
 			'Id', "idList",
 			'Margins', box(98, 20, 0, 0),
@@ -56,7 +77,7 @@ PlaceObj('XTemplate', {
 				'Target', "idScrollArea",
 			}),
 			PlaceObj('XTemplateWindow', {
-				'__context', function (parent, context) return ResourceOverviewObj end,
+				'__context', function (parent, context) return GetCityResourceOverview(UICity) end,
 				'__class', "XList",
 				'Id', "idScrollArea",
 				'BorderWidth', 0,
@@ -99,7 +120,7 @@ PlaceObj('XTemplate', {
 				'Target', "idStats",
 			}),
 			PlaceObj('XTemplateWindow', {
-				'__context', function (parent, context) return ResourceOverviewObj end,
+				'__context', function (parent, context) return GetCityResourceOverview(UICity) end,
 				'__class', "XList",
 				'Id', "idStats",
 				'BorderWidth', 0,
@@ -385,12 +406,6 @@ PlaceObj('XTemplate', {
 						'Value', T(190719877337, --[[XTemplate CommandCenterCategories Value]] "<polymers(AvailablePolymers)>"),
 					}),
 					PlaceObj('XTemplateTemplate', {
-						'comment', "electronics",
-						'__template', "CommandCenterStatsRow",
-						'Name', T(710449628491, --[[XTemplate CommandCenterCategories Name]] "Electronics"),
-						'Value', T(404473173475, --[[XTemplate CommandCenterCategories Value]] "<electronics(AvailableElectronics)>"),
-					}),
-					PlaceObj('XTemplateTemplate', {
 						'comment', "machine parts",
 						'__template', "CommandCenterStatsRow",
 						'Name', T(950147653122, --[[XTemplate CommandCenterCategories Name]] "Machine Parts"),
@@ -401,6 +416,12 @@ PlaceObj('XTemplate', {
 						'__template', "CommandCenterStatsRow",
 						'Name', T(600161614581, --[[XTemplate CommandCenterCategories Name]] "Fuel"),
 						'Value', T(826228979160, --[[XTemplate CommandCenterCategories Value]] "<fuel(AvailableFuel)>"),
+					}),
+					PlaceObj('XTemplateTemplate', {
+						'comment', "electronics",
+						'__template', "CommandCenterStatsRow",
+						'Name', T(710449628491, --[[XTemplate CommandCenterCategories Name]] "Electronics"),
+						'Value', T(404473173475, --[[XTemplate CommandCenterCategories Value]] "<electronics(AvailableElectronics)>"),
 					}),
 					PlaceObj('XTemplateFunc', {
 						'name', "OnSetFocus",
@@ -480,10 +501,17 @@ PlaceObj('XTemplate', {
 					PlaceObj('XTemplateTemplate', {
 						'comment', "seeds",
 						'__dlc', "armstrong",
-						'__condition', function (parent, context) return UICity:IsTechResearched("MartianVegetation") end,
+						'__condition', function (parent, context) return UIColony:IsTechResearched("MartianVegetation") end,
 						'__template', "CommandCenterStatsRow",
 						'Name', T(971221728791, --[[XTemplate CommandCenterCategories Name]] "Seeds"),
 						'Value', T(935626806595, --[[XTemplate CommandCenterCategories Value]] "<seeds(AvailableSeeds)>"),
+					}),
+					PlaceObj('XTemplateTemplate', {
+						'comment', "exotic minerals",
+						'__dlc', "picard",
+						'__template', "CommandCenterStatsRow",
+						'Name', T(12779, --[[XTemplate CommandCenterCategories Name]] "Exotic Minerals"),
+						'Value', T(12780, --[[XTemplate CommandCenterCategories Value]] "<preciousminerals(AvailablePreciousMinerals)>"),
 					}),
 					PlaceObj('XTemplateTemplate', {
 						'comment', "waste rock",
@@ -566,6 +594,16 @@ PlaceObj('XTemplate', {
 				CloseCommandCenter()
 			end,
 			'IgnoreRepeated', true,
+		}),
+		PlaceObj('XTemplateAction', {
+			'ActionId', "rename",
+			'ActionSortKey', "2",
+			'ActionName', T(13792, --[[XTemplate CommandCenterCategories ActionName]] "RENAME COLONY"),
+			'ActionToolbar', "ActionBar",
+			'ActionGamepad', "RightThumbClick",
+			'OnAction', function (self, host, source)
+				g_ColonyNameObj:RenameColony(host.idContent.idOverlayDlg)
+			end,
 		}),
 		}),
 })

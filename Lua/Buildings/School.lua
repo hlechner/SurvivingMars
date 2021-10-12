@@ -19,14 +19,35 @@ function School:CanTrain(unit)
 	for i=1, self.max_traits do
 		traits[#traits+1] = self["trait"..i]
 	end	
-	local campatible = FilterCompatibleTraitsWith(traits, unit.traits)
-	return #campatible>0
+	local compatible = FilterCompatibleTraitsWith(traits, unit.traits)
+	return #compatible>0
 end
 
 function School:FireWorker(worker, shift, idx)
 	self:OnTrainingCompleted(worker)
 	self.life_time_trained = self.life_time_trained + 1
 	TrainingBuilding.FireWorker(self, worker, shift, idx)
+end
+
+function School:GetHighestUnitsTrainingProgress()
+	local has_trainees = false
+	local oldest_age = 0
+	for shift, list in ipairs(self.visitors) do
+		for _, unit in ipairs(list) do
+			if unit.age > oldest_age then
+				oldest_age = unit.age
+				has_trainees = true
+			end
+		end
+	end
+
+	if has_trainees then
+		local threshold = const.ColonistAgeGroups.Youth.min
+		local progress = MulDivRound(100, (oldest_age * 24) + UIColony.hour, threshold * 24)
+		return progress
+	else
+		return 0
+	end
 end
 
 function School:OnTrainingCompleted(unit)	

@@ -92,7 +92,7 @@ PlaceObj('XTemplate', {
 						'HandleMouse', false,
 						'TextStyle', "ListItem4",
 						'Translate', true,
-						'Text', T(270405570569, --[[XTemplate ResupplyCategories Text]] "<Capacity> kg"),
+						'Text', T(270405570569, --[[XTemplate ResupplyCategories Text]] "<TotalCapacity> kg"),
 					}),
 					PlaceObj('XTemplateWindow', {
 						'__class', "XText",
@@ -199,8 +199,8 @@ PlaceObj('XTemplate', {
 							end
 						end,
 						'OnPress', function (self, gamepad)
-							if UICity then
-								UICity.launch_mode = "rocket"
+							if MainCity then
+								MainCity.launch_mode = "rocket"
 							end
 							if g_CargoMode ~= "rocket" then
 								ClearRocketCargo()
@@ -223,8 +223,8 @@ PlaceObj('XTemplate', {
 							end
 						end,
 						'OnPress', function (self, gamepad)
-							if UICity then
-								UICity.launch_mode = "rocket"
+							if MainCity then
+								MainCity.launch_mode = "rocket"
 							end
 							local host = GetDialog(self)
 							host:SetMode("passengers")
@@ -233,14 +233,14 @@ PlaceObj('XTemplate', {
 						'Text', T(11630, --[[XTemplate ResupplyCategories Text]] "PASSENGER ROCKET"),
 					}),
 					PlaceObj('XTemplateTemplate', {
-						'__condition', function (parent, context) return UICity and #(UICity.labels.SpaceElevator or empty_table) > 0 and UICity.labels.SpaceElevator[1].working end,
+						'__condition', function (parent, context) return MainCity and #(MainCity.labels.SpaceElevator or empty_table) > 0 and MainCity.labels.SpaceElevator[1].working end,
 						'__template', "ResupplyCategoryItem",
 						'RolloverDisabledText', T(10457, --[[XTemplate ResupplyCategories RolloverDisabledText]] "Space Elevator is unavailable"),
 						'RolloverDisabledTitle', T(1120, --[[XTemplate ResupplyCategories RolloverDisabledTitle]] "Space Elevator"),
 						'Id', "idElevator",
 						'OnPress', function (self, gamepad)
-							if UICity then
-								UICity.launch_mode = "elevator"
+							if MainCity then
+								MainCity.launch_mode = "elevator"
 							end
 							if g_CargoMode ~= "elevator" then
 								ClearRocketCargo()
@@ -259,13 +259,13 @@ PlaceObj('XTemplate', {
 						'RolloverDisabledTitle', T(10873, --[[XTemplate ResupplyCategories RolloverDisabledTitle]] "<PodItemText>"),
 						'Id', "idCargoPod",
 						'OnContextUpdate', function (self, context, ...)
-							if context:GetNumAvailablePods("SupplyPod") == 0 and UICity.funding < GetMissionSponsor().pod_price then
+							if context:GetNumAvailablePods("SupplyPod") == 0 and UIColony.funds.funding < GetMissionSponsor().pod_price then
 								self:SetEnabled(false)
 							end
 						end,
 						'OnPress', function (self, gamepad)
-							if UICity then
-								UICity.launch_mode = "pod"
+							if MainCity then
+								MainCity.launch_mode = "pod"
 							end
 							if g_CargoMode ~= "pod" then
 								ClearRocketCargo()
@@ -284,6 +284,10 @@ PlaceObj('XTemplate', {
 					}),
 					PlaceObj('XTemplateTemplate', {
 						'__template', "AddAdditionalSupplyCategories",
+					}),
+					PlaceObj('XTemplateTemplate', {
+						'__dlc', "picard",
+						'__template', "AddAdditionalSupplyCategoriesPicard",
 					}),
 					PlaceObj('XTemplateAction', {
 						'ActionId', "close",

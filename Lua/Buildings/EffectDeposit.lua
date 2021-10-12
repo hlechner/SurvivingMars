@@ -13,13 +13,13 @@ function EffectDepositMarker:SpawnDeposit()
 		return
 	end
 	
-	local dep = PlaceObject(self.deposit_type)
+	local dep = PlaceObjectIn(self.deposit_type, self:GetMapID())
 	dep:SetCollectionIndex(self:GetCollectionIndex())
 	return dep
 end
 
 --This is not an explorable or minable deposit.
---Instead it gives a ceterain effect to surrounding buildings.
+--Instead it gives a certain effect to surrounding buildings.
 --`EffectDeposit:AffectBuilding()` will be automatically called once for each building that is in range.
 DefineClass.EffectDeposit = {
 	__parents = { "SubsurfaceDeposit" },
@@ -54,11 +54,12 @@ local function GameInit_ForEachFn(building, deposit)
 	end
 end
 
-function EffectDeposit:GetConstructionStatusText(building, all_deposits)
+function EffectDeposit.GetConstructionStatusText(building, all_deposits)
 end
 
 function EffectDeposit:GameInit()
-	MapForEach("map", self.building_class, GameInit_ForEachFn, self)
+	local realm = GetRealm(self)
+	realm:MapForEach("map", self.building_class, GameInit_ForEachFn, self)
 end
 
 function EffectDeposit:CanAffectBuilding(building)
@@ -76,7 +77,8 @@ end
 
 function OnMsg.ConstructionComplete(building, dome)
 	local range = GetBuildingAffectRange(building)
-	MapForEach(building, "hex", range, "EffectDeposit", ConstructionComplete_ForEachFn, building)
+	local realm = GetRealm(building)
+	realm:MapForEach(building, "hex", range, "EffectDeposit", ConstructionComplete_ForEachFn, building)
 end
 
 function EffectDeposit:GetInfopanelDetails()
@@ -94,17 +96,17 @@ function PrefabFeatureChar_Effect:GetDescription()
 	return (self.EffectType ~= "") and self.EffectType or "Effect Deposit"
 end
 
-function PlaceEffectDeposit(effect_type, params)
+function PlaceEffectDeposit(effect_type, params, map_id)
 	local classdef = g_Classes[effect_type]
 	if IsKindOf(classdef, "EffectDeposit") then
-		return classdef:new(params)
+		return classdef:new(params, map_id)
 	end
 end
 
 ----
 
 DefineClass.BeautyEffectDeposit = {
-	__parents = { "EffectDeposit" },
+	__parents = { "EffectDeposit", "SafariSight" },
 	
 	building_class = "Dome",
 	modifier = false,
@@ -116,6 +118,9 @@ DefineClass.BeautyEffectDeposit = {
 	IPDescription = T(11459, "Improves the Comfort of all residences when in the radius of a Dome."),
 	display_icon = "UI/Icons/bmb_demo.tga",
 	entity = "SignBeautyDeposit",
+	
+	sight_category = "Environmental Sceneries",
+	sight_satisfaction = 3,
 }
 
 function BeautyEffectDeposit:GetInfopanelDetails()
@@ -136,7 +141,7 @@ function BeautyEffectDeposit:AffectBuilding(building)
 	building:UpdateModifier("add", self.modifier, self.modifier.amount, self.modifier.percent)
 end
 
-function BeautyEffectDeposit:GetConstructionStatusText(building, all_deposits)
+function BeautyEffectDeposit.GetConstructionStatusText(building, all_deposits)
 	local sum = 0
 	for i,deposit in ipairs(all_deposits) do
 		sum = sum + deposit.comfort_increase / const.Scale.Stat
@@ -189,10 +194,67 @@ function ResearchEffectDeposit:AffectBuilding(building)
 	end
 end
 
-function ResearchEffectDeposit:GetConstructionStatusText(building, all_deposits)
+function ResearchEffectDeposit.GetConstructionStatusText(building, all_deposits)
 	local sum = 0
 	for i,deposit in ipairs(all_deposits) do
 		sum = sum + deposit.research_increase
 	end
 	return T{12264, "Research Site - all Research will be boosted by <percent(sum)>.", sum = sum}
+end
+
+----
+
+DefineClass.MoraleEffectDeposit = {
+	__parents = { "EffectDeposit" },
+	
+	modifier = false,
+	morale_increase = 10 * const.Scale.Stat,
+	
+	ConstructionStatusName = "MoraleDepositNearby",
+	resource = "Morale",
+	display_name = T(11458, "Vista"),
+	IPDescription = T(13600, "Improves the Morale of all residences when in the radius of a Dome."),
+	display_icon = "UI/Icons/bmb_demo.tga",
+	entity = "SignBeautyDeposit",
+}
+
+function MoraleEffectDeposit:GetInfopanelDetails()
+	return T{13601, "Morale boost<right><resource(morale_increase)>", self}
+end
+
+function MoraleEffectDeposit:Init()
+	self.encyclopedia_id = "Colonist"
+	self.modifier = Modifier:new{
+		prop = "dome_morale",
+		amount = self.morale_increase,
+		percent = 0,
+		id = "Morale Effect Deposit",
+		display_text = self.display_name,
+	}
+end
+
+function MoraleEffectDeposit:SetMoraleIncrease(increase)
+	self.morale_increase = increase
+	self.modifier.amount = self.morale_increase
+end
+
+function MoraleEffectDeposit:AddMoraleIncrease(increase)
+	self.morale_increase = self.morale_increase + increase
+	self.modifier.amount = self.morale_increase
+end
+
+function MoraleEffectDeposit:CanAffectBuilding(building)
+	return IsKindOf(building, "Dome")
+end
+
+function MoraleEffectDeposit:AffectBuilding(building)
+	building:UpdateModifier("add", self.modifier, self.modifier.amount, self.modifier.percent)
+end
+
+function MoraleEffectDeposit.GetConstructionStatusText(building, all_deposits)
+	local sum = 0
+	for i,deposit in ipairs(all_deposits) do
+		sum = sum + deposit.morale_increase / const.Scale.Stat
+	end
+	return T{13603, "Vista - Morale of residences will be boosted by <sum>", sum = sum}
 end

@@ -1,11 +1,4 @@
 const.BreakIntervalHours = 2
-const.BreakDrainModifierPct = 200
-const.BreakDrainPowerMin = 10000
-const.BreakDrainPowerMax = 15000
-const.BreakDrainOxygenMin = 3000
-const.BreakDrainOxygenMax = 6000
-const.BreakDrainWaterMin = 4000
-const.BreakDrainWaterMax = 8000
 const.BreakChanceCable = 1000
 const.BreakChancePipe = 1000
 local random_break_chances = { --chances of pipes/cables breaking each workshift, AsyncRand(1000000000) > ((1000000-break_chance)/1000000.0)^number_of_elements*1000000000 
@@ -272,7 +265,7 @@ end
 ----- SupplyGridFragment
 
 DefineClass.SupplyGridFragment = {
-	__parents = { "InitDone" },
+	__parents = { "InitDone", "CityObject" }, -- City owns supply grids
 	supply_resource = "electricity",
 	city = false,
 	-- arrays
@@ -457,11 +450,12 @@ function SupplyGridFragment:UpdateGrid(update, update_consumer_state)
 		self.update_visuals = false
 		local args = self.update_visuals_args
 		self.update_visuals_args = false
-		SuspendPassEdits("SupplyGridFragment.UpdateGrid")
+		local realm = GetRealm(self)
+		realm:SuspendPassEdits("SupplyGridFragment.UpdateGrid")
 		for _, element in ipairs(self.elements) do
 			element.building:UpdateVisuals(supply_resource, args and table.unpack(args) or nil)
 		end
-		ResumePassEdits("SupplyGridFragment.UpdateGrid")
+		realm:ResumePassEdits("SupplyGridFragment.UpdateGrid")
 	end
 	if self.sort_consumers then
 		self.sort_consumers = false
@@ -829,11 +823,11 @@ function SupplyGridFragment:Production(new_day)
 	self.current_storage = fragment_current_storage
 end
 
-function SupplyGridFragment:CreateConnection(pt1, pt2, building1, building2)
+function SupplyGridFragment.CreateConnection(pt1, pt2, building1, building2)
 	assert(building1 and building2)
 end
 
-function SupplyGridFragment:DestroyConnection(pt1, pt2, building1, building2)
+function SupplyGridFragment.DestroyConnection(pt1, pt2, building1, building2)
 	assert(building1 and building2)
 end
 
@@ -867,8 +861,8 @@ function SupplyGrid:Init()
 		local day
 		while true do
 			Sleep(const.HourDuration)
-			local new_day = day ~= self.city.day
-			day = self.city.day
+			local new_day = day ~= UIColony.day
+			day = UIColony.day
 			for i = 1, #self do
 				procall(SupplyGridFragment.Production, self[i], new_day)
 			end
@@ -976,15 +970,15 @@ function PlaceholderSupplyGrid:UpdateVisuals()
 	end
 end
 
-function SupplyGridFragment:CreateNewConstructionGrid(params)
-	params.supply_resource = self.supply_resource
-	return PlaceholderSupplyGrid:new(params)
+function SupplyGridFragment.CreateNewConstructionGrid(class, params, map_id)
+	params.supply_resource = class.supply_resource
+	return PlaceholderSupplyGrid:new(params, map_id)
 end
 
-function SupplyGridFragment:CreateNewSwitchGrid(params)
-	params.supply_resource = self.supply_resource
+function SupplyGridFragment.CreateNewSwitchGrid(class, params, map_id)
+	params.supply_resource = class.supply_resource
 	params.grid_subtype = "switch_grid"
-	return PlaceholderSupplyGrid:new(params)
+	return PlaceholderSupplyGrid:new(params, map_id)
 end
 
 function IsSwitch(element)
@@ -1019,9 +1013,13 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 	local is_construction = IsKindOf(self, "ConstructionSite")
 	local grid_type = is_construction and "construction_grid" or is_switched_switch and "switch_grid" or false
 	
+	local game_map = GetGameMap(self)
+	local supply_connection_grid = game_map.supply_connection_grid
+	local supply_overlay_grid = game_map.supply_overlay_grid
+	local conn_grid = supply_connection_grid[supply_resource]
 	local shape = self:GetSupplyGridConnectionShapePoints(supply_resource)
 	local potential_neighbours = SupplyGridApplyBuilding(
-		SupplyGridConnections[supply_resource], 
+		conn_grid,
 		self,
 		shape, 
 		self:GetShapeConnections(supply_resource), nil, is_construction)
@@ -1044,28 +1042,30 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 		self.connect_dir = nil
 		assert(not connect_dir or connect_dir < 3)
 		assert(#self:GetSupplyGridConnectionShapePoints(supply_resource) == 1) -- this works for one hex bulidings only
+		local object_hex_grid = GetObjectHexGrid(self)
+
 		for i = 1, #(potential_neighbours or ""), 2 do
 			local pt, other_pt = potential_neighbours[i], potential_neighbours[i + 1]
 			local dir = HexGetDirection(pt, other_pt)
 			--don't acknowledge conn_dir at all if we got construction connections
 			if (construction_connections > 0 and testbit(construction_connections, dir)) or construction_connections <= 0 and dir % 3 == connect_dir then
-				local adjascent = HexGridGetObject(ObjectGrid, other_pt, nil, nil, function(o) return rawget(o, supply_resource) end)
-				local adjascent_element = adjascent[supply_resource]
+				local adjacent = object_hex_grid:GetObjectAtPos(other_pt, nil, nil, function(o) return rawget(o, supply_resource) end)
+				local adjacent_element = adjacent[supply_resource]
 				--fringe preplaced cable glitch, building loads before us and is already connected, but we have a saved connection towards it and end up with 2 connections per building
-				local skip = is_loading and testbit(construction_connections, dir) and adjascent_element.grid == grid and supply_resource == "electricity" and IsKindOf(adjascent, "Building")
+				local skip = is_loading and testbit(construction_connections, dir) and adjacent_element.grid == grid and supply_resource == "electricity" and IsKindOf(adjacent, "Building")
 				if not skip then
-					grid_class:CreateConnection(pt, other_pt, self, adjascent)
-					built_connections[#built_connections + 1] = {adjascent_element.grid, adjascent_element}
+					grid_class.CreateConnection(pt, other_pt, self, adjacent)
+					built_connections[#built_connections + 1] = {adjacent_element.grid, adjacent_element}
 				end
 
 				if not grid then
-					if adjascent_element.grid.grid_subtype == grid_type then
-						grid = adjascent_element.grid
+					if adjacent_element.grid.grid_subtype == grid_type then
+						grid = adjacent_element.grid
 						grid:AddElement(element)
 					end
 				else
 					-- join all elements from the other grid
-					local other_grid = adjascent_element.grid
+					local other_grid = adjacent_element.grid
 					if other_grid ~= grid and other_grid.grid_subtype == grid.grid_subtype then
 						assert(other_grid.class == grid.class)
 						grids_merged = grid
@@ -1073,7 +1073,9 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 							grid:AddElement(element)
 						end
 						CopyGridConnections(other_grid, grid)
-						other_grid:delete()
+						if IsValid(other_grid) then
+							other_grid:delete()
+						end
 					end
 				end
 			end
@@ -1095,30 +1097,31 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 	end
 	
 	if construction_connections == 0 then --don't connect any more elements than the ones defined by the construction site.
+		local object_hex_grid = GetObjectHexGrid(self)
 		for i = 1, #(potential_neighbours or ""), 2 do -- pairs of points for a potential connection
 			local pt, other_pt = potential_neighbours[i], potential_neighbours[i + 1]
-			local adjascent = HexGridGetObject(ObjectGrid, other_pt, nil, nil, function(o) return not not (rawget(o, supply_resource)) end)
+			local adjacent = object_hex_grid:GetObjectAtPos(other_pt, nil, nil, function(o) return not not (rawget(o, supply_resource)) end)
 									
-			local adjascent_element = adjascent[supply_resource]
-			local force_connect = ((IsKindOf(self, "Building") and not IsKindOf(self, "LifeSupportGridElement"))and IsKindOf(adjascent, "LifeSupportGridElement"))
-												or (IsKindOf(self, "LifeSupportGridElement") and (IsKindOf(adjascent, "Building") and not IsKindOf(adjascent, "LifeSupportGridElement")))
+			local adjacent_element = adjacent[supply_resource]
+			local force_connect = ((IsKindOf(self, "Building") and not IsKindOf(self, "LifeSupportGridElement"))and IsKindOf(adjacent, "LifeSupportGridElement"))
+												or (IsKindOf(self, "LifeSupportGridElement") and (IsKindOf(adjacent, "Building") and not IsKindOf(adjacent, "LifeSupportGridElement")))
 			if not grid then -- first grid we find
-				if not should_skip(adjascent_element.grid) or (force_connect and not table.find(built_connections, 2, adjascent_element)) or not table.find(built_connections, 1, adjascent_element.grid) then --in order to remain pretty, don't connect more then once to the same grid
-					create_connection_call_data[#built_connections + 1] = {pt, other_pt, self, adjascent}
-					built_connections[#built_connections + 1] = {adjascent_element.grid, adjascent_element}
+				if not should_skip(adjacent_element.grid) or (force_connect and not table.find(built_connections, 2, adjacent_element)) or not table.find(built_connections, 1, adjacent_element.grid) then --in order to remain pretty, don't connect more then once to the same grid
+					create_connection_call_data[#built_connections + 1] = {pt, other_pt, self, adjacent}
+					built_connections[#built_connections + 1] = {adjacent_element.grid, adjacent_element}
 				end
-				if adjascent_element.grid.grid_subtype == grid_type then
-					grid = adjascent_element.grid
+				if adjacent_element.grid.grid_subtype == grid_type then
+					grid = adjacent_element.grid
 					grid:AddElement(element)
 				end
 			else
 				-- join all elements from the other grid
-				local other_grid = adjascent_element.grid
+				local other_grid = adjacent_element.grid
 				if other_grid ~= grid and other_grid.grid_subtype == grid.grid_subtype then
 					if not should_skip(other_grid) then
-						if not table.find(built_connections, 1, adjascent_element.grid) then
-							create_connection_call_data[#built_connections + 1] = {pt, other_pt, self, adjascent}
-							built_connections[#built_connections + 1] = {adjascent_element.grid, adjascent_element}
+						if not table.find(built_connections, 1, adjacent_element.grid) then
+							create_connection_call_data[#built_connections + 1] = {pt, other_pt, self, adjacent}
+							built_connections[#built_connections + 1] = {adjacent_element.grid, adjacent_element}
 						end
 						grids_merged = grid
 						for _, element in ipairs(other_grid.elements) do
@@ -1129,9 +1132,9 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 					end
 				else
 					--2 different grid types, if they see eachother for the first time connect them
-					if (force_connect and not table.find(built_connections, 2, adjascent_element)) or (not AreGridsConnected(grid, other_grid) and not should_skip(other_grid)) then
-						create_connection_call_data[#built_connections + 1] = {pt, other_pt, self, adjascent}
-						built_connections[#built_connections + 1] = {adjascent_element.grid, adjascent_element}
+					if (force_connect and not table.find(built_connections, 2, adjacent_element)) or (not AreGridsConnected(grid, other_grid) and not should_skip(other_grid)) then
+						create_connection_call_data[#built_connections + 1] = {pt, other_pt, self, adjacent}
+						built_connections[#built_connections + 1] = {adjacent_element.grid, adjacent_element}
 					end
 				end
 			end
@@ -1139,13 +1142,14 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 	end
 	
 	if not grid then
-		local params = { city = self:HasMember("city") and self.city or UICity, element_skin = new_grid_skin }
+		local map_id = self:GetMapID()
+		local params = { city = self:HasMember("city") and self.city or MainCity, element_skin = new_grid_skin }
 		if is_construction then
-			grid = grid_class:CreateNewConstructionGrid(params)
+			grid = grid_class:CreateNewConstructionGrid(params, map_id)
 		elseif is_switched_switch then
-			grid = grid_class:CreateNewSwitchGrid(params)
+			grid = grid_class:CreateNewSwitchGrid(params, map_id)
 		else
-			grid = grid_class:new(params)
+			grid = grid_class:new(params, map_id)
 		end
 		grid:AddElement(element)
 	elseif new_grid_skin and grids_merged then
@@ -1153,12 +1157,12 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 	end
 	
 	for i = 1, #built_connections do
-		local other_grid, adjascent_element = table.unpack(built_connections[i])
+		local other_grid, adjacent_element = table.unpack(built_connections[i])
 		if create_connection_call_data[i] then
-			grid_class:CreateConnection(table.unpack(create_connection_call_data[i])) 
+			grid_class.CreateConnection(table.unpack(create_connection_call_data[i])) 
 		end
 		if other_grid ~= grid and other_grid.grid_subtype ~= grid.grid_subtype then
-			ConnectGrids(element, adjascent_element)
+			ConnectGrids(element, adjacent_element)
 		end
 	end
 	
@@ -1169,18 +1173,18 @@ function SupplyGridObject:SupplyGridConnectElement(element, grid_class, new_grid
 	
 	if not grid.grid_subtype then
 		if grids_merged then
-			CreateGameTimeThread(function(OverlaySupplyGrid, ConnGrid, grids_merged)
+			CreateGameTimeThread(function(overlay_grid, conn_grid, grids_merged)
 				--supply tunnels may not be up yet
 				if #grids_merged.elements > 0 then
-					CopySupplyFragmentToOverlayGrid(OverlaySupplyGrid, ConnGrid, grids_merged)
+					CopySupplyFragmentToOverlayGrid(overlay_grid, conn_grid, grids_merged)
 				end
-			end, OverlaySupplyGrid, SupplyGridConnections[supply_resource], grids_merged)
+			end, supply_overlay_grid, conn_grid, grids_merged)
 		else
 			local id = GetGridOverlayIndex(grid)
 			if supply_resource == "water" then
 				id = shift(id, 4)
 			end
-			ApplyIDToOverlayGrid(OverlaySupplyGrid, self, shape, id)
+			ApplyIDToOverlayGrid(supply_overlay_grid, self, shape, id)
 		end
 	end
 end
@@ -1220,7 +1224,10 @@ end
 function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force_no_new_connections, rebuild_only)
 	if not element then return end
 	local supply_resource = grid_class.supply_resource
-	local supply_grid = SupplyGridConnections[supply_resource]
+	local game_map = GetGameMap(self)
+	local supply_connection_grid = game_map.supply_connection_grid
+	local supply_overlay_grid = game_map.supply_overlay_grid
+	local conn_grid = supply_connection_grid[supply_resource]
 	local grid = element.grid
 	assert(grid)
 	if not grid then
@@ -1244,16 +1251,18 @@ function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force
 		return
 	end
 	local shape = self:GetSupplyGridConnectionShapePoints(supply_resource)
-	local connections = SupplyGridRemoveBuilding(supply_grid, self, shape, rebuild_only)
+	local connections = SupplyGridRemoveBuilding(conn_grid, self, shape, rebuild_only)
 	local grid_subtype = grid.grid_subtype
 	
 	if not rebuild_only and not grid_subtype then
 		local mask = supply_resource == "water" and OverlayRemWaterMask or OverlayRemElectricityMask
-		ApplyIDToOverlayGrid(OverlaySupplyGrid, self, shape, mask, "band")
+		ApplyIDToOverlayGrid(supply_overlay_grid, self, shape, mask, "band")
 	end
 	
 	if #grid_elements == 0 then
-		grid:delete()
+		if IsValid(grid) then
+			grid:delete()
+		end
 		grid = false
 	end
 	if not connections then
@@ -1265,15 +1274,16 @@ function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force
 	local required_flags = is_construction and ConstructionMask or is_switched_switch and SwitchMask or 0
 	local required_not_flags = (is_construction or is_switched_switch) and 0 or (SwitchMask + ConstructionMask)
 	local marked_grids = {} --marked for rebuild
+	local object_hex_grid = GetObjectHexGrid(self)
 	
 	if not rebuild_only and build_new_connections then
 		for i = 1, #connections, 2 do
 			local pt, other_pt = connections[i], connections[i + 1]
-			local adjascents = HexGridGetObjects(ObjectGrid, other_pt, nil, nil, function(o)
+			local adjacents = object_hex_grid:GetObjectsAtPos(other_pt, nil, nil, function(o)
 				return GetGrid(o, supply_resource)
 			end)
-			for i = 1, #adjascents do
-				local adj = adjascents[i]
+			for i = 1, #adjacents do
+				local adj = adjacents[i]
 				local adj_grid = GetGrid(adj, supply_resource)
 				if adj_grid and adj_grid ~= grid and adj_grid.grid_subtype ~= grid_subtype and not marked_grids[adj_grid] then
 					marked_grids[adj_grid] = true
@@ -1283,19 +1293,19 @@ function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force
 						ExecLaterPushObject(adj_grid, ExecLater_SupplyGridDisconnectElementProxy, elf_gt + elf_nov + elf_vpo, 0, grid_class) --gametimer, no validity check, vararg are per obj
 					end
 				end
-				grid_class:DestroyConnection(pt, other_pt, self, adj)
+				grid_class.DestroyConnection(pt, other_pt, self, adj)
 			end
 		end
 	end
 
-	local visited = NewGrid(HexMapWidth, HexMapHeight, 1)
+	local visited = NewGrid(game_map.hex_width, game_map.hex_height, 1)
 	local visited_elements
 	local remaining = grid_elements[1]
 	local new_grid = grid
 	local connections_to_build = {}
 	local touched_grids = {}
-	local function tg(g)
-		if g ~= grid and g.grid_subtype ~= grid_subtype and not marked_grids[g] then
+	local function touch_grid(g)
+		if g and g ~= grid and g.grid_subtype ~= grid_subtype and not marked_grids[g] then
 			table.insert(touched_grids, g)
 			marked_grids[g] = true
 		end
@@ -1304,19 +1314,20 @@ function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force
 	while remaining do
 		-- expand the new grid as much as possible
 		local remaining_b = remaining.parent_dome or remaining.building
-		local new_connections = SupplyGridExpand(supply_grid, visited, remaining_b, remaining_b:GetSupplyGridConnectionShapePoints(supply_resource), required_flags, required_not_flags, build_new_connections)
+		local new_connections = SupplyGridExpand(conn_grid, visited, remaining_b, remaining_b:GetSupplyGridConnectionShapePoints(supply_resource), required_flags, required_not_flags, build_new_connections)
 		if build_new_connections then
 			table.iappend(connections_to_build, new_connections)
 		end
 		-- create a new grid and assign it to the elements reached
 		if visited_elements then
-			local params = { city = self:HasMember("city") and self.city or UICity, element_skin = grid.element_skin }
+			local map_id = self:GetMapID()
+			local params = { city = self:HasMember("city") and self.city or MainCity, element_skin = grid.element_skin }
 			if is_construction then
-				new_grid = grid_class:CreateNewConstructionGrid(params)
+				new_grid = grid_class:CreateNewConstructionGrid(params, map_id)
 			elseif is_switched_switch then
-				new_grid = grid_class:CreateNewSwitchGrid(params)
+				new_grid = grid_class:CreateNewSwitchGrid(params, map_id)
 			else
-				new_grid = grid_class:new(params)
+				new_grid = grid_class:new(params, map_id)
 			end
 			assert(not grid or grid.grid_subtype == new_grid.grid_subtype)
 		else -- first run early out
@@ -1335,41 +1346,44 @@ function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force
 		for i = #grid_elements, 1, -1 do
 			local element = grid_elements[i]
 			if not visited_elements[element] then
-				if HexGridGet(visited, (element.parent_dome or element.building):GetShapeOffsetedAndRotatedGridPos(supply_resource)) ~= 0 then --will not work for split shapes, whos points are not connected to each other.
-					local el_connections = GetElementConnections(element)
-					if new_grid ~= grid then
-						el_connections = el_connections and table.copy(el_connections) or false
-						DestroyAllConnectionsFromElement(element)
-						assert(grid.grid_subtype == new_grid.grid_subtype)
-						grid:RemoveElement(element)
-						new_grid:AddElement(element)
-						for i = 1, #(el_connections or "") do
-							local e1, e2 = el_connections[i][1], el_connections[i][2]
-							ConnectGrids(e1, e2)
-							if not rebuild_only and build_new_connections then
-								tg(e1.grid)
-								tg(e2.grid)
+				local building = (element.parent_dome or element.building)
+				if IsKindOf(building, "GridObject") then
+					if HexGridGet(visited, building:GetShapeOffsetedAndRotatedGridPos(supply_resource)) ~= 0 then --will not work for split shapes, whos points are not connected to each other.
+						local el_connections = GetElementConnections(element)
+						if new_grid ~= grid then
+							el_connections = el_connections and table.copy(el_connections) or false
+							DestroyAllConnectionsFromElement(element)
+							assert(grid.grid_subtype == new_grid.grid_subtype)
+							grid:RemoveElement(element)
+							new_grid:AddElement(element)
+							for i = 1, #(el_connections or "") do
+								local e1, e2 = el_connections[i][1], el_connections[i][2]
+								ConnectGrids(e1, e2)
+								if not rebuild_only and build_new_connections then
+									touch_grid(e1.grid)
+									touch_grid(e2.grid)
+								end
+							end
+						elseif not rebuild_only and build_new_connections then
+							for i = 1, #(el_connections or "") do
+								local e1, e2 = el_connections[i][1], el_connections[i][2]
+								touch_grid(e1.grid)
+								touch_grid(e2.grid)
 							end
 						end
-					elseif not rebuild_only and build_new_connections then
-						for i = 1, #(el_connections or "") do
-							local e1, e2 = el_connections[i][1], el_connections[i][2]
-							tg(e1.grid)
-							tg(e2.grid)
-						end
+						visited_elements[element] = true
+					else
+						remaining = remaining or element
 					end
-					visited_elements[element] = true
-				else
-					remaining = remaining or element
 				end
 			end
 		end
 		
 		if not grid_subtype and new_grid ~= grid then
 			local grid_to_mark = new_grid
-			CreateGameTimeThread(function(OverlaySupplyGrid, supply_grid, grid_to_mark)
-				CopySupplyFragmentToOverlayGrid(OverlaySupplyGrid, supply_grid, grid_to_mark)
-			end, OverlaySupplyGrid, supply_grid, grid_to_mark)
+			CreateGameTimeThread(function(overlay_grid, conn_grid, grid_to_mark)
+				CopySupplyFragmentToOverlayGrid(overlay_grid, conn_grid, grid_to_mark)
+			end, supply_overlay_grid, conn_grid, grid_to_mark)
 		end
 	end
 	
@@ -1384,19 +1398,19 @@ function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force
 	--postprocess new connections so we know which grid has been disconnected from which
 	for i = 1, #(connections_to_build or ""), 2 do
 		local pt, other_pt = connections_to_build[i], connections_to_build[i + 1]
-		local obj = HexGridGetObject(ObjectGrid, pt, nil, nil, function(o) return rawget(o, supply_resource) end)
-		local adjascent = HexGridGetObject(ObjectGrid, other_pt, nil, nil, function(o) return rawget(o, supply_resource) end)
+		local obj = object_hex_grid:GetObjectAtPos(pt, nil, nil, function(o) return rawget(o, supply_resource) end)
+		local adjacent = object_hex_grid:GetObjectAtPos(other_pt, nil, nil, function(o) return rawget(o, supply_resource) end)
 		
 		local g1 = obj[supply_resource].grid
-		local g2 = adjascent[supply_resource].grid
+		local g2 = adjacent[supply_resource].grid
 		if g1 == g2 or not AreGridsConnected(g1, g2) then
 			--g1 == g2 => we are reconnecting the same grid at different potential
 			--not AreGridsConnected(g1, g2) - we have potential to connect two different grid subtypes
-			grid_class:CreateConnection(pt, other_pt, obj, adjascent)
+			grid_class.CreateConnection(pt, other_pt, obj, adjacent)
 			if g1 ~= g2 and g1.grid_subtype ~= g2.grid_subtype then
-				ConnectGrids(obj[supply_resource], adjascent[supply_resource])
+				ConnectGrids(obj[supply_resource], adjacent[supply_resource])
 			elseif g1 ~= g2 and g1.grid_subtype == g2.grid_subtype then
-				MergeGrids(g1, g2)
+				MergeGrids(supply_overlay_grid, supply_connection_grid, g1, g2)
 			end
 		end
 	end
@@ -1405,14 +1419,15 @@ function SupplyGridObject:SupplyGridDisconnectElement(element, grid_class, force
 	
 	if not IsSwitch(element) and not is_construction and grid ~= new_grid then
 		local sr = supply_resource == "air" and "water" or supply_resource
+
 		local container = g_SplitSupplyGridPositions[sr]
-		table.insert_unique(container, self:GetPos())
-		KillSupplySplitNotifThread[sr] = ManageKillNotifThread(KillSupplySplitNotifThread[sr], container, 
+		RequestNewObjsNotif(container, self:GetPos(), self:GetMapID())
+		KillSupplySplitNotifThread[sr] = ManageKillNotifThread(KillSupplySplitNotifThread[sr], container[self:GetMapID()], 
 							sr == "water" and "SplitLifeSupportGrid" or "SplitPowerGrid")
 	end
 end
 
-function MergeGrids(new_grid, grid) --merges grid into new_grid
+function MergeGrids(supply_overlay_grid, supply_connection_grid, new_grid, grid) --merges grid into new_grid
 	if grid ~= new_grid then
 		local elements = grid.elements
 		for i = #elements, 1, -1 do
@@ -1432,9 +1447,10 @@ function MergeGrids(new_grid, grid) --merges grid into new_grid
 	grid:delete()
 	
 	if not new_grid.grid_subtype then
-		CreateGameTimeThread(function(OverlaySupplyGrid, ConnGrid, new_grid)
-					CopySupplyFragmentToOverlayGrid(OverlaySupplyGrid, ConnGrid, new_grid)
-			end, OverlaySupplyGrid, SupplyGridConnections[new_grid.supply_resource], new_grid)
+		local conn_grid = supply_connection_grid[new_grid.supply_resource]
+		CreateGameTimeThread(function(overlay_grid, conn_grid, new_grid)
+					CopySupplyFragmentToOverlayGrid(overlay_grid, conn_grid, new_grid)
+			end, supply_overlay_grid, conn_grid, new_grid)
 	end
 end
 
@@ -1466,505 +1482,6 @@ if Platform.developer then
 else
 	InitGridId = empty_func
 end
-
-local supply_element_name_to_grid_name = {
-	electricity = "ElectricityGrid",
-	water = "WaterGrid",
-}
-
-DefineClass.SupplyGridSwitch = {
-	__parents = { "SyncObject", "PinnableObject", "InfopanelObj" ,"Renamable"},
-	
-	switched_state = false, -- current switch state
-	switch_state = false, -- state to be switched (used when rebuilding)
-	is_switch = false,
-	construction_connections = -1,
-	conn = -1,
-	supply_element = "electricity",
-	
-	display_name = false,
-	description = false,
-	
-	on_state = false,
-	off_state = false,
-	switch_anim = false,
-	open_close_thread = false,
-	encyclopedia_id = false,
-	
-	pin_rollover = T(7383, "<description>"),
-	skin_before_switch = false,
-	
-	switch_cs = false,
-	rename_allowed = true,
-	name = "",
-}
-
-function SupplyGridSwitch:GameInit()
-	if self.is_switch then
-		if not IsKindOf(self, "ConstructionSite") then --i.e. built.
-			self.is_switch = false
-			self:MakeSwitch() --init properly
-			
-			if self.switch_state == "on" and not self.switched_state or self.switch_state == "off" and self.switched_state then
-				self:Switch()
-			end
-		end		
-	end
-end
-
-function SupplyGridSwitch:Done()
-	if IsValid(self.switch_cs) then
-		DoneObject(self.switch_cs)
-	end
-end
-
-function SupplyGridSwitch:CanMakeSwitch()
-	return not self.is_switch and self.auto_connect == false and not self.chain
-end
-
-function SupplyGridSwitch:MakeNotSwitch(constr_site)
-	if self.switched_state then
-		self:Switch()
-	end
-	
-	self.is_switch = false
-	self.conn = 0
-	self.rename_allowed = false
-	self.name=""
-	self:UpdateVisuals()
-	
-	if SelectedObj == self then
-		SelectObj(false)
-	end	
-	if self:IsPinned() then
-		self:TogglePin()
-	end
-
-	self.display_name = nil
-	self.description = nil
-	self.encyclopedia_id = nil
-end
-
-
-function SupplyGridSwitch:MakeSwitch(constr_site)
-	if self.is_switch then return end
-	if not self:CanMakeSwitch(constr_site) then return end
-	local is_cable = IsKindOf(self, "ElectricityGridElement")
-	self.is_switch = true
-	self.conn = 0
-	self.rename_allowed = true
-	self.fx_actor_class = is_cable and "CableSwitch" or "PipeValve"
-	self:UpdateVisuals()
-	if self.on_state and self:HasState(self.on_state) then
-		self:SetState(self.on_state)
-	end
-	self:SetEnumFlags(const.efSelectable)
-	if self.switch_cs then
-		self.switch_cs = false
-	end
-	
-	local bld_template = BuildingTemplates[is_cable and "ElectricitySwitch" or "LifesupportSwitch"]
-	self.display_name = bld_template.display_name
-	self.description = bld_template.description
-	self.encyclopedia_id = bld_template.encyclopedia_id
-end
-
-function SupplyGridSwitch:GetDisplayName()
-	return self.is_switch and self.name~="" and Untranslated(self.name) or self.display_name
-end
-
-local BroadcastSwitchesFilter = function(obj, current_state) 
-	return obj.is_switch and obj.switched_state == current_state
-end
-
-function SupplyGridSwitch:Switch(broadcast)
-	if not self.is_switch then return end
-	local switches = {}
-	local current_state = self.switched_state
-	if broadcast then
-		switches = MapGet( "map", self.class, BroadcastSwitchesFilter, current_state )
-	else
-		switches[1] = self
-	end
-	for i = 1, #switches do		
-		local grid_class_def = g_Classes[supply_element_name_to_grid_name[switches[i].supply_element]]
-		local skin_name = switches[i]:GetGridSkinName()
-		switches[i].skin_before_switch = skin_name
-		switches[i].construction_connections = HexGridGet(SupplyGridConnections[switches[i].supply_element], switches[i]) --force same conns on reconnect
-		switches[i]:SupplyGridDisconnectElement(switches[i][switches[i].supply_element], grid_class_def, true)
-		switches[i].switched_state = not switches[i].switched_state
-		switches[i]:SupplyGridConnectElement(switches[i][switches[i].supply_element], grid_class_def, skin_name)
-		switches[i].skin_before_switch = nil
-		
-		if switches[i].supply_element == "electricity" then
-			PlayFX("CableSwitched", switches[i].switched_state and "off" or "on", switches[i])
-		elseif switches[i].supply_element == "water" then
-			PlayFX("PipeSwitched", switches[i].switched_state and "off" or "on", switches[i])
-		end
-		
-		switches[i]:UpdateAnim()
-	end
-end
-
-function SupplyGridSwitch:UpdateAnim()
-	if not self.switch_anim or not self:HasState(self.switch_anim) then
-		--there is no anim, don't make threads
-		local new_state = self.switched_state and self.off_state or self.on_state
-		if new_state and self:HasState(new_state) then
-			self:SetState(new_state)
-		end
-	else
-		DeleteThread(self.open_close_thread)
-		self.open_close_thread = CreateGameTimeThread(function()
-			local anim = self:GetStateText()
-			if anim == self.switch_anim then
-				Sleep(self:TimeToAnimEnd())
-				if not IsValid(self) then return end
-			end
-			local state = self.switched_state --false we are going to on state, true we are going to off state
-			local final_anim = state and self.off_state or self.on_state
-			local transition_anim_flags = state and 0 or const.eReverse
-			local skip_anim = anim == self.switch_anim and 
-								band(self:GetAnimFlags(1), const.eReverse) == transition_anim_flags or false
-			
-			if not skip_anim then
-				self:SetAnim(1, self.switch_anim, transition_anim_flags)
-				Sleep(self:TimeToAnimEnd())
-				if not IsValid(self) then return end
-			end
-			
-			if final_anim and self:HasState(final_anim) then
-				self:SetState(final_anim)
-			end
-		end)
-	end
-end
-
-DefineClass.SupplyGridSwitchBuilding = { --placeholder for build menu
-	__parents = {"Building"},
-	rename_allowed = true,
-}
-
-DefineClass.BreakableSupplyGridElement = {
-	__parents = { "TaskRequester", },
-	
-	auto_connect = false,
-	priority = 5, --very high consumption priority, so that leaks are serviced first by the grid
-	
-	supply_resource = false,
-	air = false, --we are going to create/destroy this element when we break/repair, if we are pipe
-	
-	repair_resource_request = false,
-	repair_work_request = false,
-	fx_params = false,
-	
-	UpdateAttachedSigns = empty_func,
-}
-
-GlobalVar("g_NewLeak", false)
-
-function SavegameFixups.RestartHandleLeakDetectedNotifThread()
-	RestartGlobalGameTimeThread("LeakDetectedNotif")
-end
-
-function HandleLeakDetectedNotif()	
-	local pipe_leaks = g_BrokenSupplyGridElements.water
-	local cable_faults = g_BrokenSupplyGridElements.electricity
-	if #pipe_leaks + #cable_faults == 0 then
-		RemoveOnScreenNotification("LeakDetected")
-	elseif g_NewLeak or IsOnScreenNotificationShown("LeakDetected") then
-		g_NewLeak = false
-		local air_lost = 0
-		local water_lost = 0
-		for i = 1, #pipe_leaks do
-			if pipe_leaks[i].air and pipe_leaks[i].air.current_consumption then
-				air_lost = air_lost + pipe_leaks[i].air.current_consumption
-			end
-			if pipe_leaks[i].water and pipe_leaks[i].water.current_consumption then
-				water_lost = water_lost + pipe_leaks[i].water.current_consumption
-			end
-		end
-		local power_lost = 0
-		for i = 1, #cable_faults do
-			if cable_faults[i].electricity and cable_faults[i].electricity.current_consumption then
-				power_lost = power_lost + cable_faults[i].electricity.current_consumption
-			end
-		end
-		local displayed_in_notif = table.iappend(table.copy(pipe_leaks), cable_faults)
-		local text
-		if #cable_faults > 0 then
-			if #pipe_leaks > 0 then
-				text = T{10981, "<power(power)> <air(air)> <water(water)>", power = power_lost, air = air_lost, water = water_lost}
-			else
-				text = T{10982, "<power(power)>", power = power_lost}
-			end
-		elseif #pipe_leaks > 0 then
-			text = T{10983, "<air(air)> <water(water)>", air = air_lost, water = water_lost}
-		end
-		local rollover = T{10984, "Cable faults: <cables><newline>Pipe leaks: <pipes>", cables = #cable_faults, pipes = #pipe_leaks}
-		AddOnScreenNotification("LeakDetected", nil, { leaks = text, rollover_title = T(522588249261, "Leak Detected"), rollover_text = rollover }, displayed_in_notif)
-	end
-end
-
-GlobalGameTimeThread("LeakDetectedNotif", function()
-	while true do
-		Sleep(3000)
-		HandleLeakDetectedNotif()
-	end
-end)
-
-function BreakableSupplyGridElement:Init()
-	if IsKindOf(self, "ElectricityGridElement") then
-		self.supply_resource = "electricity"
-	else
-		self.supply_resource = "water"
-	end
-end
-
-function BreakableSupplyGridElement:InternalCreateResourceRequests()
-	self.repair_resource_request = self:AddDemandRequest("Metals", 0, 0, 1)
-	self.repair_work_request = self:AddWorkRequest("repair", 0, 0, 1)
-end
-
-function SavegameFixups.ClearSupplyGridElementRequests()
-	MapForEach("map", "BreakableSupplyGridElement", function(o)
-			if not o.auto_connect then
-				o.task_requests = {}
-			else
-				o:DisconnectFromCommandCenters()
-				for i = #o.task_requests, 1, -1 do
-					local r = o.task_requests[i]
-					if r ~= o.repair_resource_request
-						and r ~= o.repair_work_request then
-						table.remove(o.task_requests, i)
-					end
-				end
-				o:ConnectToCommandCenters()
-			end
-		end)
-end
-
-function BreakableSupplyGridElement:InternalDestroyResourceRequests()
-	assert(#self.command_centers == 0)
-	table.remove_entry(self.task_requests, self.repair_resource_request)
-	self.repair_resource_request = nil --lua tables, just kill reference
-	table.remove_entry(self.task_requests, self.repair_work_request)
-	self.repair_work_request = nil
-end
-
-function BreakableSupplyGridElement:GetPriorityForRequest(req)
-	if req == self.repair_resource_request or req == self.repair_work_request then
-		return 3 --Drones automatically repair cables with the priority of cable construction.
-	else
-		--we use our priority to force our consumer element to be serviced first, 
-		--however asserts will happen if we go above or below known priorities in DroneHub.lua code
-		return Clamp(TaskRequester.GetPriorityForRequest(self, req), -1, const.MaxBuildingPriority)
-	end
-end
-
-GlobalVar("g_BrokenSupplyGridElements", function() return { electricity = {}, water = {} } end)
-
-function BreakableSupplyGridElement:IsBroken()
-	return self.auto_connect == true
-end
-
-function BreakableSupplyGridElement:CanBreak()
-	if self.auto_connect == true then return false end --broken
-	if self.is_switch then return false end --switch
-	if self.chain then return false end --in unbuildable
-	
-	return true
-end
-
-function BreakableSupplyGridElement:Break()
-	assert(IsValid(self))
-	if not self:CanBreak() then return end
-	--remove our supply element, upgrade it to a consumption element, add it again
-	local element = self[self.supply_resource]
-	local grid = element.grid
-	grid:RemoveElement(element)
-	
-	element.variable_consumption = true --consume as much as available
-	if self.supply_resource == "electricity" then
-		local consumption = self:Random(const.BreakDrainPowerMax - const.BreakDrainPowerMin) + const.BreakDrainPowerMin
-		consumption = MulDivRound(consumption, const.BreakDrainModifierPct, 100)
-		element.consumption = consumption
-	else
-		local consumption = self:Random(const.BreakDrainWaterMax - const.BreakDrainWaterMin) + const.BreakDrainWaterMin
-		consumption = MulDivRound(consumption, const.BreakDrainModifierPct, 100)
-		element.consumption = consumption
-		
-		self.air = NewSupplyGridConsumer(self, true)
-		self.air.is_cable_or_pipe = true
-		local air_consumption = self:Random(const.BreakDrainOxygenMax - const.BreakDrainOxygenMin) + const.BreakDrainOxygenMin
-		air_consumption = MulDivRound(air_consumption, const.BreakDrainModifierPct, 100)
-		self.air:SetConsumption(air_consumption)
-	end
-	
-	grid:AddElement(element)
-	
-	--create reqs
-	self:InternalCreateResourceRequests()
-	--post repair request
-	self.repair_resource_request:AddAmount(1 * const.ResourceScale)
-	self.auto_connect = true
-	self:ConnectToCommandCenters()
-	
-	--presentation
-	self:Presentation(true)
-end
-
-function BreakableSupplyGridElement:GetLeakParticleScale()
-	return 25
-end
-
-function BreakableSupplyGridElement:Presentation(start)
-	if start then
-		assert(IsValid(self), "Trying to break dead cable/pipe!")
-		table.insert(g_BrokenSupplyGridElements[self.supply_resource], self)
-		g_NewLeak = true
-		local leak_spot_id
-		if self.supply_resource == "electricity" then
-			leak_spot_id = self:GetSpotBeginIndex("Sparks")
-		else
-			-- NOTE: pfff, emulate obj:GetSpotRange("Leak") !!!
-			local leak_spots = 0
-			while self:HasSpot("Leak" .. (leak_spots + 1)) do
-				leak_spots = leak_spots + 1
-			end
-			leak_spot_id = self:GetSpotBeginIndex("Leak" .. (1 + self:Random(leak_spots)))
-		end
-		
-		if leak_spot_id == -1 then
-			leak_spot_id = self:GetSpotBeginIndex("Origin")
-		end
-		
-		local pos = self:GetSpotPos(leak_spot_id)
-		local angle, axis = self:GetSpotRotation(leak_spot_id)
-		local particle_axis = RotateAxis(axis_z, axis, angle) --get the z axis of the spot
-		PlayFX("OxygenLeak", "start", self, nil, pos, particle_axis)
-		self.fx_params = table.pack("OxygenLeak", "end", self, nil, pos, particle_axis)
-	elseif self.fx_params then
-		table.remove_entry(g_BrokenSupplyGridElements[self.supply_resource], self)
-		PlayFX(table.unpack(self.fx_params))
-		self.fx_params = false
-	end
-	--
-end
-
-function BreakableSupplyGridElement:Done()
-	if self.fx_params then
-		self:Presentation()
-	end
-end
-
-function BreakableSupplyGridElement:DroneUnloadResource(drone, request, resource, amount)
-	if request == self.repair_resource_request then
-		if self.repair_resource_request:GetActualAmount() <= 0 then
-			self:StartSupplyGridElementWorkPhase(drone)
-		end
-	end
-end
-
-function BreakableSupplyGridElement:DroneWork(drone, request, resource, amount)
-	if request == self.repair_work_request then
-		amount = DroneResourceUnits.repair
-		drone:PushDestructor(function(drone)
-			local self = drone.target
-			if IsValid(self) and drone.w_request:GetActualAmount() <= 0 then
-				self:Repair()
-			end
-		end)
-		drone:ContinuousTask(request, amount, g_Consts.DroneBuildingRepairBatteryUse, "repairBuildingStart", "repairBuildingIdle", "repairBuildingEnd", "Repair")
-		drone:PopAndCallDestructor()
-	end
-end
-
-function BreakableSupplyGridElement:StartSupplyGridElementWorkPhase(drone)
-	self.repair_work_request:AddAmount(g_Consts.DroneRepairSupplyLeak * g_Consts.DroneBuildingRepairAmount)
-	if drone then
-		drone:SetCommand("Work", self.repair_work_request, "repair", Min(g_Consts.DroneBuildingRepairAmount, self.repair_work_request:GetActualAmount()))
-	end
-end
-
-function BreakableSupplyGridElement:Repair()
-	if not IsValid(self) or self.auto_connect == false then return end
-	--remove our element, restore to non-functional element, re-add
-	local element = self[self.supply_resource]
-	local grid = element.grid
-	grid:RemoveElement(element)
-	
-	element.variable_consumption = false
-	element.consumption = false
-	self.air = false
-	
-	grid:AddElement(element)
-	
-	--disconnect from command centers
-	self.auto_connect = false
-	self:DisconnectFromCommandCenters()
-	--destroy requests
-	self:InternalDestroyResourceRequests()
-	
-	--presentation
-	self:Presentation()
-	
-	Msg("Repaired", self)
-	
-	if SelectedObj == self then
-		SelectObj(false)
-	end
-	
-	if self:IsPinned() then
-		self:TogglePin()
-	end
-end
-
-function BreakableSupplyGridElement:GetDisplayName()
-	if self.repair_resource_request then
-		return self.supply_resource == "electricity" and T(3890, "Cable Fault") or T(3891, "Pipe Leak")
-	elseif IsKindOf(self, "SupplyGridSwitch") then
-		return SupplyGridSwitch.GetDisplayName(self)
-	else
-		return self.display_name
-	end
-end
-
-function BreakableSupplyGridElement:Getdescription()
-	if self.auto_connect then
-		return T{3892, "This section of the grid has malfunctioned and it's now leaking. It can be repaired by Drones for <metals(number)>.\n\nLarger networks will malfunction more often.", number = 1000}
-	else
-		return self.description
-	end
-end
-
-function TestSupplyGridUpdateThreads()
-	local total = 0
-	local dead = 0
-	local function do_work(c)
-		for i = 1, #(c or "") do
-			total = total + 1
-			if not IsValidThread(c[i].update_thread) then
-				dead = dead + 1
-			end
-		end
-	end
-	do_work(UICity.electricity)
-	do_work(UICity.water)
-	print("<green>total grids", total, "</green>")
-	print("<red>dead update threads", dead, "</red>")
-	print("<em>ele production thread", IsValidThread(UICity.electricity.production_thread) and "alive" or "dead", "water p thread",  IsValidThread(UICity.water.production_thread) and "alive" or "dead", "air p thread", IsValidThread(UICity.air.production_thread)and "alive" or "dead", "</blue>")
-end
-
-GlobalVar("g_SplitSupplyGridPositions", function() return { electricity = {}, water = {} } end)
-
-GlobalGameTimeThread("SplitPowerGridNotif", function()
-	HandleNewObjsNotif(g_SplitSupplyGridPositions.electricity, "SplitPowerGrid", nil, nil, false)
-end)
-
-GlobalGameTimeThread("SplitLifeSupportGridNotif", function()
-	HandleNewObjsNotif(g_SplitSupplyGridPositions.water, "SplitLifeSupportGrid", nil, nil, false)
-end)
 
 -----------------------------------------
 --save fixups below
@@ -2035,7 +1552,7 @@ function SavegameFixups.FixObjectsBeingInImproperGrids()
 		local ee = rawget(o, supply_resource)
 		if ee then
 			local g = ee.grid
-			if not ShouldElementBeInGrid(g, ee) then
+			if g and not ShouldElementBeInGrid(g, ee) then
 				DirtyRemAndReAddElement(ee, g, sgs[supply_resource], ElectricityGrid, supply_resource)
 			end
 		end
@@ -2044,7 +1561,7 @@ function SavegameFixups.FixObjectsBeingInImproperGrids()
 		local we = rawget(o, supply_resource)
 		if we then
 			local g = we.grid
-			if not ShouldElementBeInGrid(g, we) then
+			if g and not ShouldElementBeInGrid(g, we) then
 				DirtyRemAndReAddElement(we, g, sgs[supply_resource], WaterGrid, supply_resource)
 				if IsKindOf(we.building, "Tunnel") then
 					ExecLaterPushObject(we.building, re_merge_tunnel_grids, 0, 5)

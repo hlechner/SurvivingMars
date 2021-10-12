@@ -90,7 +90,7 @@ OptionsData.VideoPresetsData = {
 		ShowFireworks = "On",
 	},
 	Durango = {
-		Textures = "High",
+		Textures = "Medium",
 		Shadows = "High (Consoles)",
 		Terrain = "High",
 		Effects = "High",
@@ -132,7 +132,7 @@ OptionsData.VideoPresetsData = {
 		ShowFireworks = "On",
 	},
 	Ps4 = {
-		Textures = "High",
+		Textures = "Medium",
 		Shadows = "High (Consoles)",
 		Terrain = "High",
 		Effects = "High",
@@ -238,6 +238,7 @@ function OnMsg.ClassesGenerate(classdefs)
 	local game_properties = {
 		-- Audio
 		{ name = T(3583, "Radio Station"), id = "RadioStation", category = "Audio", editor = "bool", no_edit = true, default = "SurvivingMars" },
+		{ name = T(13806, "Below and Beyond music"), id = "BelowAndBeyondMusic", category = "Audio", editor = "bool", no_edit = true, default = true },
 		
 		-- Account
 		{ name = T(11861, "Control Scheme"), id = "ControlScheme", category = "Controls", storage = "account", editor = "dropdown", default = Platform.console and "Controller" or "Hybrid", filter = FilterConsoleOption,},
@@ -273,10 +274,18 @@ function OptionsObject:SetRadioStation(station)
 	end
 end
 
+function OptionsObject:SetIncludeBelowAndBeyondMusic(value)
+	self.BelowAndBeyondMusic = value
+end
+
+function OptionsObject:GetIncludeBelowAndBeyondMusic()
+	return self.BelowAndBeyondMusic
+end
+
 local function UpdateHintsOption(hints_enabled)
 	hints_enabled = not g_Tutorial and hints_enabled or false
 	if HintsEnabled ~= hints_enabled then
-		if mapdata.GameLogic and hints_enabled then
+		if ActiveMapData.GameLogic and hints_enabled then
 			CreateGameTimeThread(PeriodicHintChecks)
 		end
 		HintsEnabled = hints_enabled

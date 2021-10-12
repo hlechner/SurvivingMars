@@ -29,7 +29,9 @@ end
 
 function SA_GetLabelToRegister:Exec(seq_player, ip, seq, registers)
 	registers[self.register] = {} 
-	local objs = GetObjectsByLabel(self.label)
+	local map_id = seq_player.map_id
+	local city = Cities[map_id]
+	local objs = GetObjectsByLabel(city, self.label)
 	if not objs then return end
 	if #objs == 0 then return end
 

@@ -21,6 +21,7 @@ PlaceObj('StoryBit', {
 		"Boost19_BadStirlingGenerator_Finale",
 	},
 	Image = "UI/Messages/hints.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "StirlingGenerator",
@@ -78,6 +79,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1551965546,
 				user = "Radomir",
+			},
+			{
+				action = "Modified",
+				time = 1625146653,
 			},
 		},
 	}),

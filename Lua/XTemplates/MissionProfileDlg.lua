@@ -45,6 +45,26 @@ PlaceObj('XTemplate', {
 					'Title', T(708805240891, --[[XTemplate MissionProfileDlg Title]] "MISSION GOALS"),
 					'Subtitle', T(774720837511, --[[XTemplate MissionProfileDlg Subtitle]] "Difficulty Challenge <percent(DifficultyBonus)>"),
 				}),
+				PlaceObj('XTemplateWindow', {
+					'__context', function (parent, context) return PGColonyNameObjectCreate() end,
+					'__class', "XText",
+					'Id', "idColonyName",
+					'Margins', box(55, 0, 0, 0),
+					'MaxHeight', 50,
+					'MouseCursor', "UI/Cursors/Rollover.tga",
+					'TextStyle', "PGLandingPosDetails",
+					'ContextUpdateOnOpen', true,
+					'Translate', true,
+					'Text', T(13793, --[[XTemplate MissionProfileDlg Text]] "<ColonyName>"),
+				}, {
+					PlaceObj('XTemplateFunc', {
+						'name', "OnHyperLink(self, hyperlink, argument, hyperlink_box, pos, button)",
+						'func', function (self, hyperlink, argument, hyperlink_box, pos, button)
+							local host = GetDialog(self)
+							self.context:RenameColony(host)
+						end,
+					}),
+					}),
 				PlaceObj('XTemplateAction', {
 					'ActionId', "close",
 					'ActionName', T(4523, --[[XTemplate MissionProfileDlg ActionName]] "CLOSE"),
@@ -52,6 +72,15 @@ PlaceObj('XTemplate', {
 					'ActionShortcut', "Escape",
 					'ActionGamepad', "ButtonB",
 					'OnActionEffect', "close",
+				}),
+				PlaceObj('XTemplateAction', {
+					'ActionId', "rename",
+					'ActionName', T(13794, --[[XTemplate MissionProfileDlg ActionName]] "RENAME COLONY"),
+					'ActionToolbar', "ActionBar",
+					'ActionGamepad', "RightThumbClick",
+					'OnAction', function (self, host, source)
+						g_ColonyNameObj:RenameColony(host)
+					end,
 				}),
 				PlaceObj('XTemplateWindow', {
 					'MinWidth', 610,

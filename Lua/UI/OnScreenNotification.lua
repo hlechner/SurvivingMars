@@ -1,4 +1,3 @@
-
 DefineClass.OnScreenNotification =
 {
 	__parents = {"XDrawCacheDialog"},
@@ -30,6 +29,9 @@ DefineClass.OnScreenNotification =
 	vignette_thread = false,
 	can_be_activated = false,
 }
+
+local notification_pack_id_index = 1
+local notification_pack_map_id_index = 5
 
 function OnScreenNotification:Open(...)
 	XDialog.Open(self, ...)
@@ -112,6 +114,12 @@ end
 function OnScreenNotification:InitControls()
 end
 
+function OnScreenNotification:Done()
+	if IsValidThread(self.game_time_press_thread) then
+		DeleteThread(self.game_time_press_thread)
+	end
+end
+
 function OnScreenNotification:OnSetRollover(rollover)
 	if self.window_state ~= "destroying" then
 		XDialog.OnSetRollover(self, rollover)
@@ -159,7 +167,7 @@ function OnScreenNotification:CycleObjs(cycle_objs)
 		local obj = cycle_objs[idx]
 		if IsPoint(obj) then
 			ViewObjectMars(obj)
-		elseif IsValid(obj) then
+		elseif IsValid(obj) and obj:GetMapID() == ActiveMapID then
 			if obj:GetEnumFlags(const.efVisible) ~= 0 then
 				ViewAndSelectObject(obj)
 			elseif obj:IsValidPos() then
@@ -191,12 +199,45 @@ function OnScreenNotification:SetTexts(preset, params)
 	end
 end
 
-local day_duration = const.DayDuration
-local hour_duration = const.HourDuration
+function OnScreenNotification:AcceptNotification(id, preset, callback, params, cycle_objs)
+	if self:IsThreadRunning("press_btn") then return end
+	
+	self:CreateThread("press_btn", function()
+		local encyclopedia_id = preset.encyclopedia_id
+		if encyclopedia_id and encyclopedia_id ~= "" then
+			OpenEncyclopedia(encyclopedia_id)
+		else
+			local popup_preset = preset.popup_preset
+			local popup_notification = params.popup_notification
 
-function OnScreenNotification:FillData(preset, callback, params, cycle_objs)
+			local res
+			if (popup_preset or "") ~= "" or popup_notification then
+				if type(params.GetPopupPreset)== "function" then 
+					popup_preset = params.GetPopupPreset(params)
+				end
+				if not popup_notification and not params.params then
+					params = {params = params}
+				end
+				if (popup_preset and PopupNotificationPresets[popup_preset]) or popup_notification then
+					params.start_minimized = false
+					res = WaitPopupNotification(popup_preset, params)
+				end
+			end
+			local cur_obj = self:CycleObjs(cycle_objs)
+			if callback then
+				callback(cur_obj, params, res)
+			end
+			if preset.close_on_read then
+				PlayFX("NotificationDismissed", "start")
+				RemoveOnScreenNotification(id)
+			end
+		end
+	end)
+end
+
+function OnScreenNotification:FillData(id, preset, callback, params, cycle_objs)
+	assert(preset)
 	self.preset = preset
-	local id = preset.id
 	self.notification_id = params.override_id or id
 	self.show_vignette = preset.ShowVignette
 	self.vignette_image = preset.VignetteImage
@@ -213,46 +254,28 @@ function OnScreenNotification:FillData(preset, callback, params, cycle_objs)
 	local can_cycle = cycle_objs and not not next(cycle_objs)
 	local has_callback = not not callback
 	self.can_be_activated = has_id or popup_preset ~= "" or can_cycle or has_callback or preset.close_on_read
-	self.idButton.OnPress = function()
-		if self:IsThreadRunning("press_btn") then return end
-		self:CreateThread("press_btn", function()
-			if encyclopedia_id and encyclopedia_id ~= "" then
-				OpenEncyclopedia(encyclopedia_id)
-			else
-				local res
-				if (popup_preset or "") ~= "" or popup_notification then
-					if type(params.GetPopupPreset)== "function" then 
-						popup_preset = params.GetPopupPreset(params)
-					end
-					if not popup_notification and not params.params then
-						params = {params = params}
-					end
-					if (popup_preset and PopupNotificationPresets[popup_preset]) or popup_notification then
-						params.start_minimized = false
-						res = WaitPopupNotification(popup_preset, params)
-					end
-				end
-				local cur_obj = self:CycleObjs(cycle_objs)
-				if callback then
-					callback(cur_obj, params, res)
-				end
-				if preset.close_on_read then
-					PlayFX("NotificationDismissed", "start")
-					RemoveOnScreenNotification(id)
-				end
-			end
-		end)
-	end
+
+	self.idButton.OnPress = function() self:AcceptNotification(id, preset, callback, params, cycle_objs) end
 	if popup_notification then
-		params.press_time = params.press_time or (GameTime() + 8 * hour_duration)
+		assert(not params.parent,
+			"Notification " .. id .. " with parent should either have explicit 'start_minimized = false' in preset or have no parent")
+		params.press_time = params.press_time or (GameTime() + 8 * const.HourDuration)
+
 		local function delayed_press_button()
-			assert(not params.parent)
 			Sleep(Max(params.press_time - GameTime(), 0)) --sleep for one Sol
-			PressOnScreenNotification(id)
+			local idx = table.find(g_ActiveOnScreenNotifications, 1, id)
+			if idx then
+				local notification = GetOnScreenNotification(id)
+				if notification then
+					notification:AcceptNotification(id, preset, callback, params, cycle_objs)
+				end
+				RemoveOnScreenNotification(id)
+			end
 		end
 		DeleteThread(self.game_time_press_thread)
 		self.game_time_press_thread = CreateGameTimeThread(delayed_press_button)
 	end
+
 	local validate = preset.validate_context or params.validate_context
 	if type(validate) == "function" then
 		local function validate_params()
@@ -314,19 +337,7 @@ function OnScreenNotification:FillData(preset, callback, params, cycle_objs)
 							cd_param = "countdown"..i
 						end
 						
-					
-						local time = et - GameTime()
-						local sols = time / day_duration
-						local hours = (time % day_duration) / hour_duration
-						if time > day_duration then
-							if hours > 0 then
-								params[cd_param] = sols > 1 and T{4108, "<sols> Sols <hours> h", sols = sols, hours = hours} or T{4109, "1 Sol <hours> h", hours = hours}
-							else
-								params[cd_param] = sols > 1 and T{4110, "<sols> Sols", sols = sols} or T(4111, "1 Sol")
-							end
-						else
-							params[cd_param] = T{4112, "<hours> h", hours = hours}
-						end
+						params[cd_param] = GetFormattedExpirationString(GameTime(), et)
 					end
 					self:SetTexts(preset, params)
 					Sleep(1000)
@@ -419,6 +430,26 @@ DefineClass.OnScreenNotificationCriticalBlue = {
 	button_shine = "UI/Icons/Notifications/New/select.tga",
 }
 
+DefineClass.OnScreenNotificationNormalDiscovery = {
+	__parents = { "OnScreenNotification" },
+	default_icon = "UI/Icons/Notifications/asteroid.tga",
+	background_image = "UI/CommonNew/notication_blue.tga",
+	title_style = "OnScreenTitleNormalTerraforming",
+	text_style = "OnScreenTextNormalTerraforming",
+	
+	button_shine = "UI/Icons/Notifications/New/select_green.tga",
+}
+
+DefineClass.OnScreenNotificationCriticalDiscovery = {
+	__parents = { "OnScreenNotification" },
+	default_icon = "UI/Icons/Notifications/asteroid_2.tga",
+	background_image = "UI/CommonNew/notication_red.tga",
+	title_style = "OnScreenTitleNormalTerraforming",
+	text_style = "OnScreenTextNormalTerraforming",
+	
+	button_shine = "UI/Icons/Notifications/New/select_green.tga",
+}
+
 DefineClass.OnScreenNotificationNormalTerraforming = {
 	__parents = { "OnScreenNotification" },
 	default_icon = "UI/Icons/Notifications/New/placeholder_3.tga",
@@ -439,98 +470,6 @@ DefineClass.OnScreenNotificationCriticalTerraforming = {
 	button_shine = "UI/Icons/Notifications/New/select_green.tga",
 }
 
-DefineClass.OnScreenNotificationsDlg =
-{
-	__parents = {"XDialog"},
-	Margins = box(60,60,0,220),
-	FocusOnOpen = "",
-	HAlign = "left",
-	VAlign = "top",
-	
-	gamepad_selection = false,
-}
-
-function OnScreenNotificationsDlg:Init()
-	XWindow:new({
-		Id = "idNotifications",
-		LayoutMethod = "VOverlappingList",
-		LayoutVSpacing = 10,
-		IdNode = true,
-	}, self)
-	local gamepad_controls = XWindow:new({
-		Id = "idGamepadControls",
-		Dock = "bottom",
-		MinWidth = 450,
-		MaxWidth = 450,
-		FoldWhenHidden = true,
-	}, self)
-	local rollover = XFrame:new({
-		Id = "idRolloverWindow",
-		Margins = box(0,20,0,0),
-		Padding = box(24, 0, 24, 20),
-		BorderWidth = 0,
-		VAlign = "top",
-		HAlign = "left",
-		Image = "UI/CommonNew/rollover.tga",
-		FrameBox = box(35, 45, 35, 33),
-		LayoutMethod = "VList",
-		IdNode = false,
-	}, gamepad_controls)
-	rollover:SetVisible(false)
-	XImage:new({
-		Id = "idGamepadHint",
-		Image = GetPlatformSpecificImagePath("LB"),
-		ImageScale = point(800, 800),
-		VAlign = "top",
-		HAlign = "left",
-	}, gamepad_controls)
-	XText:new({
-		Id = "idTitle",
-		Translate = true,
-		TextStyle = "RolloverTitleStyle",
-		TextHAlign = "center",
-		TextVAlign = "center",
-		Dock = "top",
-		MinHeight = 45,
-		MaxHeight = 45,
-	}, rollover)
-	XText:new({
-		Id = "idText",
-		Margins = box(0,5,0,0),
-		MinHeight = 100,
-		Translate = true,
-		TextStyle = "RolloverTextStyle",
-		ShadowColor = RGBA(0,0,0,0),
-	}, rollover)
-end
-
-function OnScreenNotificationsDlg:UpdateRollover()
-	local selection = self.gamepad_selection
-	local notif = selection and self.idNotifications[selection]
-	if not notif then
-		return
-	end
-	
-	local descr = T(7548, "<LB> / <DPadUp> Navigate <DPadDown> / <RB>")
-	
-	local can_activate = notif.can_be_activated
-	if can_activate then
-		descr = descr .. T(7888, "<newline><ButtonA> Activate")
-	end
-	
-	if notif:IsDismissable() then
-		descr = descr .. T(7889, "<newline><ButtonX> Dismiss")
-	end
-	
-	self.idTitle:SetText(T(7582, "Notifications"))
-	self.idText:SetText(descr)
-end
-
-function OnScreenNotificationsDlg:Open(...)
-	self:RecalculateMargins()
-	XDialog.Open(self, ...)
-end
-
 NotificationClasses = {
 	Normal = "OnScreenNotification",
 	Important = "OnScreenNotificationImportant",
@@ -538,6 +477,8 @@ NotificationClasses = {
 	CriticalBlue = "OnScreenNotificationCriticalBlue",
 	NormalTerraforming = "OnScreenNotificationNormalTerraforming",
 	CriticalTerraforming = "OnScreenNotificationCriticalTerraforming",
+	NormalDiscovery = "OnScreenNotificationNormalDiscovery",
+	CriticalDiscovery = "OnScreenNotificationCriticalDiscovery",
 }
 
 OnScreenNotificationVoicesQueue = { }
@@ -558,244 +499,83 @@ function OnScreenNotificationsDlgPlayNextVoice()
 	end
 end
 
-local ForbidNotificationVoicesBeforeTime = 15*1000 --15 seconds
-
-function OnScreenNotificationsDlg:AddNotification(id, preset, callback, params, cycle_objs)
-	local notif = self:GetNotificationById(id)
-	if notif then
-		notif:FillData(preset, callback, params, cycle_objs)
-	else
-		local class = NotificationClasses[preset.priority]
-		local new_item = g_Classes[class]:new({}, self.idNotifications)
-		
-		local total_colonists = #(UICity.labels.Colonist or empty_table)
-		local voiced_text = preset.voiced_text or ""
-		if voiced_text ~= "" and GameTime() > ForbidNotificationVoicesBeforeTime and (total_colonists <= 100 or (id ~= "BrokenCables" and id ~= "BrokenPipes")) then
-			if g_Voice:IsPlaying() or IsValidThread(g_Voice.thread) then
-				table.insert(OnScreenNotificationVoicesQueue, preset) --enqueue voice
-			else
-				OnScreenNotificationVoicesQueue = { } --begin new voice queue
-				g_Voice:Play(voiced_text, not "actor", "Voiceover", not "subtitles", nil, nil, OnScreenNotificationsDlgPlayNextVoice)
-			end
-		end
-		
-		new_item:FillData(preset, callback, params, cycle_objs)
-		new_item:Open()
-		self:ResolveRelativeFocusOrder()
-		self:UpdateGamepadHint()
-	end
-end
-
-function OnScreenNotificationsDlg:AddCustomNotification(data, callback, params, cycle_objs)
-	local notif = self:GetNotificationById(data.id)
-	if notif then
-		notif:FillData(data, callback, params, cycle_objs)
-	else
-		local class = NotificationClasses[data.priority]
-		local new_item = g_Classes[class]:new({}, self.idNotifications)
-		
-		new_item:FillData(data, callback, params, cycle_objs)
-		new_item:Open()
-		self:ResolveRelativeFocusOrder()
-		self:UpdateGamepadHint()
-	end
-end
-
-function OnScreenNotificationsDlg:CancelAllNotifications()
-	local notif_container = self.idNotifications
-	for i = #notif_container, 1, -1 do
-		notif_container[i].idButton:Press(true)
-	end
-	self:UpdateGamepadHint()
-end
-
-function OnScreenNotificationsDlg:RemoveNotification(id)
-	local ctrl = self:GetNotificationById(id)
-	if ctrl then
-		local notif_container = self.idNotifications
-		if ctrl:IsThreadRunning("show_thread") then return end
-		ctrl:CreateThread("show_thread", function()
-			local time = const.InterfaceAnimDuration
-			if ctrl.window_state ~= "destroying" then
-				ctrl:Show(false, time)
-			end
-			Sleep(time)
-			if ctrl.window_state ~= "destroying" then
-				local new_selection
-				if self.gamepad_selection then
-					local notif_count = #notif_container
-					local pos = notif_count == self.gamepad_selection and (notif_count - 1) or Min(self.gamepad_selection + 1, notif_count)
-					new_selection = notif_container[pos]
-					if new_selection then
-						new_selection:SetFocus(true)
-					end
-				end
-				ctrl:Close()
-				if #notif_container > 0 then
-					self:ResolveRelativeFocusOrder()
-					if new_selection then
-						self.gamepad_selection = new_selection:GetFocusOrder():y()
-					end
-				else
-					self:SetFocus(false, true)
-					self.gamepad_selection = false
-				end
-				self:UpdateGamepadHint()
-			end
-		end)
-	end
-	local idx = table.find(g_ActiveOnScreenNotifications, 1, id)
-	if idx then
-		table.remove(g_ActiveOnScreenNotifications, idx)
-	end
-end
-
-function OnScreenNotificationsDlg:PressNotification(id)
-	local ctrl = self:GetNotificationById(id)
-	if ctrl then
-		ctrl.idButton:Press()
-	end
-end
-
-function OnScreenNotificationsDlg:OnShortcut(shortcut, source)
-	if shortcut == "ButtonB" or shortcut == "Escape" then
-		self:SetFocus(false, true)
-		return "break"
-	elseif shortcut == "LeftShoulder" or shortcut == "+LeftShoulder" or shortcut == "RightShoulder" then
-		shortcut = (shortcut == "LeftShoulder" or shortcut == "+LeftShoulder") and "DPadUp" or "DPadDown"
-		XDialog.OnShortcut(self, shortcut, source)
-		return "break"
-	end
-	XDialog.OnShortcut(self, shortcut, source)
-	return source == "gamepad" and not shortcut:starts_with("+") and "break"
-end
-
-function OnScreenNotificationsDlg:GetRelativeFocus(order, relation)
-	local focus = XDialog.GetRelativeFocus(self, order, relation)
-	if not focus then
-		local notif_container = self.idNotifications
-		if relation == "down" then
-			focus = notif_container[1]
-		elseif relation == "up" then
-			focus = notif_container[#notif_container]
-		end
-	end
-	return focus
-end
-
-function OnScreenNotificationsDlg:OnSetFocus()
-	LockHRXboxLeftThumb(self.class)
-
-	local notif_container = self.idNotifications
-	if #notif_container == 0 then
-		return
-	end
-	
-	self.gamepad_selection = #notif_container
-	self.idNotifications[self.gamepad_selection]:SetFocus(true)
-	self.idRolloverWindow:SetVisible(true)
-	self:UpdateGamepadHint()
-	XDialog.OnSetFocus(self)
-end
-
-function OnScreenNotificationsDlg:OnKillFocus()
-	UnlockHRXboxLeftThumb(self.class)
-	if self.window_state ~= "destroying" then
-		local notif_container = self.idNotifications
-		local selection = self.gamepad_selection
-		if selection and #notif_container >= selection then
-			notif_container[selection]:SetFocus(false)
-		end
-		self.gamepad_selection = false
-		self.idRolloverWindow:SetVisible(false)
-		self:UpdateGamepadHint()
-		XDialog.OnKillFocus(self)
-	end
-end
-
-function OnScreenNotificationsDlg:UpdateGamepadHint()
-	if #self.idNotifications == 0 or not GetUIStyleGamepad() then
-		self.idGamepadControls:SetVisible(false)
-		return
-	end
-	
-	self.idGamepadControls:SetVisible(true)
-	local focus = self.desktop:GetKeyboardFocus()
-	if IsKindOfClasses(focus, "SelectionModeDialog", "OverviewModeDialog", "InGameInterface") then
-		self.idGamepadHint:SetVisible(true)
-	else
-		self.idGamepadHint:SetVisible(false)
-	end
-end
-
 function OnMsg.GamepadUIStyleChanged()
 	local notifs = GetDialog("OnScreenNotificationsDlg")
 	if notifs then notifs:UpdateGamepadHint() end
 end
 
-function OnScreenNotificationsDlg:GetNotificationById(id)
-	if not table.find(g_ActiveOnScreenNotifications, 1, id) then return end
-	local notif = table.find_value(self.idNotifications, "notification_id", id)
-	if not notif then return end
-	return notif.window_state ~= "destroying" and notif
+function RequestNewObjsNotif(container, data, map_id, allow_duplicates)
+	assert(map_id ~= nil)
+	assert(not container or type(container) == "table")
+	container[map_id] = container[map_id] or {}
+	if allow_duplicates then
+		table.insert(container[map_id], data)
+	else
+		table.insert_unique(container[map_id], data)
+	end
 end
-
-function OnScreenNotificationsDlg:IsActive(id)
-	return not not self:GetNotificationById(id)
-end
-
-function OnScreenNotificationsDlg:RecalculateMargins()
-	--This is temporary and should be removed when implementing InGameInterface with new UI
-	self:SetMargins(OnScreenNotificationsDlg.Margins + GetSafeMargins())
+				
+function DiscardNewObjsNotif(container, data, map_id)
+	assert(map_id ~= nil)
+	assert(not container or type(container) == "table")
+	container[map_id] = container[map_id] or {}
+	table.remove_entry(container[map_id], data)
 end
 
 function HandleNewObjsNotif(container, notif_id, bExpire, params_func, contains_objects, keep_destroyed, cycle_prevent)
 	contains_objects = (contains_objects ~= false) and true or false
 	local duration = 60000
-	local expiration = 0
 	local displayed_in_notif = {}
+	local expiration = {}
 	while true do
-		local change
+		local change = {}
 		if contains_objects then
-			for i = #container, 1, -1 do
-				local obj = container[i]
-				if not IsValid(obj) or IsKindOf(obj, "BaseBuilding") and obj.destroyed and not keep_destroyed then
-					table.remove(container, i)
+			for map_id, objs in pairs(container) do
+				for i = #objs, 1, -1 do
+					local obj = objs[i]
+					if not IsValid(obj) or IsKindOf(obj, "BaseBuilding") and obj.destroyed and not keep_destroyed then
+						table.remove(objs, i)
+					end
 				end
 			end
 		end
-		if not table.is_isubset(container, displayed_in_notif) then
-			expiration = GameTime() + duration
-			change = true
-		elseif #container ~= #displayed_in_notif then
-			change = true
+		for map_id, objs in pairs(container) do
+			displayed_in_notif[map_id] = displayed_in_notif[map_id] or {}
+			if not table.is_isubset(objs, displayed_in_notif[map_id]) then
+				expiration[map_id] = GameTime() + duration
+				change[map_id] = true
+			elseif #objs ~= #displayed_in_notif[map_id] then
+				change[map_id] = true
+			end
 		end
-		if change then
-			displayed_in_notif = table.copy(container)
-			local params = params_func and type(params_func) == "function" and params_func(displayed_in_notif) or {count = #displayed_in_notif}
-			if cycle_prevent then
-				AddOnScreenNotification(notif_id, nil, params, nil)
-			else
-				AddOnScreenNotification(notif_id, nil, params, displayed_in_notif)
+		for map_id, changed in pairs(change) do
+			if changed then
+				displayed_in_notif[map_id] = table.copy(container[map_id])
+				local params = params_func and type(params_func) == "function" and params_func(displayed_in_notif[map_id]) or {count = #displayed_in_notif[map_id]}
+				if cycle_prevent then
+					AddOnScreenNotification(notif_id, nil, params, nil, map_id)
+				else
+					AddOnScreenNotification(notif_id, nil, params, displayed_in_notif[map_id], map_id)
+				end
 			end
 		end
 		Sleep(1000)
-		if bExpire and (expiration > 0 and expiration < GameTime()) or not bExpire and #container == 0 then
-			RemoveOnScreenNotification(notif_id)
-			for i = #container, 1, -1 do
-				table.remove(container, i)
+		for map_id, changed in pairs(change) do
+			if bExpire and (expiration[map_id] > 0 and expiration[map_id] < GameTime()) or not bExpire and #container[map_id] == 0 then
+				RemoveOnScreenNotification(notif_id, map_id)
+				for i = #container[map_id], 1, -1 do
+					table.remove(container[map_id], i)
+				end
+				displayed_in_notif[map_id] = {}
+				expiration[map_id] = 0
 			end
-			displayed_in_notif = {}
-			expiration = 0
 		end
 	end
 end
 
-GlobalVar("g_ActiveOnScreenNotifications", {}) -- currently active onscreen notifications
-GlobalVar("g_ShownOnScreenNotifications",{})-- show once notifications support
-function AddOnScreenNotification(id, callback, params, cycle_objs)
-	params = params or {}
-	local preset
+function GetOnScreenNotificationPreset(id, params, map_id)
+	map_id = map_id or ""
+	local preset = false
 	if params.popup_notification then
 		local title = params.title or ""
 		local text = params.text or ""
@@ -806,7 +586,7 @@ function AddOnScreenNotification(id, callback, params, cycle_objs)
 			((title_id or text_id) and (tostring(title_id) .. tostring(text_id))) or 
 			(text ~= "" and Encode16(SHA256(text))) or 
 			(title ~= "" and Encode16(SHA256(title))) or ""
-		id = "popup" .. notification_id
+		id = "popup" .. notification_id .. map_id
 		preset = OnScreenNotificationPreset:new{
 			title = title,
 			text = T(10918, "View Message"),
@@ -820,34 +600,89 @@ function AddOnScreenNotification(id, callback, params, cycle_objs)
 			VignettePulseDuration = 2000,
 		}
 	else
-		preset = OnScreenNotificationPresets[params.preset_id or id]
 		params.preset_id = params.preset_id or id
-		id = params.override_id or id
+		preset = OnScreenNotificationPresets[params.preset_id]		
+		id = (params.override_id or id) .. map_id
 	end
+	return id, preset
+end
+
+local function UpdateDisplayedNotifications(map_id)
+	local function visible_notification_filter(k, v)
+		local notification_map_id = v[notification_pack_map_id_index]
+		return not notification_map_id or notification_map_id == map_id
+	end
+
+	local function hidden_notification_filter(k, v)
+		return not visible_notification_filter(k,v)
+	end
+
+	local dlg = GetDialog("OnScreenNotificationsDlg")
+	if not dlg then
+		return
+	end
+	local notifications_hidden = table.ifilter(g_ActiveOnScreenNotifications, hidden_notification_filter)
+	for _,notification in ipairs(notifications_hidden) do
+		local id = notification[notification_pack_id_index]
+		dlg:RemoveNotification(id)
+	end
+	
+	local notifications_visible = table.ifilter(g_ActiveOnScreenNotifications, visible_notification_filter)
+	for _,notification in ipairs(notifications_visible) do
+		local id, callback, params, cycle_objs, map_id = unpack_params(notification)
+		params = params or {}
+		local preset
+		_, preset = GetOnScreenNotificationPreset(id, params, map_id)
+		if not preset then
+			preset = notification.custom_preset
+		end
+		assert(preset, "Failed to find on screen notification preset for " .. id)
+		if preset then
+			dlg:AddNotification(id, preset, callback, params, cycle_objs, map_id)
+		end
+	end
+end
+
+OnMsg.SwitchMap = UpdateDisplayedNotifications
+
+GlobalVar("g_ActiveOnScreenNotifications", {}) -- currently active onscreen notifications
+GlobalVar("g_ShownOnScreenNotifications",{})-- show once notifications support
+function AddOnScreenNotification(id, callback, params, cycle_objs, map_id)
+	assert(not cycle_objs or type(cycle_objs) == "table")
+	params = params or {}
+	local preset
+	id, preset = GetOnScreenNotificationPreset(id, params, map_id)
 	if not preset then
-		-- may happen in older savegames
 		return
 	end
 	if preset.show_once and g_ShownOnScreenNotifications[id] then
 		return
 	end
+	
+	id = params.override_id or id
+	
 	-- edit the existing one instead of creating new one on each update, e.g. SA_CustomNotification
-	local entry = pack_params(id, callback, params, cycle_objs)
+	local entry = pack_params(id, callback, params, cycle_objs, map_id)
 	local idx = table.find(g_ActiveOnScreenNotifications, 1, id) or (#g_ActiveOnScreenNotifications + 1)
 	g_ActiveOnScreenNotifications[idx] = entry
 	
-	local dlg = GetDialog("OnScreenNotificationsDlg")
-	if not dlg then
-		if not GetInGameInterface() then
-			return
+	if not map_id or map_id == ActiveMapID then
+		local dlg = GetDialog("OnScreenNotificationsDlg")
+		if not dlg then
+			if not GetInGameInterface() then
+				return
+			end
+			dlg = OpenDialog("OnScreenNotificationsDlg", GetInGameInterface())
 		end
-		dlg = OpenDialog("OnScreenNotificationsDlg", GetInGameInterface())
+		dlg:AddNotification(id, preset, callback, params, cycle_objs, ActiveMapID)
+		g_ShownOnScreenNotifications[id] = true
+		if preset.fx_action ~= "" then
+			PlayFX(preset.fx_action)
+		end
 	end
-	dlg:AddNotification(id, preset, callback, params, cycle_objs)
-	g_ShownOnScreenNotifications[id] = true
-	if preset.fx_action ~= "" then
-		PlayFX(preset.fx_action)
-	end
+	
+	UpdateDisplayedNotifications(ActiveMapID)
+	
 	return id
 end
 
@@ -860,6 +695,7 @@ Display a custom on-screen notification.
 @param string image - path to the notification icon.
 @param function callback - optional. Function called when the user clicks the notification.
 @param table params - optional. additional parameters.
+@param string map_id - map the notification belongs to.
 Additional parameters are supplied to the translatable texts, but can also be used to tweak the functionality of the notification:
 - _'cycle_objs'_ will cause the camera to cycle through a list of _GameObjects_ or _points_ when the user clicks the notification.
 - _'priority'_ changes the priority of the notification (choose between _"Normal"_, _"Important"_ and _"Critical"_; default=_"Normal"_).
@@ -869,12 +705,14 @@ Additional parameters are supplied to the translatable texts, but can also be us
 - _'game_time'_ decides if the expiration countdown is done in _RealTime_ or _GameTime_ (default=_false_).
 - _'display_countdown'_ must be _true_ if the _expiration_ countdown will be displayed in the notification texts (will be formatted and supplied to the translatable texts as _'countdown'_ parameter; this requires _'game_time'_ to be _true_).
 ]]
-function AddCustomOnScreenNotification(id, title, text, image, callback, params)
+function AddCustomOnScreenNotification(id, title, text, image, callback, params, map_id)
 	assert(not OnScreenNotificationPresets[id], string.format("Custom OnScreenNotification: Duplicates the id of preset.(id - %s).",tostring(id)))
 	params = params or {}
 	local cycle_objs = params.cycle_objs
-	
-	local entry = pack_params(id, callback, params, cycle_objs)
+
+	map_id = map_id or ""
+	id = id .. map_id
+	local entry = pack_params(id, callback, params, cycle_objs, map_id)
 
 	--The difference between this function and the original 'AddOnScreenNotification()' is that here we create a mock preset:
 	--Note: this function is useful for modding, but not all functionality is documented.
@@ -899,7 +737,7 @@ function AddCustomOnScreenNotification(id, title, text, image, callback, params)
 		end
 		dlg = OpenDialog("OnScreenNotificationsDlg", GetInGameInterface())
 	end
-	dlg:AddCustomNotification(data, callback, params, cycle_objs)
+	dlg:AddCustomNotification(data, callback, params, cycle_objs, map_id)
 	g_ShownOnScreenNotifications[id] = true
 	
 	if type(params.fx_action) == "string" and params.fx_action ~= "" then
@@ -909,7 +747,10 @@ end
 
 function LoadCustomOnScreenNotification(notification)
 	local data = notification.custom_preset or empty_table
-	local id, callback, params, cycle_objs = unpack_params(notification)
+	local id, callback, params, cycle_objs, map_id = unpack_params(notification)
+
+	id = id .. map_id
+	notification[notification_pack_id_index] = id
 
 	g_ActiveOnScreenNotifications[#g_ActiveOnScreenNotifications + 1] = notification
 	
@@ -920,7 +761,7 @@ function LoadCustomOnScreenNotification(notification)
 		end
 		dlg = OpenDialog("OnScreenNotificationsDlg", GetInGameInterface())
 	end
-	dlg:AddCustomNotification(data, callback, params, cycle_objs)
+	dlg:AddCustomNotification(data, callback, params, cycle_objs, map_id)
 	g_ShownOnScreenNotifications[id] = true
 	
 	if type(params.fx_action) == "string" and params.fx_action ~= "" then
@@ -928,18 +769,24 @@ function LoadCustomOnScreenNotification(notification)
 	end
 end
 
-function RemoveOnScreenNotification(id)
+function RemoveOnScreenNotification(id, map_id)
 	local dlg = GetDialog("OnScreenNotificationsDlg")
 	if dlg then
+		map_id = map_id or ""
+		id = id .. map_id
 		dlg:RemoveNotification(id)
+		
+		local idx = table.find(g_ActiveOnScreenNotifications, 1, id)
+		if idx then
+			table.remove(g_ActiveOnScreenNotifications, idx)
+		end
+		
+		UpdateDisplayedNotifications(ActiveMapID)
 	end
 end
 
 function PressOnScreenNotification(id)
-	local dlg = GetDialog("OnScreenNotificationsDlg")
-	if dlg then
-		dlg:PressNotification(id)
-	end
+	-- Pre-Piazzi save compatibility. Stored in game threads for delayed press.
 end
 
 function IsOnScreenNotificationShown(id)
@@ -947,16 +794,57 @@ function IsOnScreenNotificationShown(id)
 	return dlg and dlg:IsActive(id)
 end
 
+local function FixupNotificationPack_TrimMapId(notification)
+	local map_id = notification[notification_pack_map_id_index]
+	if string.len(map_id) == 0 then
+		return
+	end
+	local start_index = 1
+	local id = notification[notification_pack_id_index]
+	local map_id_pos = string.find_lower(id, map_id, start_index)
+	if map_id_pos then
+		notification[notification_pack_id_index] = string.trim(id, map_id_pos - 1)
+	end
+end
+
 function ShowNotifications() -- called on load game
 	local notifications = g_ActiveOnScreenNotifications
 	g_ActiveOnScreenNotifications = {}
 	for _, notification in ipairs(notifications) do
+		if notification[notification_pack_map_id_index] then
+			FixupNotificationPack_TrimMapId(notification)
+		end
 		if notification.custom_preset then
 			LoadCustomOnScreenNotification(notification)
 		else		
 			AddOnScreenNotification(unpack_params(notification))
 		end
 	end
+	UpdateDisplayedNotifications(ActiveMapID)
+end
+
+function GetOnScreenNotificationCountForMap(map_id)
+	local map_notifications = table.ifilter(g_ActiveOnScreenNotifications, function(k, v) return v[5] == map_id end)
+	return #map_notifications
+end
+
+function HasOnScreenNotficationsOnMap(map_id)
+	return GetOnScreenNotificationCountForMap(map_id) > 0
+end
+
+function HasOnScreenNotficationsOnMapOfPriority(map_id, priority)
+	local map_notifications = table.ifilter(g_ActiveOnScreenNotifications, function(k, v) return v[5] == map_id end)
+	for _, notification in ipairs(map_notifications) do
+		local id, callback, params, cycle_objs, map_id = unpack_params(notification)
+		local _, preset = GetOnScreenNotificationPreset(id, params, map_id)
+		if not preset then
+			preset = notification.custom_preset
+		end
+		if preset and table.find(priority, preset.priority) then
+			return true
+		end
+	end
+	return false
 end
 
 OnMsg.InGameInterfaceCreated = ShowNotifications
@@ -973,13 +861,25 @@ function OnMsg.GatherFXActions(list)
 	list[#list + 1] = "NotificationDismissed"
 end
 
-function GetOnScreenNotificationDismissable(id)
-	local dlg = GetDialog("OnScreenNotificationsDlg")
-	if dlg then
-		local notification = dlg:GetNotificationById(id)
-		if notification then
-			return notification.dismissable
+function GetOnScreenNotificationDismissable(id, map_id)
+	local notification = GetOnScreenNotification(id, map_id)
+	if notification then
+		return notification.dismissable
+	end
+end
+
+function GetFormattedExpirationString(start_time, end_time)
+	local time = end_time - start_time
+	local sols = time / const.DayDuration
+	local hours = (time % const.DayDuration) / const.HourDuration
+	if time > const.DayDuration then
+		if hours > 0 then
+			return sols > 1 and T{4108, "<sols> Sols <hours> h", sols = sols, hours = hours} or T{4109, "1 Sol <hours> h", hours = hours}
+		else
+			return sols > 1 and T{4110, "<sols> Sols", sols = sols} or T(4111, "1 Sol")
 		end
+	else
+		return T{4112, "<hours> h", hours = hours}
 	end
 end
 
@@ -989,3 +889,4 @@ function OnMsg.SafeAreaMarginsChanged()
 		notifications_dlg:RecalculateMargins()
 	end
 end
+

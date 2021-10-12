@@ -4,7 +4,7 @@ DefineClass.MedicalBuilding = {
 }
 
 function MedicalBuilding:IsRejuvenationTreatment()
-	return self.city:IsTechResearched("RejuvenationTreatment") and self.upgrade_on_off_state[self.rejuvenation_upgrade]
+	return self.city.colony:IsTechResearched("RejuvenationTreatment") and self.upgrade_on_off_state[self.rejuvenation_upgrade]
 end
 
 function MedicalBuilding:SetCustomLabels(obj, add)

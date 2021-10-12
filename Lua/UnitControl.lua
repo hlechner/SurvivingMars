@@ -31,6 +31,10 @@ end
 function MoveUnitsOnRightClick()
 	return g_RightClickControlsVehicles
 end
+
+function GetCursorWorldPos()
+	return UseGamepadUI() and GetTerrainGamepadCursor() or GetTerrainCursor()
+end
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
 
@@ -46,24 +50,27 @@ DefineClass.UnitDirectionModeDialog = {
 	interaction_hint = false,
 	block_goto = false,
 	active_interaction = false,
-	rover_cursor = "UI/Cursors/RoverTarget.tga",
-	interaction_cursor = "UI/Cursors/Interaction.tga",
 	
 	interaction_mode = false, --passed to CanInteract and InteractWith so they can do custom stuff when button is toggled.
+	interaction_handler = false,
 	
 	fx_start_args = false,
 	
 	created_route = false,
 	route_visuals = false,
+	route_texts = false,
 	cursor_obj = false,
 }
 
 function UnitDirectionModeDialog:Close(...)
 	if self.route_visuals then
-		DoneObject(self.route_visuals)
+		DoneObjects(self.route_visuals)
 		self.route_visuals = false
 	end
-	
+	if self.route_texts then
+		DoneObjects(self.route_texts)
+		self.route_texts = false
+	end
 	self.created_route = false
 	self:UpdateCursorObj()
 
@@ -118,10 +125,10 @@ function UnitDirectionModeDialog:ActivateUnitControl(obj, start_controllable)
 		SetUnitControlInteractionMode(self.unit, "move")
 	end
 	
-	if self.interaction_mode == "route" and not self.created_route then
+	if self.interaction_mode == "route" and not self.created_route and self.interaction_handler then
 		self:SetCreateRouteMode(true, obj.ui_data_propagate)
 		obj.ui_data_propagate = nil
-		self:UpdateTransportRouteVisuals()
+		self.interaction_handler:UpdateRouteVisuals(self)
 		self:UpdateCursorText()
 	end
 end
@@ -144,8 +151,13 @@ function UnitDirectionModeDialog:DeactivateUnitControl()
 	end
 	
 	if IsValid(self.route_visuals) then
-		DoneObject(self.route_visuals)
+		DoneObjects(self.route_visuals)
 		self.route_visuals = false
+	end
+	
+	if IsValid(self.route_texts) then
+		DoneObjects(self.route_texts)
+		self.route_texts = false
 	end
 	
 	if IsValid(self.cursor_obj) then
@@ -167,10 +179,14 @@ function UnitDirectionModeDialog:UpdateMouseCursor()
 		(not IsValid(self.unit) or (not self.interaction_mode and not MoveUnitsOnRightClick()) or (not self.unit:CanBeControlled() and not self.interaction_mode)) then
 		self:SetMouseCursor(const.DefaultMouseCursor)
 	elseif self.interaction_obj then
-		self:SetMouseCursor(self.interaction_cursor)
+		self:SetMouseCursor(const.DefaultInteractionCursor)
 	else
-		self:SetMouseCursor(self.unit:CanBeControlled() and self.rover_cursor or const.DefaultMouseCursor)
+		self:SetMouseCursor(self.unit:GetCursor())
 	end
+end
+
+function UnitDirectionModeDialog:AllowExitToOverview()
+	return not self.interaction_handler
 end
 
 local interaction_mode_cursor_text = {
@@ -180,8 +196,6 @@ local interaction_mode_cursor_text = {
 	["reassign_all"] = T(4427, "Reassign"),
 	["maintenance"] = T(4433, "Perform Maintenance"),
 	["recharge"] = T(7973, "Select target"),
-	["load"] = T(7974, "Load Resource"),
-	["unload"] = T(7975, "Unload Resource"),
 	["assign_to_bld"] = T(7972, "Select Target"),
 	["build"] = T(9800, "Build"),
 }
@@ -203,28 +217,25 @@ function UnitDirectionModeDialog:UpdateCursorText()
 	end
 	local gamepad = UseGamepadUI()
 	local txt
-	local hint = self.unit and self.interaction_hint or ""
-	if hint~="" then
-		txt = gamepad and "\n"..hint or hint		
-	elseif self.unit and self.unit:CanBeControlled() then
-		if self.interaction_mode == "route" then
-			local res_dlg = GetDialog("ResourceItems")
-			local choosing_res = res_dlg and res_dlg.context and IsKindOf(res_dlg.context.object, "RCTransport")
-			if not choosing_res then
-				if not (self.created_route and self.created_route.from) then
-					txt = interaction_mode_cursor_text.load
-				else
-					txt = interaction_mode_cursor_text.unload
-				end
-			end
+	if self.unit and self.unit:CanBeControlled() then
+		if self.interaction_mode == "route" and self.interaction_handler then
+			txt = self.interaction_handler:UpdateCursorText(self)
+			hud.idSightsStatus:AddDynamicPosModifier({ id = "unit_direction", target = gamepad and "gamepad" or "mouse"})
+			self.interaction_handler:UpdateTooltip(self)
 		else
 			txt = interaction_mode_cursor_text[self.interaction_mode]
+			ShowTooltip(false)
 		end
+	end
+
+	if not txt then
+		local hint = self.unit and self.interaction_hint or ""
+		txt = gamepad and Untranslated("\n")..hint or hint		
 	end
 	
 	local ctrl = hud.idtxtConstructionStatus
 	local xcursor = GetGamepadCursor()
-	ctrl:SetVisible(txt and txt~= "" and (not gamepad or xcursor and xcursor:GetVisible()))
+	ctrl:SetVisible(txt and txt~= "")
 	if txt and txt~= "" and txt ~= ctrl:GetText() then
 		ctrl:SetText(txt)
 		ctrl:SetMargins(box(40,40,0,0))
@@ -273,7 +284,7 @@ function UnitDirectionModeDialog:OnMouseButtonDown(pt, button)
 			self.created_route.from = false
 			self.created_route.obj_at_source = false
 			SetUnitControlInteractionMode(self.unit, "route")
-			self:UpdateTransportRouteVisuals()
+			self.interaction_handler:UpdateRouteVisuals(self)
 			self:UpdateCursorObj()
 			return "break"
 		elseif not MoveUnitsOnRightClick() and not self.interaction_mode then
@@ -303,9 +314,21 @@ function UnitDirectionModeDialog:OnMouseButtonDown(pt, button)
 	end
 end
 
+function UnitDirectionModeDialog:OnMouseButtonDoubleClick(pt, button)
+	if not self.unit or IsEditorActive() then return end
+	self:UpdateInteractionObj(SelectionMouseObj(), GetTerrainCursor())
+	local r = self:InteractWithPos(GetTerrainCursor())
+	if not UseGamepadUI() and r == "break" then
+		self:HideCursorText()
+		refreshing_interaction = self.active_interaction or SelectionMouseObj()
+		DelayedCall(10, UnitDirectionModeDialog.RefreshActiveInteraction, self)
+	end
+	return r
+end
+
 function UnitDirectionModeDialog:InteractWithPos(pos, keep_control)
 	if self.interaction_mode == "route" then
-		self:CreateRoute(pos)
+		self.interaction_handler:CreateRoute(self, pos)
 		return "break"
 	elseif not self.interaction_mode or
 		(not self.interaction_obj and not interaction_modes_with_no_obj_req[self.interaction_mode]) then
@@ -340,7 +363,7 @@ function UnitDirectionModeDialog:Interact(pos, keep_control)
 	HintDisable("HintVehicleOrders")
 
 	if self.interaction_mode == "route" then
-		self:CreateRoute(pos)
+		self.interaction_handler:CreateRoute(self, pos)
 		return "break"
 	end
 	--we are active and not sieged, do stuff.
@@ -407,9 +430,9 @@ function UnitDirectionModeDialog:UpdateInteractionObj(obj, pos)
 	self.interaction_obj = interaction_obj or false
 	self.interaction_hint = (h2 or h1)
 	
-	self.block_goto = (block_goto or (GetDomeAtPoint(pos) and IsKindOf(self.unit, "BaseRover")))
-	if mode == "route" then
-		self:UpdateTransportRouteVisuals()
+	self.block_goto = (block_goto or (GetDomeAtPoint(GetActiveObjectHexGrid(), pos) and IsKindOf(self.unit, "BaseRover")))
+	if mode == "route" and self.interaction_handler then
+		self.interaction_handler:UpdateRouteVisuals(self.interaction_handler, self)
 	end
 	self:UpdateCursorText()
 end
@@ -454,40 +477,13 @@ end
 function UnitDirectionModeDialog:UpdateCursorObj(pos)
 	pos = pos or GetUIStyleGamepad() and GetTerrainGamepadCursor() or GetTerrainCursor()
 	if self.created_route then
-		--cursor obj management
-		if not self.created_route.from and not self.cursor_obj then
-			if not Platform.durango then
-				HideMouseCursor("InGameInterface")
-			end
-			HideGamepadCursor("construction")
-			self.cursor_obj = PlaceObject("WireFramedPrettification", {entity = "RoverTransport", construction_stage = 0, GetSelectionRadiusScale = RCTransport_AutoRouteRadius})
-			self.cursor_obj:SetAngle(0)
-			local rad = PlaceObject("RangeHexMovableRadius")
-			self.cursor_obj:Attach(rad)
-			rad:SetScale(RCTransport_AutoRouteRadius)
-		elseif not self.created_route.from and self.cursor_obj.construction_stage == 1 then
-			self.cursor_obj.construction_stage = 0
-			self.cursor_obj:UpdateConstructionShaderParams()
-		elseif self.created_route.from and not self.cursor_obj then
-			if not Platform.durango then
-				HideMouseCursor("InGameInterface")
-			end
-			HideGamepadCursor("construction")
-			self.cursor_obj = PlaceObject("WireFramedPrettification", {entity = "RoverTransport", construction_stage = 1, GetSelectionRadiusScale = RCTransport_AutoRouteRadius})
-			self.cursor_obj:SetAngle(0)
-			local rad = PlaceObject("RangeHexMovableRadius")
-			self.cursor_obj:Attach(rad)
-			rad:SetScale(RCTransport_AutoRouteRadius)
-		elseif self.created_route.from and self.cursor_obj.construction_stage == 0 then
-			self.cursor_obj.construction_stage = 1
-			self.cursor_obj:UpdateConstructionShaderParams()
-		end
-		self.cursor_obj:SetPos(pos:SetTerrainZ(1*guim))
-	elseif IsValid(self.cursor_obj) then
-		ShowMouseCursor("InGameInterface")
+		self.interaction_handler:UpdateCursorObj(self, pos)
+	else
 		ShowGamepadCursor("construction")
-		DoneObject(self.cursor_obj)
-		self.cursor_obj = false
+		if IsValid(self.cursor_obj) then
+			DoneObject(self.cursor_obj)
+			self.cursor_obj = false
+		end
 	end
 end
 
@@ -532,32 +528,20 @@ function UnitDirectionModeDialog:OnShortcut(shortcut, source)
 	return InterfaceModeDialog.OnShortcut(self, shortcut, source)
 end
 
-------------------------------------------------------------------------------
-------------------------------------------------------------------------------
---rctrransport create route
-function UnitDirectionModeDialog:SetTransportRoutePoint(type, pt)
-	assert(self.created_route)
-	if not self.created_route then
-		return
-	end
-	
-	self.created_route[type] = pt:SetTerrainZ(1*guim)
-
-	if self.created_route.from and self.created_route.to then
-		self:OnTransportRouteCreated()
-	else
-		self:UpdateTransportRouteVisuals()
-	end
-end
-
 function UnitDirectionModeDialog:SetCreateRouteMode(val, data)
-	self.created_route =  val and (data or {from = false, to = false, obj_at_source = false}) or false
+	self.created_route = val 
+	if val then
+		self.created_route = self.interaction_handler:NewRoute()
+	end
 	if val then
 		if GetUIStyleGamepad() then
 			self:CreateThread("GamepadCursorUpdate", self.GamepadUpdateThread, self)
 		end
-	elseif not val then 
-		self:UpdateTransportRouteVisuals()
+	elseif not val then
+		if self.interaction_handler then
+			self.interaction_handler:UpdateRouteVisuals(self)
+		end
+		
 		if self:IsThreadRunning("GamepadCursorUpdate") then
 			self:DeleteThread("GamepadCursorUpdate")
 		end
@@ -566,57 +550,6 @@ function UnitDirectionModeDialog:SetCreateRouteMode(val, data)
 	self:UpdateMouseCursor()
 	self.desktop:UpdateCursor()
 end
-
-function UnitDirectionModeDialog:OnTransportRouteCreated()
-	if self.created_route and self.created_route.from and self.created_route.to then
-		CityUnitController[UICity]:SetTransportRoute(self.created_route)
-		self.created_route = false
-		SetUnitControlInteractionMode(self.unit, false)
-		DoneObject(self.route_visuals)
-		self.route_visuals = false
-		SetupRouteVisualsForTransport(self.unit)
-		if self:IsThreadRunning("GamepadCursorUpdate") then
-			self:DeleteThread("GamepadCursorUpdate")
-		end
-		if GetUIStyleGamepad() then
-			self:UpdateCursorObj()
-		end		
-	end
-end
-
-function UnitDirectionModeDialog:UpdateTransportRouteVisuals()
-	if self.created_route and self.created_route.from and not self.created_route.to then
-		if not self.route_visuals then
-			self.route_visuals = PlaceObject("WireFramedPrettification", {entity = "RoverTransport", construction_stage = 0, GetSelectionRadiusScale = RCTransport_AutoRouteRadius})
-			self.route_visuals:SetAngle(0)
-			ShowHexRanges(UICity, false, self.route_visuals)
-			if IsValid(self.cursor_obj) then
-				DoneObject(self.cursor_obj)
-				self.cursor_obj = false
-			end
-		end
-		self.route_visuals:SetPos(self.created_route.from)
-		--self.route_visuals:SetAngle(CalcOrientation(self.created_route.from, self.last_mouse_pos or point20))
-	elseif not self.created_route or self.created_route and not self.created_route.from and not self.created_route.to and IsValid(self.route_visuals) then
-		DoneObject(self.route_visuals)
-		self.route_visuals = false
-	end
-end
-
-function UnitDirectionModeDialog:CreateRoute(terrain_pt)
-	if not self.created_route.from then
-		if self.interaction_obj ~= self.created_route.obj_at_source then
-			self.created_route.obj_at_source = self.interaction_obj
-		end
-		CityUnitController[UICity]:InteractWithObject(self.interaction_obj, self.interaction_mode)
-		self:SetTransportRoutePoint("from", terrain_pt or GetTerrainCursor())
-	else
-		self:SetTransportRoutePoint("to", terrain_pt or GetTerrainCursor())
-	end
-	self:UpdateCursorText()
-end
-------------------------------------------------------------------------------
-------------------------------------------------------------------------------
 
 DefineClass.UnitController = {
 	__parents = { "InitDone" },
@@ -640,7 +573,11 @@ function UnitController:OnUnitControlActiveChanged(new_val)
 end
 
 function UnitController:ResolveObjAt(pos, interaction_mode)
-	return self.unit:ResolveObjAt(pos, interaction_mode)
+	if self.unit then 
+		return self.unit:ResolveObjAt(pos, interaction_mode)
+	else
+		return nil
+	end
 end
 
 function UnitController:CanInteractWithObject(o, m)
@@ -658,6 +595,7 @@ function UnitController:CanInteractWithObject(o, m)
 end
 
 function UnitController:InteractWithObject(o, m, p)
+	if not self.unit then return false end
 	if not self.unit:CanBeControlled(m) then return false end
 	RebuildInfopanel(self.unit)
 	return self.unit:InteractWithObject(o, m, p)
@@ -667,6 +605,10 @@ function UnitController:SetTransportRoute(r)
 	self.unit:SetTransportRoute(r)
 end
 
+function UnitController:SetSafariRoute(r)
+	self.unit:SetSafariRoute(r)
+end
+
 function UnitController:CallCustomFunctor(functor)
 	return functor(self.unit)
 end
@@ -674,20 +616,19 @@ end
 function UnitController:GoToPos(pos)
 	local u = self.unit
 	if IsValid(u) and u:CanBeControlled("move") then --unit can be salvaged.
-		local new_pos = GetPassablePointNearby(pos, u.pfclass)
+		local realm = GetRealm(u)
+		local new_pos = realm:GetPassablePointNearby(pos, u.pfclass)
 		if new_pos and new_pos ~= self.position then
 			self.position = new_pos
 			if self.position:x() ~= -1 and self.position:y() ~= -1 then
 				PlayFX("ClickMove", "end", u)
 				PlayFX("ClickMove", "start", u, nil, self.position)
-				if u:IsKindOf("Building") then
+				if u:HasMember("GoToPos") then
 					u:GoToPos(self.position)
 				else
-					if u:HasMember("GoToPos") then
-						u:GoToPos(self.position)
-					else
-						u:SetCommandUserInteraction("GotoFromUser", self.position)
-					end
+					u:SetCommandUserInteraction("GotoFromUser", self.position)
+				end
+				if not u:IsKindOf("Building") then
 					CreateGameTimeThread(RebuildInfopanel, u)
 				end
 			end
@@ -695,12 +636,20 @@ function UnitController:GoToPos(pos)
 	end
 end
 
-function SetUnitControlInteractionMode(unit, m)
+function UnitControlCreateRoute(unit)
 	local dlg = GetInGameInterfaceModeDlg()
+	if dlg and dlg:IsKindOf("UnitDirectionModeDialog") and dlg.unit == unit then
+		dlg.interaction_handler:OnRouteCreated(dlg)
+	end
+end
+
+function SetUnitControlInteractionMode(unit, m, handler, route)
+	local dlg = GetInGameInterfaceModeDlg()	
 	if dlg and dlg:IsKindOf("UnitDirectionModeDialog") and dlg.unit == unit then
 		local old = dlg.interaction_mode
 		if old ~= m then
 			dlg.interaction_mode = m
+			dlg.interaction_handler = handler
 			dlg.active_interaction = false			
 			unit:OnInteractionModeChanged(old, m)
 			dlg:UpdateCursorText()
@@ -710,6 +659,8 @@ function SetUnitControlInteractionMode(unit, m)
 			
 			if m ~= "route" and dlg.created_route ~= false then
 				dlg:SetCreateRouteMode(false)
+			elseif route then
+				dlg.created_route = route
 			end
 		end
 	end

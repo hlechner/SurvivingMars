@@ -161,10 +161,11 @@ end
 function HUD:UpdateTimeButtons()
 	local factor = GetTimeFactor()
 	local paused = IsPaused() or factor == 0
+	local speed_state = GetEstimatedGameSpeedState()
 	self.idPause:SetToggled(paused)
-	self.idPlay:SetToggled(not paused and factor > 0 and factor <= const.DefaultTimeFactor)
-	self.idMedium:SetToggled(not paused and factor > const.DefaultTimeFactor and factor < const.DefaultTimeFactor * const.fastGameSpeed)
-	self.idFast:SetToggled(not paused and factor >= const.DefaultTimeFactor * const.fastGameSpeed)
+	self.idPlay:SetToggled(speed_state == "play")
+	self.idMedium:SetToggled(speed_state == "medium")
+	self.idFast:SetToggled(speed_state == "fast" or speed_state == "ultra")
 end
 
 function HUD.UpdateDesatModifier(ctrl)
@@ -189,7 +190,9 @@ function HUD.idBuildOnPress()
 end
 
 function HUD.idOverviewOnPress()
-	ToggleOverviewMode()
+	if ActiveMapData.IsAllowedToEnterOverview then
+		ToggleOverviewMode()
+	end
 end
 
 function HUD.idResupplyOnPress()
@@ -203,12 +206,12 @@ function HUD.idResearchOnPress()
 end
 
 function HUD:GetCurrentResearchName()
-	local current_research = UICity and UICity:GetResearchInfo()
+	local current_research = UIColony and UIColony:GetResearchInfo()
 	return current_research and TechDef[current_research].display_name or T(6868, "None")
 end
 
 function HUD:GetCurrentResearchProgress()
-	return UICity:GetResearchProgress()
+	return UIColony:GetResearchProgress()
 end
 
 function HUD.idColonyControlCenterOnPress()
@@ -249,11 +252,24 @@ GlobalVar("UISpeedState", "play")
 
 function ChangeGameSpeedState(delta)
 	local states = {"pause", "play", "medium", "fast"}
+	if IsDevelopmentSandbox() then
+		states[#states + 1] = "ultra"
+	end
 	local idx = table.find(states, UISpeedState)
 	local new_idx = Clamp(idx + delta, 1, #states)
 	if new_idx ~= idx then
 		local new_state = states[new_idx]
 		SetGameSpeedState(new_state)
+	end
+end
+
+function ToggleGamePausedState()
+	if GetTimeFactor() == 0 then
+		UIColony:SetGameSpeed(false)
+		UISpeedState = GetEstimatedGameSpeedState()
+	else
+		UIColony:SetGameSpeed(0)
+		UISpeedState = "pause"
 	end
 end
 
@@ -266,21 +282,39 @@ function SetGameSpeedState(speed)
 	if speed == "pause" then
 		hud.idPause:Press()
 	elseif speed == "play" then
-		hud.idPlay:Press()
+		UIColony:SetGameSpeed(1)
 	elseif speed == "medium" then
-		hud.idMedium:Press()
+		UIColony:SetGameSpeed(const.mediumGameSpeed)
 	elseif speed == "fast" then
-		hud.idFast:Press()
+		UIColony:SetGameSpeed(const.fastGameSpeed)
+	elseif speed == "ultra" then
+		UIColony:SetGameSpeed(const.ultraGameSpeed)
+	end
+	UISpeedState = speed
+end
+
+function GetEstimatedGameSpeedState()
+	local time_factor = GetTimeFactor()
+	if IsPaused() or time_factor==0 then
+		return "paused"
+	elseif time_factor > 0 and time_factor < const.DefaultTimeFactor * const.mediumGameSpeed then
+		return "play"
+	elseif time_factor >= const.DefaultTimeFactor * const.mediumGameSpeed and time_factor < const.DefaultTimeFactor * const.fastGameSpeed then
+		return "medium"
+	elseif time_factor >= const.DefaultTimeFactor * const.fastGameSpeed and time_factor < const.DefaultTimeFactor * const.ultraGameSpeed then
+		return "fast"
+	elseif time_factor >= const.DefaultTimeFactor * const.ultraGameSpeed then
+		return "ultra"
 	end
 end
 
 function TogglePause()
 	local factor = GetTimeFactor() / const.DefaultTimeFactor
-	if UICity then
+	if UIColony then
 		if factor == 0 then
-			UICity:SetGameSpeed() -- restore to last speed
+			UIColony:SetGameSpeed() -- restore to last speed
 		else
-			UICity:SetGameSpeed(0)
+			UIColony:SetGameSpeed(0)
 		end
 	end
 end

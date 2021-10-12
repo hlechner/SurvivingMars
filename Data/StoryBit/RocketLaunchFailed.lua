@@ -16,6 +16,9 @@ PlaceObj('StoryBit', {
 			'Condition', ">",
 			'Amount', 0,
 		}),
+		PlaceObj('IsRocketType', {
+			'Type', "Lander",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(944350528421, --[[StoryBit RocketLaunchFailed Text]] "<DisplayName> has failed to launch. We believe the problem lies within the ratio of liquid oxygen to liquid methane. We’ve compensated the issue but it is highly recommended to perform a full maintenance on the Rocket which will cost <machineparts(cost)>."),
@@ -26,6 +29,9 @@ PlaceObj('StoryBit', {
 	VoicedText = T(926337137580, --[[voice:narrator]] "Several Colonists have gathered to watch the launch. Their anticipation is quickly replaced by concern as the engines spit dust and smoke but the Rocket refuses to get off the ground."),
 	group = "Rocket",
 	id = "RocketLaunchFailed",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {},
+	}),
 	PlaceObj('StoryBitParamResource', {
 		'Name', "cost",
 		'Value', 5000,

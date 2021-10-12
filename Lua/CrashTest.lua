@@ -83,13 +83,13 @@ function StartCrashTest()
 							obj:ToggleDemolish()
 						end
 					elseif IsKindOf(obj, "BaseRover") then
-						local pos = GetRandomPassable():SetTerrainZ()
+						local pos = GetRandomPassable(obj.city):SetTerrainZ()
 						obj:Goto(pos)
 					end
 					local x, y = GetTerrainCursorXY(UIL.GetScreenSize()/2):xy()
 					local amp = 50*guim
 					local bbox = box(x - amp, y - amp, x + amp, y + amp)
-					terrain.InvalidateType(bbox)
+					GetActiveTerrain():InvalidateType(bbox)
 					RecreateRenderObjects()	
 				end
 			end)

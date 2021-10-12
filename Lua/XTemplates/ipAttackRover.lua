@@ -17,7 +17,7 @@ PlaceObj('XTemplate', {
 		}),
 		PlaceObj('XTemplateTemplate', {
 			'comment', "repair",
-			'__condition', function (parent, context) return context:CanBeRepaired() and UICity.mystery and UICity.mystery.enable_rover_repair and context.can_repair end,
+			'__condition', function (parent, context) return context:CanBeRepaired() and UIColony.mystery and UIColony.mystery.enable_rover_repair and context.can_repair end,
 			'__template', "InfopanelButton",
 			'OnPressParam', "ToggleRepair",
 		}),
@@ -86,7 +86,7 @@ PlaceObj('XTemplate', {
 			}),
 			}),
 		PlaceObj('XTemplateTemplate', {
-			'__condition', function (parent, context) return UICity.mystery and UICity.mystery.can_shoot_rovers end,
+			'__condition', function (parent, context) return UIColony.mystery and UIColony.mystery.can_shoot_rovers end,
 			'__template', "InfopanelSection",
 			'RolloverText', T(944541850261, --[[XTemplate ipAttackRover RolloverText]] "The structural integrity of this vehicle will decrease on each missile hit. The vehicle will be disabled at 0 integrity."),
 			'RolloverTitle', T(678706263894, --[[XTemplate ipAttackRover RolloverTitle]] "Structural Integrity <percent(current_health, max_health)>"),

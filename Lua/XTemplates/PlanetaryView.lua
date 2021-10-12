@@ -4,7 +4,7 @@ PlaceObj('XTemplate', {
 	group = "InGame",
 	id = "PlanetaryView",
 	PlaceObj('XTemplateWindow', {
-		'__context', function (parent, context) return LandingSiteObjectCreateAndLoad{planetary_view = true, landing_preset_group = "MarsScreen", map_params = MarsScreenMapParams, expedition_rocket = context and context.rocket} end,
+		'__context', function (parent, context) return LandingSiteObjectCreateAndLoad({planetary_view = true, landing_preset_group = "MarsScreen", map_params = MarsScreenMapParams, expedition_rocket = context and context.rocket}) end,
 		'__class', "XDialog",
 		'Id', "idLandingSpot",
 		'Padding', box(60, 68, 0, 25),
@@ -122,12 +122,14 @@ PlaceObj('XTemplate', {
 				self:DeleteThread("easing")
 				self:DeleteThread("visibility")
 				self:DeleteThread("gamepad")
+				g_SelectedSpotChallengeMods = false
 			end,
 		}),
 		PlaceObj('XTemplateFunc', {
 			'name', "Open",
 			'func', function (self, ...)
 				HideGamepadCursor("planetary_view")
+				g_SelectedSpotChallengeMods = {}
 				XDialog.Open(self, ...)
 				self.context:InitData(self)
 				local padding = GetSafeMargins(self:GetPadding())
@@ -191,6 +193,7 @@ PlaceObj('XTemplate', {
 					}, {
 						PlaceObj('XTemplateAction', {
 							'ActionId', "close",
+							'ActionSortKey', "1",
 							'ActionName', T(4523, --[[XTemplate PlanetaryView ActionName]] "CLOSE"),
 							'ActionToolbar', "ActionBar",
 							'ActionShortcut', "Escape",
@@ -199,17 +202,18 @@ PlaceObj('XTemplate', {
 						}),
 						PlaceObj('XTemplateAction', {
 							'ActionId', "expedition",
+							'ActionSortKey', "1",
 							'ActionName', T(960994412922, --[[XTemplate PlanetaryView ActionName]] "SEND EXPEDITION"),
 							'ActionToolbar', "ActionBar",
 							'ActionGamepad', "ButtonX",
 							'ActionState', function (self, host)
 								local spot = host.context.selected_spot
-								return spot and (spot.spot_type == "anomaly"  or (spot.spot_type=="project" and spot:PrerequisiteToStart())) and not spot.rocket or "hidden"
+								return spot and (spot.spot_type == "anomaly" or (spot.spot_type == "project" and spot:PrerequisiteToStart())) and not spot.rocket or "hidden"
 							end,
 							'OnAction', function (self, host, source)
 								if PlanetaryExpeditionPossible("use in orbit") then
 									local context = host.context
-									if context.expedition_rocket then
+									if context:HasValidExpeditionRocket() then
 										SendExpeditionAction(context.expedition_rocket, context.selected_spot, host)
 										return
 									end
@@ -221,6 +225,7 @@ PlaceObj('XTemplate', {
 						}),
 						PlaceObj('XTemplateAction', {
 							'ActionId', "cancelExpedition",
+							'ActionSortKey', "1",
 							'ActionName', T(762629505520, --[[XTemplate PlanetaryView ActionName]] "CANCEL EXPEDITION"),
 							'ActionToolbar', "ActionBar",
 							'ActionGamepad', "ButtonX",
@@ -237,7 +242,15 @@ PlaceObj('XTemplate', {
 							'Margins', box(55, 0, 0, 0),
 							'Title', T(482503373345, --[[XTemplate PlanetaryView Title]] "<white><Coord></white>"),
 							'BigImage', true,
-						}),
+						}, {
+							PlaceObj('XTemplateFunc', {
+								'name', "OnHyperLink(self, hyperlink, argument, hyperlink_box, pos, button)",
+								'func', function (self, hyperlink, argument, hyperlink_box, pos, button)
+									local host = GetDialog(self)
+									host.context:RenameColony(host)
+								end,
+							}),
+							}),
 						PlaceObj('XTemplateWindow', {
 							'Id', "idContent",
 							'MinHeight', 613,
@@ -262,7 +275,8 @@ PlaceObj('XTemplate', {
 								'__condition', function (parent, context) return not context.selected_spot end,
 							}, {
 								PlaceObj('XTemplateWindow', {
-									'__class', "XList",
+									'__context', function (parent, context) return GetSortedMarsPointsOfInterest() end,
+									'__class', "XContentTemplateList",
 									'Id', "idPOIList",
 									'Margins', box(39, 20, 0, 0),
 									'BorderWidth', 0,
@@ -274,10 +288,10 @@ PlaceObj('XTemplate', {
 									'FocusedBackground', RGBA(0, 0, 0, 0),
 									'VScroll', "idScroll",
 									'ShowPartialItems', false,
+									'MouseScroll', true,
 									'LeftThumbScroll', false,
 								}, {
 									PlaceObj('XTemplateForEach', {
-										'array', function (parent, context) return GetSortedMarsPointsOfInterest() end,
 										'__context', function (parent, context, item, i, n) return item end,
 										'run_after', function (child, context, item, i, n)
 											child:SetText(item.display_name)
@@ -293,6 +307,14 @@ PlaceObj('XTemplate', {
 										}),
 										}),
 									}),
+								PlaceObj('XTemplateAction', {
+									'ActionId', "view",
+									'ActionSortKey', "0",
+									'ActionName', T(208937843602, --[[XTemplate PlanetaryView ActionName]] "View"),
+									'ActionToolbar', "ActionBar",
+									'ActionGamepad', "ButtonA",
+									'__condition', function (parent, context) return GetUIStyleGamepad() end,
+								}),
 								PlaceObj('XTemplateTemplate', {
 									'__template', "ScrollbarNew",
 									'Id', "idScroll",
@@ -669,6 +691,9 @@ PlaceObj('XTemplate', {
 									'__template', "PlanetaryViewResources",
 								}),
 								}),
+							PlaceObj('XTemplateTemplate', {
+								'__template', "PlanetaryViewAsteroidResources",
+							}),
 							}),
 						}),
 					PlaceObj('XTemplateMode', {
@@ -1135,8 +1160,9 @@ PlaceObj('XTemplate', {
 							'ActionId', "send",
 							'ActionName', T(221817248681, --[[XTemplate PlanetaryView ActionName]] "SEND"),
 							'ActionToolbar', "ActionBar",
-							'ActionGamepad', "ButtonA",
+							'ActionGamepad', "ButtonX",
 							'ActionState', function (self, host)
+								self.ActionName = host.context:SelectedAsteroidSpot() and Untranslated("PREPARE") or Untranslated("SEND")
 								local list = host:ResolveId("idList")
 								if list and list.focused_item and list[list.focused_item]:GetEnabled() then return end
 								return "disabled"
@@ -1145,7 +1171,14 @@ PlaceObj('XTemplate', {
 								local list = host:ResolveId("idList")
 								local item = list and list.focused_item
 								if item then
-									list[item]:Press()
+									local rocket = list[item].context
+									if rocket and IsKindOf(rocket, "LanderRocketBase") then
+										rocket.requested_spot = host.context.selected_spot
+										rocket:UIEditPayloadRequest()
+										host:Close()
+									else
+										list[item]:Press()
+									end
 								end
 							end,
 						}),

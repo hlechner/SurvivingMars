@@ -57,25 +57,6 @@ PlaceObj('XTemplate', {
 					'Dock', "top",
 				}, {
 					PlaceObj('XTemplateWindow', {
-						'__condition', function (parent, context) return GetUIStyleGamepad() end,
-						'__class', "XImage",
-						'Id', "idGamepadRenameHint",
-						'Margins', box(-40, 0, 0, 0),
-						'Dock', "box",
-						'HAlign', "left",
-						'VAlign', "center",
-						'FoldWhenHidden', true,
-						'ImageScale', point(520, 520),
-					}),
-					PlaceObj('XTemplateCode', {
-						'run', function (self, parent, context)
-							local hint = parent:ResolveId("idGamepadRenameHint")
-							if hint then
-								hint:SetImage(GetPlatformSpecificImagePath("RSPress"))
-							end
-						end,
-					}),
-					PlaceObj('XTemplateWindow', {
 						'__class', "XText",
 						'Id', "idRocketName",
 						'Padding', box(0, 0, 0, 0),
@@ -204,11 +185,13 @@ PlaceObj('XTemplate', {
 						'UniformRowHeight', true,
 					}, {
 						PlaceObj('XTemplateForEach', {
-							'array', function (parent, context) local t = table.keys2(const.ColonistSpecialization, true) table.remove_entry(t, "none")  table.insert(t, 1, "none") return t end,
+							'array', function (parent, context)
+								return GetSortedColonistSpecializationTable()
+							end,
 							'item_in_context', "spec",
 							'run_after', function (child, context, item, i, n)
 								--(child, context, item, i, n)
-								local data= const.ColonistSpecialization[item]
+								local data = const.ColonistSpecialization[item]
 								child.idSpecialization:SetText(data.display_name)
 								child.idValue:SetText(T{12312, "<approved>/<all>",approved = context:GetApprovedSpecialist(item), all = context:GetMatchingSpecialist(item)})
 								child:SetGridX((i-1)/4+1)
@@ -226,7 +209,7 @@ PlaceObj('XTemplate', {
 								'ContextUpdateOnOpen', true,
 								'OnContextUpdate', function (self, context, ...)
 									--(child, context, item, i, n)
-									local data= const.ColonistSpecialization[context.spec]
+									local data = const.ColonistSpecialization[context.spec]
 									self.idSpecialization:SetText(data.display_name)
 									self.idValue:SetText(T{12312, "<approved>/<all>",approved = context:GetApprovedSpecialist(context.spec), all = context:GetMatchingSpecialist(context.spec)})
 									local open_positions = GetNeededSpecialistAround(false, context.spec)

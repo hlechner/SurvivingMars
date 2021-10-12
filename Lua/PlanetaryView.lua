@@ -6,6 +6,7 @@ local function _SortMarsPointsOfInterest()
 	local rivals = {}
 	local anomalies = {}
 	local special_projects  = {}
+	local asteroids = {}
 	for _, poi in ipairs(MarsScreenLandingSpots) do
 		if poi.spot_type == "rival" then
 			rivals[#rivals + 1] = poi
@@ -13,11 +14,14 @@ local function _SortMarsPointsOfInterest()
 			anomalies[#anomalies + 1] = poi
 		elseif poi.spot_type == "project" then
 			special_projects[#special_projects + 1] = poi	
+		elseif poi.spot_type == "asteroid" then
+			asteroids[#asteroids + 1] = poi
 		end
 	end
 	TSort(rivals, "display_name")
 	TSort(special_projects, "display_name")
 	TSort(anomalies, "display_name")
+	TSort(asteroids, "display_name")
 	SortedMarsScreenLandingSpots = {}
 	if MarsScreenLandingSpots.OurColony then
 		SortedMarsScreenLandingSpots[1] = MarsScreenLandingSpots.OurColony
@@ -25,6 +29,7 @@ local function _SortMarsPointsOfInterest()
 	table.iappend(SortedMarsScreenLandingSpots, rivals)
 	table.iappend(SortedMarsScreenLandingSpots, special_projects)
 	table.iappend(SortedMarsScreenLandingSpots, anomalies)
+	table.iappend(SortedMarsScreenLandingSpots, asteroids)
 end
 
 function SortMarsPointsOfInterest()
@@ -73,6 +78,7 @@ DefineClass.MarsScreenPointOfInterest = {
 	display_name = false,
 	description = false,
 	add_hr_info_onplace = false,
+	map = false,
 }
 
 function MarsScreenPointOfInterest:Init()
@@ -87,6 +93,7 @@ DefineClass.MarsScreenOurColony = {
 	__parents = {"MarsScreenPointOfInterest"},
 	spot_type = "our_colony",
 	add_hr_info_onplace = true,
+	scanned = false,
 }
 
 function GetLongDist(long1, long2)
@@ -107,7 +114,7 @@ function IsTooCloseToSpots(lat, long, spots)
 		end
 	end
 end
--- point_type  = {rival, anomaly, project}
+-- point_type  = {rival, anomaly, project, asteroid}
 function GenerateMarsScreenPoI(point_type)
 	local lat, long
 	local min_lat, max_lat   = const.POIMinLat, const.POIMaxLat
@@ -161,7 +168,8 @@ function InitMarsScreenData()
 			id = "OurColony",
 			latitude = MarsScreenMapParams.latitude,
 			longitude = MarsScreenMapParams.longitude,
-			display_name = T(11037, "Our Colony"),
+			display_name = Untranslated(g_CurrentMapParams.colony_name),
+			map = UIColony.surface_map_id,
 		}
 		Msg("OurColonyPlaced")
 	end
@@ -174,15 +182,6 @@ end
 
 function PlanetaryExpeditionPossible(use_inorbit)
 	return UICity:HasLandedRocket(use_inorbit)
-end
-
-function City:HasLandedRocket(use_inorbit)
-	for _, rocket in ipairs(self.labels.AllRockets) do
-		if rocket.command == "Refuel" or rocket.command == "WaitLaunchOrder" or (use_inorbit and rocket.command == "WaitInOrbit") then
-			return true
-		end
-	end
-	return false
 end
 
 function PromptNoAvailableRockets()
@@ -212,7 +211,7 @@ function SendExpeditionAction(obj, spot, dialog, param, additional_params)
 			return
 		end
 	end
-	SendRocketToMarsPoint(obj, spot, dialog, param, additional_params )
+	SendRocketToMarsPoint(obj, spot, dialog, param, additional_params)
 end
 
 function GetRocketExpeditionStatus(rocket)
@@ -253,15 +252,15 @@ end
 function SendRocketToMarsPoint(obj, spot, dialog)
 	local is_project = spot.spot_type == "project"
 	if spot.spot_type == "anomaly" or is_project then
-		local rocket = PlaceBuilding("RocketExpedition", {city = UICity, ExpeditionTime = is_project and spot.expedition_time or nil})
+		local rocket = PlaceBuildingIn("RocketExpedition", MainMapID, {ExpeditionTime = is_project and spot.expedition_time or nil})
 		rocket:SetCommand("BeginExpedition", obj, spot)
 		spot.rocket = rocket
-		dialog:Close()
-		CreateRealTimeThread(function()
-			WaitMsg("PlanetCameraSet")
-			ViewAndSelectObject(IsValid(obj) and obj or rocket)
-		end)
 	end
+	dialog:Close()
+	CreateRealTimeThread(function()
+		WaitMsg("PlanetCameraSet")
+		ViewAndSelectObject(IsValid(obj) and obj or spot.rocket)
+	end)
 end
 
 function ClearDestroyedExpeditionRocketSpot(rocket)
@@ -274,7 +273,7 @@ function ClearDestroyedExpeditionRocketSpot(rocket)
 		-- restore funding
 		local funding = spot.funding
 		if funding and funding>0 then
-			rocket.city:ChangeFunding(funding, "special project")
+			UIColony.funds:ChangeFunding(funding, "special project")
 		end
 	end
 end
@@ -310,4 +309,10 @@ function CancelExpedition(rocket, dialog, spot)
 end
 
 function ClearContestNotifications()
+end
+
+function SavegameFixups.MissingColonyName()
+	if MarsScreenLandingSpots.OurColony then
+		MarsScreenLandingSpots.OurColony.display_name = Untranslated(g_CurrentMapParams.colony_name)
+	end
 end

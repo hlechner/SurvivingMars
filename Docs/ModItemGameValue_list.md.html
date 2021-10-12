@@ -56,9 +56,29 @@ ForcedByUserLockTimeout
 :	*g_Consts.ForcedByUserLockTimeout*<br>
 	Lock time to Workplace, Residence, Dome selected by user
 
-FundingFromTourist
-:	*g_Consts.FundingFromTourist*<br>
-	Funding received from each tourist when landing on Mars (in M)
+HolidayCapThreshold
+:	*g_Consts.HolidayCapThreshold*<br>
+	Holiday rating is capped when health/sanity falls under this limit
+
+HolidayCelebrityMultiplier
+:	*g_Consts.HolidayCelebrityMultiplier*<br>
+	Celebrity reward money multiplier
+
+HolidayGeniusResearchPoints
+:	*g_Consts.HolidayGeniusResearchPoints*<br>
+	Awarded research points for having a Genius Tourist
+
+HolidayRenegadeCapRating
+:	*g_Consts.HolidayRenegadeCapRating*<br>
+	Capped holiday rating for Renegades
+
+HolidaySaintMultiplier
+:	*g_Consts.HolidaySaintMultiplier*<br>
+	Multiplier for number of applicants
+
+HolidayStatCapRating
+:	*g_Consts.HolidayStatCapRating*<br>
+	Capped holiday rating when stat is below the HolidayCapThreshold
 
 Connected dome performance penalty
 :	*g_Consts.NonHomeDomePerformancePenalty*<br>
@@ -80,8 +100,16 @@ Time before starting to starve
 :	*g_Consts.TimeBeforeStarving*<br>
 	Time before starting to starve
 
-TouristSolsOnMars
-:	*g_Consts.TouristSolsOnMars*<br>
+TouristFundingMultiplier
+:	*g_Consts.TouristFundingMultiplier*<br>
+	Multiplier to funding received from each tourist when returning to earth in percent
+
+TouristSolsOnMarsMax
+:	*g_Consts.TouristSolsOnMarsMax*<br>
+	The maximum number of sols that tourists stay on Mars.
+
+TouristSolsOnMarsMin
+:	*g_Consts.TouristSolsOnMarsMin*<br>
 	The number of sols that tourists stay on Mars.
 
 Comfort penalty when failing to satisfy a need via a visit
@@ -351,6 +379,10 @@ Can exploit deep Rare Metals
 :	*g_Consts.IsDeepPreciousMetalsExploitable*<br>
 	Deep Rare Metals deposits are exploitable when this is not 0
 
+Can exploit deep Exotic Minerals
+:	*g_Consts.IsDeepPreciousMineralsExploitable*<br>
+	Deep Exotic Mineral deposits are exploitable when this is not 0
+
 Exploitable Deep Water
 :	*g_Consts.IsDeepWaterExploitable*<br>
 	Deep Water deposits are exploitable when this is not 0
@@ -419,78 +451,6 @@ WasteRock To Concrete Ratio
 :	*g_Consts.WasteRockToConcreteRatio*<br>
 	WasteRock To Concrete Ratio
 
-Vegetation Growth Multiplier
-:	*g_Consts.VegetationGrowthMultiplier*<br>
-	Vegetation growth times are modified by this number.
-
-Distress call funding threshold amount in millions
-:	*g_Consts.DistressCallFundingThreshold*<br>
-	
-
-Maximum amount of funding given as aid by a rival AI
-:	*g_Consts.DistressCallMaxFundingAmount*<br>
-	
-
-Maximum amount of a resource given as aid by a rival AI
-:	*g_Consts.DistressCallMaxResourceAmount*<br>
-	
-
-Minimum amount of funding given as aid by a rival AI
-:	*g_Consts.DistressCallMinFundingAmount*<br>
-	Minimum amount of funding given as aid by a rival AI
-
-Minimum amount of a resource given as aid by a rival AI
-:	*g_Consts.DistressCallMinResourceAmount*<br>
-	Minimum amount of a resource given as aid by a rival AI
-
-Distress call resource threshold amount
-:	*g_Consts.DistressCallResourceThreshold*<br>
-	Distress call resource threshold amount
-
-Max Game Development Collaboration Loss (%)
-:	*g_Consts.MaxGameDevelopmentCollaborationLoss*<br>
-	Max Game Development Collaboration Loss (%)
-
-Progress Points Per Game
-:	*g_Consts.ProgressPointsPerGame*<br>
-	Progress points needed for Game Developer buildings to publish a new game
-
-Minimum Rival AI resource amount
-:	*g_Consts.RivalAIMinResourceAmount*<br>
-	Rival will not help if resource amount is lower than this number
-
-Rival's chance of sending aid when in neutral standing
-:	*g_Consts.RivalNeutralStandingHelpChance*<br>
-	Rival's chance of sending aid when in neutral standing
-
-Rival's chance of sending aid when standing is positive
-:	*g_Consts.RivalPositiveStandingHelpChance*<br>
-	Rival's chance of sending aid when standing is positive
-
-Threshold for RIval AI bad standing
-:	*g_Consts.RivalStandingBad*<br>
-	
-
-Threshold for RIval AI good standing
-:	*g_Consts.RivalStandingGood*<br>
-	
-
-Rival's standing reduction when sending aid
-:	*g_Consts.RivalStandingHelpReduction*<br>
-	Rival's standing reduction when sending aid
-
-Threshold for RIval AI hostile standing
-:	*g_Consts.RivalStandingHostile*<br>
-	Threshold for RIval AI hostile standing
-
-Threshold for RIval AI neutral standing
-:	*g_Consts.RivalStandingNeutral*<br>
-	Threshold for RIval AI neutral standing
-
-Rival's standing reduction when not sending aid
-:	*g_Consts.RivalStandingNoHelpReduction*<br>
-	Rival's standing reduction when not sending aid
-
 ## Research
 Breakthrough tech cost modifier
 :	*g_Consts.BreakThroughTechCostMod*<br>
@@ -540,6 +500,10 @@ RC Commander Anomaly scan time
 RC Commander resource gather time
 :	*g_Consts.RCRoverTransferResourceWorkTime*<br>
 	The time it takes for an RC Commander to transfer 1 resource to a Depot.
+
+RC Transport maximum waypoints
+:	*g_Consts.RCSafariMaxWaypoints*<br>
+	How many waypoints a safari can have.
 
 RC Transport resource gather time
 :	*g_Consts.RCTransportGatherResourceWorkTime*<br>
@@ -630,10 +594,6 @@ Oxygen max outside time
 :	*g_Consts.OxygenMaxOutsideTime*<br>
 	This is the time it takes for Colonists outside of Domes to start losing health
 
-Water max outside time
-:	*g_Consts.WaterMaxOutsideTime*<br>
-	This is the time it takes for Colonists outside of Domes to become dehydrated
-
 Max effect of worker performance on Service Quality
 :	*g_Consts.PerformanceEffectOnServiceComfort*<br>
 	Max effect of worker performance on Service Quality
@@ -642,9 +602,61 @@ Renegade creation point
 :	*g_Consts.RenegadeCreation*<br>
 	Renegade creation point
 
+Satisfaction Gain Flaw
+:	*g_Consts.SatisfactionGainFlaw*<br>
+	Tourists Satisfaction decreases when gaining a flaw
+
+Satisfaction Gain Perk
+:	*g_Consts.SatisfactionGainPerk*<br>
+	Tourists Satisfaction increases when gaining a new perk
+
+SatisfactionHighComfortBonus
+:	*g_Consts.SatisfactionHighComfortBonus*<br>
+	Satisfaction bonus awarded when Comfort is above high threshold
+
+SatisfactionHighStatBonus
+:	*g_Consts.SatisfactionHighStatBonus*<br>
+	Satisfaction bonus awarded when stat is above high threshold
+
+Satisfaction Lose Flaw
+:	*g_Consts.SatisfactionLoseFlaw*<br>
+	Tourists Satisfaction increases when losing a flaw
+
+SatisfactionLowStatPenalty
+:	*g_Consts.SatisfactionLowStatPenalty*<br>
+	Satisfaction loss when stat is below the low threshold
+
+Satisfaction No Home Comfort
+:	*g_Consts.SatisfactionNoHomeComfort*<br>
+	Tourists Satisfaction decreases when having no residence
+
+Satisfaction Overstay Penalty
+:	*g_Consts.SatisfactionOverstay*<br>
+	Tourists Satisfaction decreases when staying longer than intended
+
+SatisfactionPerfectComfortBonus
+:	*g_Consts.SatisfactionPerfectComfortBonus*<br>
+	Satisfaction bonus awarded when Comfort is maxed out
+
+SatisfactionPerfectStatBonus
+:	*g_Consts.SatisfactionPerfectStatBonus*<br>
+	Satisfaction bonus awarded when stat is maxed out
+
+Satisfaction Sanity Breakdown
+:	*g_Consts.SatisfactionSanityBreakdown*<br>
+	Tourists Satisfaction decreases when having a breakdown
+
+Satisfaction Shock Penalty
+:	*g_Consts.SatisfactionShockPenalty*<br>
+	Tourists Satisfaction decreases while in shock
+
 Seeing Death
 :	*g_Consts.SeeDeadSanity*<br>
 	Colonist Sanity decreases when a Colonist from the same Residence dies from non-natural causes
+
+Water max outside time
+:	*g_Consts.WaterMaxOutsideTime*<br>
+	This is the time it takes for Colonists outside of Domes to become dehydrated
 
 Dark hours work Sanity decrease
 :	*g_Consts.WorkDarkHoursSanityDecrease*<br>
@@ -666,10 +678,6 @@ Heavy Workload Sanity Penalty
 :	*g_Consts.WorkOvertimeSanityDecrease*<br>
 	Decreased Sanity from heavy workloads
 
-Workers in Corporate Offices receive Comfort penalty
-:	*g_Consts.WorkInCorporateOfficeComfortDecrease*<br>
-	Workers in Corporate Offices receive Comfort penalty
-
 ## Traits
 ExtrovertIncreaseComfortThreshold
 :	*g_Consts.ExtrovertIncreaseComfortThreshold*<br>
@@ -686,7 +694,7 @@ Avoid Workplace Sols
 
 Default outside Workplaces radius
 :	*g_Consts.DefaultOutsideWorkplacesRadius*<br>
-	Colonists search this far (in hexes) outisde their Dome when looking for a Workplace
+	Colonists search this far (in hexes) outside their Dome when looking for a Workplace
 
 Heavy workload Shift Performance
 :	*g_Consts.OvertimedShiftPerformance*<br>

@@ -40,6 +40,7 @@ PlaceObj('XTemplate', {
 			'Clip', false,
 			'Background', RGBA(0, 0, 0, 0),
 			'FocusedBackground', RGBA(0, 0, 0, 0),
+			'MouseScroll', true,
 			'OnContextUpdate', function (self, context, ...)
 				XContentTemplate.OnContextUpdate(self, context, ...)
 				if self.focused_item then

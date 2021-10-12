@@ -15,6 +15,7 @@ PlaceObj('StoryBit', {
 			'Condition', ">",
 			'Amount', 0,
 		}),
+		PlaceObj('IsMapEnvironment', nil),
 	},
 	ScriptDone = true,
 	Text = T(510881587031, --[[StoryBit RocketLaunchDelayed Text]] "We had to suspend the rocket launch due to suspicious atmospheric patterns. There is nothing wrong with the Rocket and it is now ready for launch again. However people are concerned - after all rockets are our only way back home. "),

@@ -140,7 +140,8 @@ end
 
 function WasteRockObstructor:IsUnderneathConstruction() 
 	local q, r = WorldToHex(self)
-	local constr_site = HexGridGetObject(ObjectGrid, q, r, "ConstructionSite")
+	local object_hex_grid = GetObjectHexGrid(self)
+	local constr_site = object_hex_grid:GetObject(q, r, "ConstructionSite")
 	return constr_site
 end
 
@@ -205,26 +206,32 @@ function WasteRockObstructor:TransformToStockpile(drone)
 	local was_underneath_constr = self:IsUnderneathConstruction()
 	local parent_constructions = self.parent_construction
 	self.parent_construction = false --suppress destructor
+	local game_map = GetGameMap(self)
+	local priority = self.priority
+	local amount_of_waste_rock = self.amount_of_waste_rock
 	CreateGameTimeThread(function() --so drone work destructor can pass and we can set .resource without it being reset.
 		if drone and not drone:IsKindOf("RCConstructorBase") then
 			--drone not carying anything
 			local resource = "WasteRock"
-			local a = Min(DroneResourceUnits[resource], self.amount_of_waste_rock)
+			local a = Min(DroneResourceUnits[resource], amount_of_waste_rock)
 			drone:SetCarriedResource(resource, a)
-			self.amount_of_waste_rock = self.amount_of_waste_rock - a
+			self.amount_of_waste_rock = amount_of_waste_rock - a
 		end
 		
 		local stock
-		if self.amount_of_waste_rock > 0 then
+		if amount_of_waste_rock > 0 then
 			local snap_and_apply = not was_underneath_constr and true or false
-			stock = PlaceObject(snap_and_apply and "WasteRockStockpile" or "WasteRockStockpileUngrided",
-								{priority = self.priority,
-								init_with_amount = self.amount_of_waste_rock,
-								has_demand_request = false,
-								parent_construction = false,
-								apply_to_grids = snap_and_apply,
-								snap_to_grid = snap_and_apply,
-								additional_supply_flags = const.rfSpecialDemandPairing + (was_underneath_constr and const.rfCanExecuteAlone or 0)})
+			stock = PlaceObjectIn(snap_and_apply and "WasteRockStockpile" or "WasteRockStockpileUngrided",
+								game_map.map_id,
+								{
+									priority = priority,
+									init_with_amount = amount_of_waste_rock,
+									has_demand_request = false,
+									parent_construction = false,
+									apply_to_grids = snap_and_apply,
+									snap_to_grid = snap_and_apply,
+									additional_supply_flags = const.rfSpecialDemandPairing + (was_underneath_constr and const.rfCanExecuteAlone or 0),
+								})
 			
 			if drone and drone:IsKindOf("RCConstructorBase") then
 				local obj = parent_constructions[1]
@@ -232,14 +239,14 @@ function WasteRockObstructor:TransformToStockpile(drone)
 				if #p_shape == 6 then p_shape = HexSurroundingsCheckShapeLarge end --1 hex buildings can get surrounded pretty quickly so extend the search.
 				local res
 				local q, r = WorldToHex(obj)
-				res, q, r = TryFindStockpileDumpSpot(q, r, obj:GetAngle(), p_shape, HexGetAnyObj, true)
+				res, q, r = TryFindStockpileDumpSpotIn(game_map, q, r, obj:GetAngle(), p_shape, GameMapGetObject, true)
 				if res then
 					teleported_by_constructor_rover = true
 					local x, y = HexToWorld(q, r)
 					pos = point(x, y)
 				end
-			end	
-			stock:SetPos(pos:SetTerrainZ())
+			end
+			stock:SetPos(game_map.realm:SnapToTerrain(pos))
 		end
 		
 		
@@ -327,7 +334,7 @@ end
 
 function WasteRockStockpileBase:GameInit()
 	if not self.has_platform then
-		PathLenCacheValid()
+		PathLenCacheValid(self:GetMapID())
 	end
 	if self.count == 0 then
 		self.rocks_obj:ClearEnumFlags(const.efVisible)
@@ -335,10 +342,10 @@ function WasteRockStockpileBase:GameInit()
 end
 
 function WasteRockStockpileBase:DestroyEmpty()
-	DoneObject(self)
 	if not self.has_platform then
-		PathLenCacheValid()
+		PathLenCacheValid(self:GetMapID())
 	end
+	DoneObject(self)
 end
 
 function WasteRockStockpileBase:Done()
@@ -355,7 +362,7 @@ function WasteRockStockpileBase:CreatePileObj()
 		self:ChangeEntity(getmetatable(self).entity)
 	end
 	
-	self.rocks_obj = PlaceObject(self.has_platform and self.pile_entity_plat or self.pile_entity_no_plat)
+	self.rocks_obj = PlaceObjectIn(self.has_platform and self.pile_entity_plat or self.pile_entity_no_plat, self:GetMapID())
 	self.rocks_obj:ClearEnumFlags(PassAffectFlags)
 	self.rocks_obj:SetEnumFlags(const.efSelectable)
 	self:Attach(self.rocks_obj)
@@ -540,6 +547,16 @@ end
 
 SavegameFixups.SetupSupplyToDumpingSitesAgain = SavegameFixups.SetupSupplyToDumpingSites
 
+function SavegameFixups.FixFloatingWasteRock()
+	for _,city in ipairs(Cities or empty_table) do
+		local realm = GetRealm(city)
+		realm:MapForEach("map", "WasteRockStockpileBase", function(stock)
+			local pos = stock:GetVisualPos()
+			stock:SetPos(realm:SnapToTerrain(pos))
+		end)
+	end
+end
+
 function DumpSiteWithAttachedVisualPilesBase:GetNextStockpileIndex(stockpiles, adding_resource)
 	stockpiles = stockpiles or self.stockpiles
 	local p = self:GetPos()
@@ -576,9 +593,16 @@ DefineClass.WasteRockDumpSite = {
 
 function SavegameFixups.RegisterWasteRockDumpsWithLRManager()
 	BuildStorableResourcesArray()
-	LRManagerInstance.demand_queues.WasteRock = {}
-	LRManagerInstance.supply_queues.WasteRock = {}
-	MapForEach("map", "WasteRockDumpSite", function(o) o:InitLandingSpots(); LRManagerInstance:AddBuilding(o) end)
+	
+	local lr_manager = GameMaps[ActiveMapID].lr_manager
+	lr_manager.demand_queues.WasteRock = {}
+	lr_manager.supply_queues.WasteRock = {}
+	
+	GetRealm(MainCity):MapForEach("map", "WasteRockDumpSite", function(o) 
+		o:InitLandingSpots()
+		local lr_manager = GetLRManager(o)
+		lr_manager:AddBuilding(o)
+	end)
 end
 
 function WasteRockDumpSite:GameInit()
@@ -601,7 +625,7 @@ WasteRockDumpSite.GetStoredAmount = WasteRockDumpSite.GetStored_WasteRock
 
 GlobalVar("g_WasteRockLiquefaction", false)
 --[[
-function OnMsg.TechResearched(tech_id, city, first_time)
+function OnMsg.TechResearched(tech_id, research, first_time)
 	if tech_id == "WasteRockLiquefaction" and first_time then
 		g_WasteRockLiquefaction = true
 		local ratio = Max(1, g_Consts.WasteRockToConcreteRatio)

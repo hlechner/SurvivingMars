@@ -63,7 +63,7 @@ PlaceObj('XTemplate', {
 					'MinWidth', 350,
 				}),
 				PlaceObj('XTemplateTemplate', {
-					'__context', function (parent, context) return UICity end,
+					'__context', function (parent, context) return UIColony end,
 					'__template', "DialogTitleNew",
 					'Margins', box(55, 0, 0, 0),
 					'Title', T(4530, --[[XTemplate ResearchDlg Title]] "RESEARCH"),
@@ -96,7 +96,7 @@ PlaceObj('XTemplate', {
 					}),
 					}),
 				PlaceObj('XTemplateWindow', {
-					'__context', function (parent, context) return UICity end,
+					'__context', function (parent, context) return UIColony end,
 					'Id', "idRPTextsContainer",
 					'Margins', box(55, 0, 0, 0),
 					'Dock', "top",
@@ -304,7 +304,7 @@ PlaceObj('XTemplate', {
 					}),
 				PlaceObj('XTemplateWindow', {
 					'comment', "queue",
-					'__context', function (parent, context) return UICity:GetResearchQueue() end,
+					'__context', function (parent, context) return UIColony:GetResearchQueue() end,
 					'__class', "XContentTemplateList",
 					'Id', "idResearchQueueList",
 					'Margins', box(55, 0, 0, 0),
@@ -325,7 +325,7 @@ PlaceObj('XTemplate', {
 					}),
 					PlaceObj('XTemplateForEach', {
 						'comment', "research queue",
-						'array', function (parent, context) return UICity:GetResearchQueue(), 1, const.ResearchQueueSize+1 end,
+						'array', function (parent, context) return UIColony:GetResearchQueue(), 1, const.ResearchQueueSize+1 end,
 						'map', function (parent, context, array, i) return TechDef[array[i]] end,
 						'__context', function (parent, context, item, i, n) return item end,
 						'run_after', function (child, context, item, i, n)
@@ -334,7 +334,7 @@ PlaceObj('XTemplate', {
 								local cost = item:ResearchQueueCost(n)
 								local rollover_title = T(3917, "<display_name> (<FieldDisplayName>)")
 								if n == 1 then
-									rollover_title = T{7609, "<display_name> (<FieldDisplayName>) <percent(p)>", p = UICity:GetResearchProgress()}
+									rollover_title = T{7609, "<display_name> (<FieldDisplayName>) <percent(p)>", p = UIColony:GetResearchProgress()}
 									child.idTechText:SetText(T{4543, "<FieldDisplayName><right><ResearchPoints(cost)>", cost = cost})
 									child.idTallFrame:SetVisible(true)
 									child.idSmallFrame:SetVisible(false)
@@ -344,9 +344,20 @@ PlaceObj('XTemplate', {
 									child.idResearchCost:SetVisible(true)
 									child.idResearchCost:SetText(T{12612, "<ResearchPoints(cost)>", cost = cost})
 								end
+							
+								local research_queue_size = #UIColony:GetResearchQueue()
+								if n ~= 1 then
+									child.idPrioritize:SetVisible(true)
+									child.idPrioritize.OnPress = function(this) child:Prioritize(child) end
+								end
+								if n < research_queue_size then
+									child.idDeprioritize:SetVisible(true)
+									child.idDeprioritize.OnPress = function(this) child:Deprioritize(child) end
+								end
+							
 								child:SetRolloverTitle(rollover_title)
 								child:SetRolloverHint(T(3922, "<right_click> Remove from Research queue"))
-								child:SetRolloverHintGamepad(T(3924, "<ButtonX> Remove from research queue"))
+								child:SetRolloverHintGamepad(GetUIResearchQueueGamepadHint(n))
 								child:SetRolloverText(T{3921, "<description>\n\nResearch cost<right><ResearchPoints(cost)>", cost = cost})
 							end
 							child.idNumber:SetText(n)
@@ -399,6 +410,12 @@ PlaceObj('XTemplate', {
 									if shortcut == "ButtonX" then
 										self:Dequeue()
 										return "break"
+									elseif shortcut == "LeftTrigger" then
+										local index = self:Prioritize()
+										return "break"
+									elseif shortcut == "RightTrigger" then
+										local index = self:Deprioritize()
+										return "break"
 									end
 									return XContextWindow.OnShortcut(self, shortcut, source)
 								end,
@@ -414,11 +431,45 @@ PlaceObj('XTemplate', {
 								end,
 							}),
 							PlaceObj('XTemplateFunc', {
+								'name', "OnMouseButtonDown(self, pos, button)",
+								'func', function (self, pos, button)
+									if button == "R" then
+										self:Dequeue()
+										return "break"
+									end
+									return XContextWindow.OnMouseButtonDown(self, pos, button)
+								end,
+							}),
+							PlaceObj('XTemplateFunc', {
+								'name', "Prioritize",
+								'func', function (self, ...)
+									if self.context then
+										ResearchUIPrioritizeQueue(self, 1)
+									else
+										PlayFX("UIDisabledButtonPressed", "start")
+									end
+									return false
+								end,
+							}),
+							PlaceObj('XTemplateFunc', {
+								'name', "Deprioritize",
+								'func', function (self, ...)
+									if self.context then
+										ResearchUIPrioritizeQueue(self, -1)
+									else
+										PlayFX("UIDisabledButtonPressed", "start")
+									end
+									return false
+								end,
+							}),
+							PlaceObj('XTemplateFunc', {
 								'name', "Dequeue",
 								'func', function (self, ...)
-									if self. context then
-										if UICity:DequeueResearch(self.context.id) then
+									if self.context then
+										if UIColony:DequeueResearch(self.context.id) then
 											PlayFX("DequeueResearch", "start")
+										else
+											PlayFX("UIDisabledButtonPressed", "start")
 										end
 									else
 										PlayFX("UIDisabledButtonPressed", "start")
@@ -578,7 +629,7 @@ PlaceObj('XTemplate', {
 										'FoldWhenHidden', true,
 									}, {
 										PlaceObj('XTemplateTemplate', {
-											'__context', function (parent, context) return UICity end,
+											'__context', function (parent, context) return UIColony end,
 											'__template', "SimpleProgress",
 											'Margins', box(0, 5, 0, 5),
 											'HAlign', "left",
@@ -590,7 +641,7 @@ PlaceObj('XTemplate', {
 											'ProgressFrameBox', box(6, 0, 10, 0),
 										}),
 										PlaceObj('XTemplateWindow', {
-											'__context', function (parent, context) return {progress = UICity:GetResearchProgress()} end,
+											'__context', function (parent, context) return {progress = UIColony:GetResearchProgress()} end,
 											'__class', "XText",
 											'Padding', box(0, 0, 0, 0),
 											'Dock', "right",
@@ -602,6 +653,42 @@ PlaceObj('XTemplate', {
 										}),
 										}),
 									}),
+								}),
+							PlaceObj('XTemplateWindow', {
+								'HAlign', "left",
+								'VAlign', "bottom",
+							}, {
+								PlaceObj('XTemplateWindow', {
+									'__class', "XTextButton",
+									'RolloverTemplate', "Rollover",
+									'Id', "idPrioritize",
+									'Margins', box(-10, 0, 0, 0),
+									'MaxHeight', 46,
+									'Visible', false,
+									'MouseCursor', "UI/Cursors/Rollover.tga",
+									'FXMouseIn', "UIButtonMouseIn",
+									'Image', "UI/CommonNew/list_arrow_up.tga",
+									'Columns', 2,
+									'ColumnsUse', "abaa",
+								}),
+								}),
+							PlaceObj('XTemplateWindow', {
+								'HAlign', "left",
+								'VAlign', "bottom",
+							}, {
+								PlaceObj('XTemplateWindow', {
+									'__class', "XTextButton",
+									'RolloverTemplate', "Rollover",
+									'Id', "idDeprioritize",
+									'Margins', box(-30, 0, 0, 0),
+									'MaxHeight', 46,
+									'Visible', false,
+									'MouseCursor', "UI/Cursors/Rollover.tga",
+									'FXMouseIn', "UIButtonMouseIn",
+									'Image', "UI/CommonNew/list_arrow_down.tga",
+									'Columns', 2,
+									'ColumnsUse', "abaa",
+								}),
 								}),
 							}),
 						}),
@@ -745,7 +832,7 @@ PlaceObj('XTemplate', {
 								}, {
 									PlaceObj('XTemplateForEach', {
 										'comment', "tech",
-										'array', function (parent, context) return UICity:UITechField(context.id) end,
+										'array', function (parent, context) return UIColony:UITechField(context.id) end,
 										'map', function (parent, context, array, i) return TechDef[array[i]] end,
 										'__context', function (parent, context, item, i, n) return SubContext(item, {field_pos = context.field_pos}) end,
 									}, {
@@ -809,7 +896,7 @@ PlaceObj('XTemplate', {
 			'ActionToolbar', "ActionBar",
 			'ActionGamepad', "ButtonY",
 			'ActionState', function (self, host)
-				if (g_Consts.OutsourceDisabled or 0) > 0 or UICity.paused_outsource_research_end_time then
+				if (g_Consts.OutsourceDisabled or 0) > 0 or UIColony.paused_outsource_research_end_time then
 					return "disabled"
 				end
 			end,
@@ -818,10 +905,11 @@ PlaceObj('XTemplate', {
 					host:DeleteThread("outsource")
 				end
 				host:CreateThread("outsource", function()
-						local funding = UICity:GetFunding()
+						local funding = UIColony.funds:GetFunding()
 						if funding >= g_Consts.OutsourceResearchCost then
 							local max_orders = g_Consts.OutsourceMaxOrderCount
-							local orders = UICity.OutsourceResearchOrders and UICity.OutsourceResearchOrders[1] or 0
+							local research = UIColony
+							local orders = research.OutsourceResearchOrders and research.OutsourceResearchOrders[1] or 0
 							if orders < max_orders then
 								local multiplier = max_orders
 								local multiple_outsource_allowed = orders == 0 and funding >= g_Consts.OutsourceResearchCost * multiplier
@@ -842,8 +930,8 @@ PlaceObj('XTemplate', {
 								local res = WaitPopupNotification(false, params, false, host)
 								if res == 1 or (multiple_outsource_allowed and res == 2) then
 									multiplier = (res == 1) and 1 or multiplier
-									UICity:ChangeFunding(-g_Consts.OutsourceResearchCost * multiplier, "OutsourceResearch")
-									UICity:OutsourceResearch(g_Consts.OutsourceResearch * multiplier, g_Consts.OutsourceResearchTime, multiplier)
+									UIColony.funds:ChangeFunding(-g_Consts.OutsourceResearchCost * multiplier, "OutsourceResearch")
+									research:OutsourceResearch(g_Consts.OutsourceResearch * multiplier, g_Consts.OutsourceResearchTime, multiplier)
 								end
 							else
 								CreateMarsMessageBox(T(6902, "Warning"), T(10456, "You are not allowed to outsource more research to Earth at this time!"), T(1000136, "OK"))
@@ -868,7 +956,7 @@ PlaceObj('XTemplate', {
 						if first_tech then
 							first_tech:SetFocus(true)
 						end
-					else
+					elseif self.window_state ~= "destroying" then
 						self.idArea:ScrollTo(0, g_ResearchScroll)
 					end
 				end, self)

@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 --[[
-ObjectGrid methods
+Object grid methods
 
 Adds obj's handle in each node defined by (obj.pos -> to hex -> to storage) + shape offset. 
 If handle is present a new GridObjectList obj is created or the existing one whos handle it is is used,
@@ -25,49 +25,23 @@ in the shape or node that match the criteria of class and ignore class (optional
 Grid -> HSL::Grid compliant grid, should have enough bits to store handles.
 obj -> obj with handle
 shape -> array of offset points in hex axial coords
-pos/q,r -> hex axial coords of a grid node
+obj/pos/q,r -> hex axial coords of a grid node
 class -> only objects of this class or a class who has __ancestors of this class will be returned
 ignore-class -> only objects who are not of this class and do not have __ancestors of this class will be returned
 filter -> f(obj) return true/false/"break" end
 
-	lua_array   HexGridShapeGetObjectList(ObjectGrid, obj, shape[, class, ignore-class, filter])
-	lua_array   HexGridGetObjects(ObjectGrid, pos[, class, ignore-class, filter])
-	lua_array   HexGridGetObjects(ObjectGrid, q, r[, class, ignore-class, filter])
-	lua_obj/nil HexGridGetObject(ObjectGrid, q, r[, class, ignore-class, filter])
+	lua_array   HexGridShapeGetObjectList(object_hex_grid, obj, shape[, class, ignore-class, filter])
+	lua_array   HexGridGetObjectsInRange(object_hex_grid, q, r[, class, ignore-class, filter])
+	lua_array   HexGridGetObjects(object_hex_grid, pos[, class, ignore-class, filter])
+	lua_array   HexGridGetObjects(object_hex_grid, q, r[, class, ignore-class, filter])
+	lua_obj/nil HexGridGetObject(object_hex_grid, q, r[, class, ignore-class, filter])
 ]]
 ---------------------------------------------------------------------------------------------------
-GlobalVar("HexMapWidth", function()
-	local sizex, sizey = terrain.GetMapSize()
-	return ((sizex or 0) + const.GridSpacing - 1) / const.GridSpacing
-end)
-
-GlobalVar("HexMapHeight", function()
-	local sizex, sizey = terrain.GetMapSize()
-	return ((sizey or 0)+ const.GridVerticalSpacing - 1) / const.GridVerticalSpacing
-end)
-
-GlobalVar("ObjectGrid", function()
-	if HexMapWidth == 0 or HexMapHeight == 0 then return false end
-	return NewHierarchicalGrid(HexMapWidth, HexMapHeight, 16, 32)
-end)
 
 DefineClass.GridObjectList = {
 	__parents = { "Object" },
 	flags = { efVisible = false, efCollision = false, efApplyToGrids = false, efWalkable = false, efBakedTerrainDecal = false },
 }
-
-GlobalVar("SupplyGridConnections", function()
-	if HexMapWidth == 0 or HexMapHeight == 0 then return false end
-	return {
-		electricity = NewHierarchicalGrid(HexMapWidth, HexMapHeight, 16, 32),
-		water = NewHierarchicalGrid(HexMapWidth, HexMapHeight, 16, 32),
-	}
-end)
-
-GlobalVar("OverlaySupplyGrid", function()
-	if HexMapWidth == 0 or HexMapHeight == 0 then return false end
-	return NewGrid(HexMapWidth, HexMapHeight, 8, 0)
-end)
 
 --[[@@@
 @class GridObject
@@ -95,17 +69,21 @@ function GridObject:ApplyToGrids()
 	end
 	--apply
 	local shape = self:GetShapePoints() or empty_table
-	HexGridShapeAddObject(ObjectGrid, self, shape)
+	local map_id = self:GetMapID()
+	local object_hex_grid = GameMaps[map_id].object_hex_grid.grid
+	HexGridShapeAddObject(object_hex_grid, self, shape)
 	if not self.is_tall and not IsKindOfClasses(self, "ElectricityGridElement", "GridSwitchConstructionSite") then -- we are a not tall bld, if there is a pipe above, demote its connection
-		HexGridShapeGetObjectList(ObjectGrid, self, shape, "LifeSupportGridElement", nil, 
+		HexGridShapeGetObjectList(object_hex_grid, self, shape, "LifeSupportGridElement", nil, 
 			LifeSupportGridElement.DemoteConnectionMask) --pipe no longer marks potential in directions that require it to become pillar.
 	end
 end
 
 function GridObject:RemoveFromGrids()
-	HexGridShapeRemoveObject(ObjectGrid, self, self:GetShapePoints() or empty_table)
+	local map_id = self:GetMapID()
+	local object_hex_grid = GameMaps[map_id].object_hex_grid.grid
+	HexGridShapeRemoveObject(object_hex_grid, self, self:GetShapePoints() or empty_table)
 	if not self.is_tall and not IsKindOf(self, "ElectricityGridElement") then
-		HexGridShapeGetObjectList(ObjectGrid, self, self:GetShapePoints() or empty_table, "LifeSupportGridElement", nil,
+		HexGridShapeGetObjectList(object_hex_grid, self, self:GetShapePoints() or empty_table, "LifeSupportGridElement", nil,
 			LifeSupportGridElement.PromoteConnectionMask)
 	end
 end
@@ -165,10 +143,11 @@ function UngridedObstacle:GetRotatedShapePoints()
 	elseif hex_rad > 0 then
 		shape = HexSurroundingsCheckShape
 	end
+	local terrain = GetTerrain(self)
 	for i, p in ipairs(shape) do
 		local q, r = p:xy()
 		local x, y = HexToWorld(q + q0, r + r0)
-		local z = terrain.GetHeight(x, y)
+		local z = terrain:GetHeight(x, y)
 		if IsCloser(x, y, z, x0, y0, z0, rad + 1) then
 			ret = ret or {}
 			ret[#ret + 1] = p
@@ -403,7 +382,7 @@ function GridObject:ProcessPipeSpot(result, entity, spot_idx, spot_name, skin, g
 		local pt = point(WorldToHex(spot_pos_pt + Rotate(point(guim, 0), angle_end + GetEntitySpotAngle(entity, spot_idx))))
 		for _, entry in ipairs(result) do
 			if entry[1] == pt and entry[2] == dir then
-				printf("Duplicate pipe connection: entity %s, spot %s, pipe entity %s", entity, spot, pipe_entity)
+				printf("Duplicate pipe connection: entity %s, spot %s, pipe entity %s", entity, spot_name, pipe_entity)
 				pt = nil
 			end
 		end
@@ -445,67 +424,143 @@ function GridObject:GenerateHandle()
 	return Object.GenerateHandle(self)
 end
 
-function HexGetBuilding(q, r)
+DefineClass.ObjectHexGrid = {
+	__parents = { "InitDone" },
+	grid = false,
+}
+
+function ObjectHexGrid:Build(width, height)
+	self.grid = NewHierarchicalGrid(width, height, 16, 32)
+end
+
+function ObjectHexGrid:GetObject(q, r, class, ignore_class, filter)
+	assert(type(r) == "number", "GetObject expects a number")
+	return HexGridGetObject(self.grid, q, r, class, ignore_class, filter)
+end
+
+function ObjectHexGrid:GetObjectAtPos(pos_obj, class, ignore_class, filter)
+	return HexGridGetObject(self.grid, pos_obj, class, ignore_class, filter)
+end
+
+function ObjectHexGrid:GetObjects(q, r, class, ignore_class, filter)
+	return HexGridGetObjects(self.grid, q, r, class, ignore_class, filter)
+end
+
+function ObjectHexGrid:GetObjectsAtPos(pos_obj, class, ignore_class, filter)
+	return HexGridGetObjects(self.grid, pos_obj, class, ignore_class, filter)
+end
+
+function ObjectHexGrid:GetBuilding(q, r)
 	if r then
-		return HexGridGetObject(ObjectGrid, q, r, nil, "LifeSupportGridElement", function (obj) return not IsKindOf(obj, "ElectricityGridElement") end)
+		return self:GetObject(q, r, nil, "LifeSupportGridElement", function (obj) return not IsKindOf(obj, "ElectricityGridElement") end)
 	else
-		return HexGridGetObject(ObjectGrid, q, nil, "LifeSupportGridElement", function (obj) return not IsKindOf(obj, "ElectricityGridElement") end)
+		return self:GetObjectAtPos(q, nil, "LifeSupportGridElement", function (obj) return not IsKindOf(obj, "ElectricityGridElement") end)
 	end
 end
 
-function HexGetDomeExterior(q, r)
+function HexGetBuilding(object_hex_grid, q, r)
+	return object_hex_grid:GetBuilding(q, r)
+end
+
+function ObjectHexGrid:GetDomeExterior(q, r)
 	if r then
-		return HexGridGetObject(ObjectGrid, q, r, "Dome")
+		return self:GetObject(q, r, "Dome")
 	else
-		return HexGridGetObject(ObjectGrid, q, "Dome")
+		return self:GetObjectAtPos(q, "Dome")
 	end
 end
 
-function HexGetBuildingNoDome(q, r)
+function HexGetDomeExterior(object_hex_grid, q, r)
+	return object_hex_grid:GetDomeExterior(q, r)
+end
+
+function ObjectHexGrid:GetBuildingNoDome(q, r)
 	if r then
-		return HexGridGetObject(ObjectGrid, q, r, nil, "LifeSupportGridElement", function (obj) return not IsKindOfClasses(obj, "ElectricityGridElement", "Dome", "DomeInterior") end)
+		return self:GetObject(q, r, nil, "LifeSupportGridElement", function (obj) return not IsKindOfClasses(obj, "ElectricityGridElement", "Dome", "DomeInterior") end)
 	else
-		return HexGridGetObject(ObjectGrid, q, nil, "LifeSupportGridElement", function (obj) return not IsKindOfClasses(obj, "ElectricityGridElement", "Dome", "DomeInterior") end)
+		return self:GetObjectAtPos(q, nil, "LifeSupportGridElement", function (obj) return not IsKindOfClasses(obj, "ElectricityGridElement", "Dome", "DomeInterior") end)
 	end
 end
 
-function HexGetBuildingOrCable(q, r)
+function HexGetBuildingNoDome(object_hex_grid, q, r)
+	return object_hex_grid:GetBuildingNoDome(q, r)
+end
+
+function ObjectHexGrid:GetBuildingOrCable(q, r)
 	if r then
-		return HexGridGetObject(ObjectGrid, q, r, nil, "LifeSupportGridElement")
+		return self:GetObject(q, r, nil, "LifeSupportGridElement")
 	else
-		return HexGridGetObject(ObjectGrid, q, nil, "LifeSupportGridElement")
+		return self:GetObjectAtPos(q, nil, "LifeSupportGridElement")
 	end
 end
 
-function HexGetPipe(q, r)
-	return HexGridGetObject(ObjectGrid, q, r, "LifeSupportGridElement")
+function HexGetBuildingOrCable(object_hex_grid, q, r)
+	return object_hex_grid:GetBuildingOrCable(q, r)
 end
 
-function HexGetPillaredPipe(q, r)
-	return HexGridGetObject(ObjectGrid, q, r, "LifeSupportGridElement", nil, function(o) return o.pillar end)
+function ObjectHexGrid:GetPipe(q, r)
+	return self:GetObject(q, r, "LifeSupportGridElement")
 end
 
-function HexGetCable(q, r)
-	return HexGridGetObject(ObjectGrid, q, r, "ElectricityGridElement")
+function HexGetPipe(object_hex_grid, q, r)
+	return object_hex_grid:GetPipe(q, r)
 end
 
-function HexGetLowBuilding(q, r) -- building or cable or pipe with a pillar - everything without overhead pipes
-	return HexGridGetObject(ObjectGrid, q, r, nil, nil, function(obj)
+function ObjectHexGrid:GetPillaredPipe(q, r)
+	return self:GetObject(q, r, "LifeSupportGridElement", nil, function(o) return o.pillar end)
+end
+
+function HexGetPillaredPipe(object_hex_grid, q, r)
+	return object_hex_grid:GetPillaredPipe(q, r)
+end
+
+function ObjectHexGrid:GetCable(q, r)
+	return self:GetObject(q, r, "ElectricityGridElement")
+end
+
+function HexGetCable(object_hex_grid, q, r)
+	return object_hex_grid:GetCable(q, r)
+end
+
+-- building or cable or pipe with a pillar - everything without overhead pipes
+function ObjectHexGrid:GetLowBuilding(q, r)
+	return self:GetObject(q, r, nil, nil, function(obj)
 		return not IsKindOf(obj, "ToxicPool") and (not IsKindOf(obj, "LifeSupportGridElement") or obj.pillar)
 	end)
 end
 
-function HexGetLandscapeOrLowBuilding(q, r)
-	return LandscapeCheck(q, r, true) or HexGetLowBuilding(q, r)
+function ObjectHexGrid:GetLandscapeOrLowBuilding(q, r)
+	return self:GetLowBuilding(q, r)
+end
+
+function ObjectHexGrid:GetBuildObstructions(q, r, is_tall, exclude)
+	local blds = self:GetObjects(q, r, nil, nil, function(o)
+		if IsKindOfClasses(o, "DoesNotObstructConstruction", exclude) then
+			return false
+		end
+		if not is_tall and IsKindOf(o, "LifeSupportGridElement") and not o.pillar then
+			return false
+		end
+		return "break"
+	end)
+	return blds
+end
+
+function HexGetLandscapeOrLowBuilding(game_map, q, r)
+	return LandscapeCheck(game_map.landscape_grid, q, r, true) or game_map.object_hex_grid:GetLandscapeOrLowBuilding(q, r)
 end
 
 function GetGrid(o, supply_resource)
 	return rawget(rawget(o, supply_resource) or empty_table, "grid")
 end
 
-function HexGetDomeInterior(q, r)
-	local obj = HexGridGetObject(ObjectGrid, q, r, "DomeInterior")
+function ObjectHexGrid:GetDomeInterior(q, r)
+	local obj = self:GetObject(q, r, "DomeInterior")
 	return obj and obj.dome or nil
+end
+
+function HexGetDomeInterior(object_hex_grid, q, r)
+	return object_hex_grid:GetDomeInterior(q, r)
 end
 
 function RebuildBuildingConnections()
@@ -524,7 +579,7 @@ OnMsg.EntitiesLoaded = RebuildBuildingConnections
 local LookupGrid = false
 
 --when constructing both template_obj and cursor_obj are used to gather the data
-function HexGetUnits(obj, entity, pos, angle, test, filter, classes, force_extend_bb_by, shape)
+function HexGetUnits(realm, obj, entity, pos, angle, test, filter, classes, force_extend_bb_by, shape)
 	local outline, interior
 	if shape then
 		outline = shape
@@ -607,5 +662,5 @@ function HexGetUnits(obj, entity, pos, angle, test, filter, classes, force_exten
 	end
 	
 	local unit_classes = classes or "Unit"
-	return (test and MapGet(unit_area, unit_classes, unit_filter) and grid_val ~= 0) or (not test and MapGet(unit_area, unit_classes, unit_filter))
+	return (test and realm:MapGet(unit_area, unit_classes, unit_filter) and grid_val ~= 0) or (not test and realm:MapGet(unit_area, unit_classes, unit_filter))
 end

@@ -162,6 +162,10 @@ function Workplace:SetWorkshift(workshift)
 end
 
 function Workplace:GetWorkshiftPerformance(shift)
+	if self:IsShroudedInRubble() then
+		return 0
+	end
+
 	if self.active_shift > 0 then
 		-- single shift buildings work all the time, their performance = performance of the active shift
 		shift = self.active_shift
@@ -203,9 +207,9 @@ function Workplace:UpdatePerformance()
 	ObjModified(self)	
 end
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "SustainedWorkload" then
-		city:ForEachLabelObject("Workplace", "UpdatePerformance")
+		UIColony:ForEachLabelObject("Workplace", "UpdatePerformance")
 	end
 end
 
@@ -484,10 +488,10 @@ function Workplace:CheckServicedDome(test_dome)
 	if dome then
 		return dome
 	end
-	if test_dome and IsBuildingInDomeRange(self, test_dome) then
+	if test_dome and test_dome:IsBuildingInWorkRange(self) then
 		return test_dome
 	end
-	return FindNearestObject(UICity.labels.Dome, self)
+	return FindNearestObject(self.city.labels.Dome, self)
 end
 
 function Workplace:ColonistInteract(col)
@@ -524,9 +528,9 @@ function Workplace:CheckWorkForUnemployed()
 	if self.parent_dome then
 		UpdateWorkplaces(self.parent_dome.labels.Unemployed)
 	else
-		for _, dome in ipairs(self.city.labels.Dome or empty_table) do
-			if IsBuildingInDomeRange(self, dome) then
-				UpdateWorkplaces(dome.labels.Unemployed)
+		for _, workforce in ipairs(self.city.labels.Workforce or empty_table) do
+			if workforce:IsBuildingInWorkRange(self) then
+				UpdateWorkplaces(workforce.labels.Unemployed)
 			end
 		end
 	end
@@ -711,10 +715,10 @@ end
 function Workplace:OnChangeWorkshift(old, new)
 	if old then
 		local g_consts = g_Consts
-		local martianborn_resilience = self.city:IsTechResearched("MartianbornResilience")
-		local dark_penalty = IsDarkHour(self.city.hour - 4) and -g_consts.WorkDarkHoursSanityDecrease
+		local martianborn_resilience = self.city.colony:IsTechResearched("MartianbornResilience")
+		local dark_penalty = IsDarkHour(UIColony.hour - 4) and -g_consts.WorkDarkHoursSanityDecrease
 		local overtime = self.overtime[old]
-		local outside_sanity_decrease = not self.parent_dome and not BreathableAtmosphere and -g_consts.OutsideWorkplaceSanityDecrease
+		local outside_sanity_decrease = not self.parent_dome and not GetAtmosphereBreathable(self:GetMapID()) and -g_consts.OutsideWorkplaceSanityDecrease
 		for _, worker in ipairs(self.workers[old] or empty_table) do
 			if dark_penalty then
 				worker:ChangeSanity(dark_penalty, "work in dark hours")
@@ -768,18 +772,17 @@ function Workplace:StopWorkCycle(unit)
 	self:UpdatePerformance()
 end
 
-
-local domes_query_func = function(dome, workplace)
-	local dome_class = dome
-	if IsKindOf(dome, "ConstructionSite") then
-		if IsKindOf(dome.building_class_proto, "Dome") then
-			dome_class = dome.building_class_proto
+local workforce_query_func = function(workforce, workplace)
+	local workforce_class = workforce
+	if IsKindOf(workforce, "ConstructionSite") then
+		if IsKindOf(workforce.building_class_proto, "Workforce") then
+			workforce_class = workforce.building_class_proto
 		else
 			return
 		end
 	end
-	local range = dome_class and dome_class:GetOutsideWorkplacesDist()
-	if not IsBuildingInDomeRange(workplace, dome, range) then
+	local range = workforce_class and workforce_class:GetOutsideWorkplacesDist()
+	if not workforce_class.IsBuildingInWorkRange(workforce, workplace, range) then
 		return
 	end
 	workplace.domes_query_res = true
@@ -787,7 +790,7 @@ local domes_query_func = function(dome, workplace)
 end
 
 -- for UI warning
-function Workplace:HasNearByWorkers() 
+function Workplace:HasNearByWorkers()
 	if self.automation > 0 or IsObjInDome(self) then
 		return true
 	end
@@ -797,7 +800,9 @@ function Workplace:HasNearByWorkers()
 	self.domes_query_version = g_DomeVersion
 	self.domes_query_res = false
 
-	MapForEach(self, "hex", g_Consts.DefaultOutsideWorkplacesRadius + 50, "ConstructionSite", "Dome", domes_query_func, self)
+	-- 50 is hardcoded... why?
+	local realm = GetRealm(self)
+	realm:MapForEach(self, "hex", g_Consts.DefaultOutsideWorkplacesRadius + 50, "ConstructionSite", "Workforce", workforce_query_func, self)
 	return self.domes_query_res
 end
 
@@ -841,7 +846,7 @@ end
 function ChooseTraining(unit, training_buildings, bb_in, bws_in)
 	local current_bld, current_shift = bb_in or unit.workplace, bws_in or unit.workplace_shift
 	local avoid_workplace = unit.avoid_workplace
-	if avoid_workplace and (not unit.avoid_workplace_start or unit.avoid_workplace_start + g_Consts.AvoidWorkplaceSols < unit.city.day) then
+	if avoid_workplace and (not unit.avoid_workplace_start or unit.avoid_workplace_start + g_Consts.AvoidWorkplaceSols < UIColony.day) then
 		avoid_workplace = false
 	end
 	local min_occupation, control_occupation = max_int, max_int
@@ -856,7 +861,7 @@ function ChooseTraining(unit, training_buildings, bb_in, bws_in)
 		end
 	end
 	
-	training_buildings = training_buildings or unit.dome.labels.TrainingBuilding or empty_table
+	training_buildings = training_buildings or (unit.dome and unit.dome.labels.TrainingBuilding) or empty_table
 	
 	for _, bld in ipairs(training_buildings) do
 		if bld:CanTrain(unit)
@@ -884,7 +889,7 @@ end
 -----------------------------------------------------------------------------------------------------
 
 function ValidateBuilding(building)
-	return IsValid(building) and not building.destroyed and not building.demolishing and building or false
+	return IsValid(building) and not building.destroyed and not building.demolishing and not building.refab_work_request and building or false
 end
 local ValidateBuilding = ValidateBuilding
 
@@ -984,7 +989,7 @@ function ChooseWorkplace(unit, workplaces, allow_exchange)
 	local current_shift = unit.workplace_shift
 	assert(not current_bld or not current_bld.force_lock_workplace)
 	local avoid_workplace = unit.avoid_workplace
-	if avoid_workplace and (not unit.avoid_workplace_start or unit.avoid_workplace_start + g_Consts.AvoidWorkplaceSols < unit.city.day) then
+	if avoid_workplace and (not unit.avoid_workplace_start or unit.avoid_workplace_start + g_Consts.AvoidWorkplaceSols < UIColony.day) then
 		avoid_workplace = false
 	end
 	local traits = unit.traits

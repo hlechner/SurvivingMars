@@ -68,7 +68,7 @@ PlaceObj('XTemplate', {
 			'FoldWhenHidden', true,
 			'ContextUpdateOnOpen', true,
 			'OnContextUpdate', function (self, context, ...)
-				self:SetVisible(not g_DustStorm and context:GetUIPowerProduction() == 0)
+				self:SetVisible(not HasDustStorm() and context:GetUIPowerProduction() == 0)
 			end,
 			'Text', T(443, --[[XTemplate sectionPowerProduction Text]] "Not producing Power during the night"),
 		}),

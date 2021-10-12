@@ -57,6 +57,8 @@ PlaceObj('XTemplate', {
 									SetDialogMode(self, "credits", self.context)
 								elseif self.context.id == "ModOptions" then
 									SetDialogMode(self, "mod_choice", self.context)
+								elseif self.context.id == "DLCInfo" then
+									SetDialogMode(self, "dlc_info", self.context)
 								else
 									SetDialogMode(self, "properties", self.context)
 								end
@@ -432,6 +434,44 @@ PlaceObj('XTemplate', {
 						'OnAction', function (self, host, source)
 							ApplyModOptions(host)
 						end,
+					}),
+					}),
+				PlaceObj('XTemplateMode', {
+					'mode', "dlc_info",
+				}, {
+					PlaceObj('XTemplateCode', {
+						'run', function (self, parent, context)
+							local title = T(13689, --[[XTemplate OptionsDlg Title]] "DLC INFO")
+							parent:ResolveId("idTitle"):SetTitle(title)
+						end,
+					}),
+					PlaceObj('XTemplateForEach', {
+						'array', function (parent, context) return GetAvailableDlcList(true) end,
+						'__context', function (parent, context, item, i, n) return GetDLCDisplayName(item) end,
+					}, {
+						PlaceObj('XTemplateTemplate', {
+							'__template', "MenuEntrySmall",
+							'OnContextUpdate', function (self, context, ...)
+								self:SetText(context)
+							end,
+							'TextStyle', "ListItem3",
+							'Translate', false,
+						}),
+						}),
+					PlaceObj('XTemplateWindow', {
+						'__condition', function (parent, context) return #parent == 0 end,
+						'__class', "XText",
+						'Id', "idNoModsText",
+						'TextStyle', "ListItem4",
+						'Text', "No DLCs available.",
+					}),
+					PlaceObj('XTemplateAction', {
+						'ActionId', "back",
+						'ActionName', T(108518605856, --[[XTemplate OptionsContentWindow ActionName]] "BACK"),
+						'ActionToolbar', "ActionBar",
+						'ActionShortcut', "Escape",
+						'ActionGamepad', "ButtonB",
+						'OnActionEffect', "back",
 					}),
 					}),
 				}),

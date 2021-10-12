@@ -10,6 +10,7 @@ ServiceInterestsList = {
 	"interestGambling",
 	"interestPlaying",
 	"interestDining",
+	"interestSafari",
 	"needFood",
 	"needMedical",
 }
@@ -50,6 +51,9 @@ Interests = {
 	},
 	interestDining = {
 		display_name = T(1021, "Dining"),
+	},
+	interestSafari = {
+		display_name = T(12721, "Safari"),
 	},
 	needFood = {
 		display_name = T(1022, "Food"),
@@ -139,6 +143,7 @@ ColonistStatReasons =
 	["overtime"]                 = T(1033, "<red>Heavy Workload <amount></red>"),
 	["StatusEffect_Irradiated"]  = T(1034, "<red>Irradiated <amount></red>"),
 	["rest"]                     = T(1035, "<green>Well rested <amount></green>"),
+	-- ["comfort food"] - same as comfort
 	["ChronicCondition"]         = T(1036, "<red>Chronic Condition <amount></red>"), -- ChronicCondition trait effect
 	["Infected"]                 = T(10907, "<red>Infected <amount></red>"),
 	
@@ -149,7 +154,9 @@ ColonistStatReasons =
 	["survived outside"]      = T(1039, "<green>Survived alone outside the Dome <amount></green>"),
 	["StatusEffect_StressedOut"] = T(1040, "<green>Regained composure after Sanity breakdown <amount></green>"),
 	["insane"] 						= T(7368, "Rebooting in safe mode <amount>"),
+	["lack of light"]         = T(13614, "<red>Lack of sunlight<amount></red>"),
 	-- ["rest"] - same as health
+	-- ["comfort food"] - same as comfort
 	["dome"]                  = T(1041, "<green>Dome, sweet Dome <amount></green>"),
 	["psychologist"]          = T(7848, "<green>Psychoanalyzed <amount></green>"),
 	["cold wave"]             = T(1042, "<red>It's too cold <amount></red>"),
@@ -166,7 +173,8 @@ ColonistStatReasons =
 	["outside workplace"]     = T(1049, "<red>Worked outside the Dome <amount></red>"),
 	["Gamer"]                 = T(1050, "<green>Game on! <amount> (Gamer)</green>"),
 	-- ChangeComfort reasons
-	["raw food"]        	  = T(1051, "<red>Had an unprepared meal <amount></red>"),
+	["raw food"]              = T(1051, "<red>Had an unprepared meal <amount></red>"),
+	["comfort food"]          = T(13615, "<green>Had comfort food <amount></green>"),
 	["work in workshop"]      = T(8779, "<green>Worked in a Workshop <amount></green>"),
 	["no home"]               = T(1052, "<red>No functional Residence <amount></red>"),
 	["malfunctioned Dome rest"]= T(8655, "<red>My Dome has malfunctioned <amount></red>"),
@@ -182,6 +190,37 @@ ColonistStatReasons =
 	["-Comfort"]              = T(1061, "I can't live like this <amount> (Comfort)"),
 	["+Comfort"]              = T(1062, "Living in luxury <amount> (Comfort)"),
 	["Saint"]                 = T(1063, "A Saint in our Dome <amount>"), -- Saint effect
+	-- ChangeSatisfaction reasons
+	["safari"]                = T(12722, "<green>Went on Safari <amount></green>"),
+	["gain perk"]             = T(12723, "<green>Gained a perk <amount></green>"),
+	["lose flaw"]             = T(12724, "<green>Lost a flaw <amount></green>"),
+	["gain flaw"]             = T(12725, "<red>Gained a flaw <amount></red>"),
+	["breakdown"]             = T(12726, "<red>Having a mental breakdown <amount></red>"),
+	["overstay"]              = T(12727, "<red>Spent too many Sols on Mars <amount></red>"),
+	["+perfect health"]        = T(12728, "<green>In perfect Health <amount> (Health)</green>"),
+	["+high health"]           = T(12729, "<green>As healthy as a bull <amount> (Health)</green>"),
+	["+low health"]            = T(12883, "<green>Recovered from bad health <amount> (Health)</green>"),
+	["-perfect health"]        = T(12884, "<red>No longer in perfect Health <amount> (Health)</red>"),
+	["-high health"]           = T(12885, "<red>No longer healthy as a bull <amount> (Health)</red>"),
+	["-low health"]            = T(12730, "<red>Struggling to survive <amount> (Health)</red>"),
+	["+perfect sanity"]        = T(12731, "<green>Completely serene <amount> (Sanity)</green>"),
+	["+high sanity"]           = T(12732, "<green>One with the universe <amount> (Sanity)</green>"),
+	["+low sanity"]            = T(12886, "<green>Recovered from severe stress <amount> (Sanity)</green>"),
+	["-perfect sanity"]        = T(12887, "<red>No longer completely serene <amount> (Sanity)</red>"),
+	["-high sanity"]           = T(12888, "<red>No longer one with the universe <amount> (Sanity)</red>"),
+	["-low sanity"]            = T(12733, "<red>Severely stressed <amount> (Sanity)</red>"),
+	["+perfect comfort"]       = T(12734, "<green>Left with nothing more to wish for <amount> (Comfort)</green>"),
+	["+high comfort"]          = T(12735, "<green>Living in luxury <amount> (Comfort)</green>"),
+	["+low comfort"]           = T(12889, "<green>Recovered from a lack of comfort <amount> (Comfort)</green>"),
+	["-perfect comfort"]       = T(12890, "<red>Lost their perfect comfort <amount> (Comfort)</red>"),
+	["-high comfort"]          = T(12891, "<red>Is lacking some luxuries <amount> (Comfort)</red>"),
+	["-low comfort"]           = T(12736, "<red>I can't live like this <amount> (Comfort)</red>"),
+	["+perfect morale"]        = T(12737, "<green>Having the time of their life <amount> (Morale)</green>"),
+	["+high morale"]           = T(12738, "<green>Excited about their time on Mars <amount> (Morale)</green>"),
+	["+low morale"]            = T(12892, "<green>Realized it's not so bad <amount> (Morale)</green>"),
+	["-perfect morale"]        = T(12893, "<red>No longer has the time of their life <amount> (Morale)</red>"),
+	["-high morale"]           = T(12894, "<red>No longer excited about their time on Mars <amount> (Morale)</red>"),
+	["-low morale"]            = T(12739, "<red>Severly disappointed in their trip <amount> (Morale)</red>"),
 	
 	["hive mind"]				 = T(7369, "One with the collective <amount>"),
 }

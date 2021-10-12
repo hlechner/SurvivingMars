@@ -208,8 +208,8 @@ function Farm:LogCropEffects()
 	end
 end
 
-local function HexGetAnyButDomeInterior(q, r)
-	return HexGridGetObject(ObjectGrid, q, r, nil, "DomeInterior")
+local function HexGetAnyButDomeInterior(game_maps, q, r)
+	return game_maps.object_hex_grid:GetObject(q, r, nil, "DomeInterior")
 end
 
 function Farm:SwitchProducerType(resource_type)
@@ -217,9 +217,10 @@ function Farm:SwitchProducerType(resource_type)
 	
 	--find dump pos
 	local qq, rr = WorldToHex(self)
-	local res, q, r = TryFindStockpileDumpSpot(qq, rr, self:GetAngle(), GetEntityPeripheralHexShape(self:GetEntity()), HexGetAnyButDomeInterior)
+	local game_map = GetGameMap(self)
+	local res, q, r = TryFindStockpileDumpSpotIn(game_map, qq, rr, self:GetAngle(), GetEntityPeripheralHexShape(self:GetEntity()), HexGetAnyButDomeInterior)
 	local pos = res and point(HexToWorld(q, r))
-	if not res or not terrain.IsPassable(pos) then 
+	if not res or not game_map.terrain:IsPassable(pos) then 
 		--nowhere to dump. stocks are not in the def filters, so unpassable == too many stockpiles around.
 		if Platform.developer then
 			print("<yellow>No suitable stockpile location found around farm to dump current resources to, new production lost.</yellow>")
@@ -228,10 +229,11 @@ function Farm:SwitchProducerType(resource_type)
 	end
 	
 	--dump @ pos
-	PlaceResourceStockpile_Delayed(pos, producer.resource_produced, self.amount_stored, self:GetAngle() + 90 * 60, true)
+	PlaceResourceStockpile_Delayed(pos, self:GetMapID(), producer.resource_produced, self.amount_stored, self:GetAngle() + 90 * 60, true)
 	
 	--destroy current stocks
-	SuspendPassEdits("FarmChangingResourceType")
+	local realm = game_map.realm
+	realm:SuspendPassEdits("FarmChangingResourceType")
 	for _, stock in ipairs(producer.stockpiles) do
 		DoneObject(stock)
 	end
@@ -252,7 +254,7 @@ function Farm:SwitchProducerType(resource_type)
 	--create new stocks
 	producer:CreateStockpiles()
 
-	ResumePassEdits("FarmChangingResourceType")
+	realm:ResumePassEdits("FarmChangingResourceType")
 	return producer
 end
 
@@ -274,7 +276,7 @@ function Farm:BuildingUpdate(dt, day, hour)
 		if self.expected_output == 0 then
 			-- fail the crop immediately and start a new one
 			if self.working then
-				AddOnScreenNotification("CropsFailed", nil, {}, {self})
+				AddOnScreenNotification("CropsFailed", nil, {}, {self}, self:GetMapID())
 				self:PlantNextCrop()
 			end
 		elseif grown >= duration then
@@ -321,14 +323,14 @@ function Farm:CreateCropAttaches()
 
 	if not self.hydroponic then
 		local cls = IsValidEntity(ent) and ent or "CropTomato"
-		local obj = PlaceObject(cls)
+		local obj = PlaceObjectIn(cls, self:GetMapID())
 		self:Attach(obj)
 		PlayFX("PlantsGrowing", "idle", self, obj)
 	else
 		local cls = IsValidEntity(ent) and ent or "CropCucumber"
 		local first, last = self:GetSpotRange("Crop")
 		for i = first, last do
-			local obj = PlaceObject(cls)
+			local obj = PlaceObjectIn(cls, self:GetMapID())
 			self:Attach(obj, i)
 			PlayFX("PlantsGrowing", "idle", self, obj)
 		end
@@ -713,7 +715,7 @@ function OnMsg.SaveMap()
 		end
 		farm.persist_crops = persist_crops
 	end
-	MapForEach("map", "Farm", exec)
+	MapsForEach("map", "Farm", exec)
 end
 
 

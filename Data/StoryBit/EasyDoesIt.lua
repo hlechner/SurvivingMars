@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/16_polymer_factory.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckTechStatus', {
 			'Field', "Breakthroughs",
@@ -17,6 +18,10 @@ PlaceObj('StoryBit', {
 				PlaceObj('IsBuildingWorking', nil),
 			},
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(285306417334, --[[StoryBit EasyDoesIt Text]] "The efficiency report from your <DisplayName> shows that production is way below the expected amount! Obviously, the workers trusted the application of Factory Automation too much to even bother doing their part."),
@@ -26,6 +31,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(467376302309, --[[voice:narrator]] "Something doesn’t add up with the production data from one of your factories. When you ask the shift manager, your words are met with guilty silence."),
 	group = "Breakthroughs",
 	id = "EasyDoesIt",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143245,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "comfort",
 		'Value', -20,

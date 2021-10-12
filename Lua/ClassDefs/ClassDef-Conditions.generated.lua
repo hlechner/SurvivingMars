@@ -12,11 +12,11 @@ DefineClass.AreDomesOpen = {
 	Documentation = "Checks if the domes are switched to open state (after reaching breathable atmosphere)",
 }
 
-function AreDomesOpen:__eval(obj, context)
-	return OpenAirBuildings
+function AreDomesOpen:__eval(map_id, obj, context)
+	return GetOpenAirBuildings(map_id)
 end
 
-function AreDomesOpen:__eval(obj, context)
+function AreDomesOpen:__eval(map_id, obj, context)
 	return false
 end
 
@@ -31,8 +31,9 @@ DefineClass.CanCauseFault = {
 	Documentation = "Returns whether there exists a supply grid fragment of the selected type (electricity or water) where a fault can be caused (i.e. a grid with more then 10 elements).",
 }
 
-function CanCauseFault:__eval(obj, context)
-	for _, fragment in ipairs(UICity[self.Grid]) do
+function CanCauseFault:__eval(map_id, obj, context)
+	local city = Cities[map_id]
+	for _, fragment in ipairs(city[self.Grid]) do
 		if fragment:IsBreakable() then
 			return true
 		end
@@ -54,12 +55,13 @@ DefineClass.CheckAverageComfort = {
 	Documentation = "Checks the average comfort in the colony against a certain value.",
 }
 
-function CheckAverageComfort:__eval(obj, context)
-	local avg = UICity:GetAverageStat("Comfort")
+function CheckAverageComfort:__eval(map_id, obj, context)
+	local city = Cities[map_id]
+	local avg = GetAverageStat(city.labels.Colonist, "Comfort")
 	return self:CompareOp(avg, context)
 end
 
-function CheckAverageComfort:__eval_relaxed(obj, context)
+function CheckAverageComfort:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -77,12 +79,13 @@ DefineClass.CheckAverageMorale = {
 	Documentation = "Checks the average morale in the colony against a certain value.",
 }
 
-function CheckAverageMorale:__eval(obj, context)
-	local avg = UICity:GetAverageStat("Morale")
+function CheckAverageMorale:__eval(map_id, obj, context)
+	local city = Cities[map_id]
+	local avg = GetAverageStat(city.labels.Colonist, "Morale")
 	return self:CompareOp(avg, context)
 end
 
-function CheckAverageMorale:__eval_relaxed(obj, context)
+function CheckAverageMorale:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -101,11 +104,12 @@ DefineClass.CheckBuildingCount = {
 	TextPlural = T(438871007969, --[[ConditionDef Conditions CheckBuildingCount value]] "<amount> <building_name_plural>"),
 }
 
-function CheckBuildingCount:__eval(obj, context)
+function CheckBuildingCount:__eval(map_id, obj, context)
 	local count = 0
 	local amount = self:ResolveValue("Amount", context)
 	if ClassTemplates.Building[self.Building] then
-		for _, building in ipairs(UICity.labels[self.Building] or empty_table) do
+		local city = Cities[map_id]
+		for _, building in ipairs(city.labels[self.Building] or empty_table) do
 			if not building:HasMember("destroyed") then
 				count = count + 1
 			elseif building.destroyed == false then
@@ -146,8 +150,9 @@ DefineClass.CheckColonistCount = {
 	TextTraitPlural = T(330446983216, --[[ConditionDef Conditions CheckColonistCount value]] "<amount> <trait> Colonists"),
 }
 
-function CheckColonistCount:__eval(obj, context)
-	local objs = GetObjectsByLabel("Colonist")
+function CheckColonistCount:__eval(map_id, obj, context)
+	local city = Cities[map_id]
+	local objs = GetObjectsByLabel(city, "Colonist")
 	local count = #(objs or "")
 	if count > 0 and self.Trait and self.Trait ~= "" then
 		for _, obj in ipairs(objs) do
@@ -217,7 +222,7 @@ DefineClass.CheckDeaths = {
 	DescriptionNeg = Untranslated("Deaths <NegText> <ReasonsText> <= <Count> for the last <Sols> sols"),
 }
 
-function CheckDeaths:__eval(obj, context)
+function CheckDeaths:__eval(map_id, obj, context)
 	local count = self:ResolveValue("Count", context)
 	local sols = self:ResolveValue("Sols", context)
 	local reasons
@@ -240,7 +245,7 @@ function CheckDeaths:GetNegText()
 	return self.OtherThan and "other than" or ""
 end
 
-function CheckDeaths:__eval_relaxed(obj, context)
+function CheckDeaths:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -265,16 +270,17 @@ DefineClass.CheckObjectCount = {
 	Documentation = 'Checks the number of specified objects, limited by the selected Filters. For example, use Label "Colonist",  filter CheckColonistStat for Sanity < 10 and filter HasTrait "Scientist" to determine the count of mad scientists in the colony.',
 }
 
-function CheckObjectCount:__eval(obj, context)
+function CheckObjectCount:__eval(map_id, obj, context)
 	local objs
+	local city = Cities[map_id]
 	if not self.InDome then
-		objs = GetObjectsByLabel(self.Label)
+		objs = GetObjectsByLabel(city, self.Label)
 	elseif obj then
 		-- might also be a Construction object
 		objs = obj:IsKindOf("Dome") and obj.labels[self.Label] or empty_table
 	else
 		objs = {}
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+		for _, dome in ipairs(city.labels.Dome or empty_table) do
 				table.iappend(objs, dome.labels[self.Label])
 		end
 	end
@@ -282,7 +288,7 @@ function CheckObjectCount:__eval(obj, context)
 	for i = 1, #(objs or "") do
 		local ok = true
 		for _, condition in ipairs(self.Filters or empty_table) do
-			if not condition:Evaluate(objs[i], context) then
+			if not condition:Evaluate(map_id, objs[i], context) then
 				ok = false
 				break
 			end
@@ -314,24 +320,25 @@ DefineClass.CheckResource = {
 	Documentation = "Checks the quantity of the specified resource against the specified value.",
 }
 
-function CheckResource:__eval(obj, context)
+function CheckResource:__eval(map_id, obj, context)
 	local count = 0
 	local amount = self:ResolveValue("Amount", context)
 	local resource = self.Resource
+	local city = Cities[map_id]
 	if resource == "ResearchPoints" then
-		count = UICity:GetEstimatedRP()
+		count = UIColony:GetEstimatedRP()
 	elseif resource == "Funding" then
-		count = UICity:GetFunding()
+		count = UIColony.funds:GetFunding()
 	elseif resource == "Power" or resource == "Water" or resource == "Air" then
 		resource = resource:lower()
-		count = ResourceOverviewObj.data["total_"..resource.."_production"] or 0
+		count = GetCityResourceOverview(city).data["total_"..resource.."_production"] or 0
 		amount = amount*const.ResourceScale
 	elseif resource == "StoredPower" or resource == "StoredWater" or resource == "StoredAir" then
 		resource = resource:match("Stored".."(%a+)"):lower()
-		count = ResourceOverviewObj.data["total_"..resource.."_storage"] or 0
+		count = GetCityResourceOverview(city).data["total_"..resource.."_storage"] or 0
 		amount = amount*const.ResourceScale
 	else --Construction Resources, Food, Fuel
-		count = ResourceOverviewObj.data[self.Resource] or 0
+		count = GetCityResourceOverview(city).data[self.Resource] or 0
 		amount = amount*const.ResourceScale
 	end
 	
@@ -359,17 +366,17 @@ DefineClass.CheckTechStatus = {
 	Documentation = "Checks if the specified tech is revealed and if it is researched or not.",
 }
 
-function CheckTechStatus:__eval(obj, context)
+function CheckTechStatus:__eval(map_id, obj, context)
 	if not TechDef[self.TechId] then
 		context:ShowError(self, "No such tech:", self.TechId)
 		return
 	end
 	if self.Status == "researched" then
-		return UICity:IsTechResearched(self.TechId)
+		return UIColony:IsTechResearched(self.TechId)
 	elseif self.Status == "available" then
-		return UICity:IsTechResearchable(self.TechId)
+		return UIColony:IsTechResearchable(self.TechId)
 	elseif self.Status == "unknown" then
-		return not UICity:IsTechDiscovered(self.TechId)
+		return not UIColony:IsTechDiscovered(self.TechId)
 	end
 end
 
@@ -412,7 +419,7 @@ DefineClass.CountShuttles = {
 	Documentation = "Checks the number of shuttles in the colony, according to the specified criteria (shuttles in flight, refueling shuttles, idle shuttles, all shuttles).",
 }
 
-function CountShuttles:__eval(obj, context)
+function CountShuttles:__eval(map_id, obj, context)
 	local count = 0
 	local ShuttleHubCountShuttles
 	if self.Status == "all" then
@@ -432,7 +439,8 @@ function CountShuttles:__eval(obj, context)
 			return hub:GetIdleShuttles()
 		end
 	end
-	for _, shuttle_hub in pairs(UICity.labels.ShuttleHub or empty_table) do
+	local city = Cities[map_id]
+	for _, shuttle_hub in pairs(city.labels.ShuttleHub or empty_table) do
 		if not shuttle_hub:IsKindOf("ConstructionSite") and not shuttle_hub.destroyed then
 			count = count + ShuttleHubCountShuttles(shuttle_hub)
 		end
@@ -457,11 +465,11 @@ DefineClass.CountTechsResearched = {
 	Documentation = "Checks the number of researched Techs.",
 }
 
-function CountTechsResearched:__eval(obj, context)
+function CountTechsResearched:__eval(map_id, obj, context)
 	local count = 0
 	local fields = table.keys(TechFields)
 	for i = 1, #fields do
-		local t_c, all = UICity:TechCount(fields[i], "researched")
+		local t_c, all = UIColony:TechCount(fields[i], "researched")
 		count = count + t_c
 	end
 	return self:CompareOp(count, context)
@@ -479,11 +487,11 @@ DefineClass.FounderStageCompleted = {
 	Documentation = "Checks if Founder stage is completed (colony is approved).",
 }
 
-function FounderStageCompleted:__eval(obj, context)
+function FounderStageCompleted:__eval(map_id, obj, context)
 	return g_ColonyNotViableUntil == -1
 end
 
-function FounderStageCompleted:__eval_relaxed(obj, context)
+function FounderStageCompleted:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -504,7 +512,7 @@ DefineClass.HasTrait = {
 	Documentation = "Checks if colonist has the specified trait.",
 }
 
-function HasTrait:__eval(obj, context)
+function HasTrait:__eval(map_id, obj, context)
 	return obj.traits[self.Trait]
 end
 
@@ -523,7 +531,7 @@ DefineClass.HasWorkplace = {
 	Documentation = "Checks if colonist has a workplace.",
 }
 
-function HasWorkplace:__eval(obj, context)
+function HasWorkplace:__eval(map_id, obj, context)
 	return not not obj.workplace
 end
 
@@ -534,7 +542,7 @@ DefineClass.IsAssociatedObject = {
 	Documentation = "Checks if object is the associated object.",
 }
 
-function IsAssociatedObject:__eval(obj, context)
+function IsAssociatedObject:__eval(map_id, obj, context)
 	if not context.object then
 		context:ShowError(self, "No associated object!")
 		return
@@ -554,8 +562,8 @@ DefineClass.IsAtmosphereBreathable = {
 	Documentation = "Checks if the atmosphere is breathable",
 }
 
-function IsAtmosphereBreathable:__eval(obj, context)
-	return BreathableAtmosphere
+function IsAtmosphereBreathable:__eval(map_id, obj, context)
+	return GetAtmosphereBreathable(map_id)
 end
 
 UndefineClass('IsBuildingClass')
@@ -577,7 +585,7 @@ DefineClass.IsBuildingClass = {
 	Documentation = "Checks if building's class is one of the specified classes (if any) and its template is one of the specified templates (if any).",
 }
 
-function IsBuildingClass:__eval(obj, context)
+function IsBuildingClass:__eval(map_id, obj, context)
 	if #self.BuildingClass > 0 then
 		if not obj:IsKindOfClasses(self.BuildingClass) then
 			return false
@@ -614,7 +622,7 @@ DefineClass.IsBuildingWorking = {
 	Documentation = "Checks if the building is working.",
 }
 
-function IsBuildingWorking:__eval(obj, context)
+function IsBuildingWorking:__eval(map_id, obj, context)
 	return obj.working
 end
 
@@ -632,11 +640,11 @@ DefineClass.IsCommander = {
 	Documentation = "Checks if player's Commander profile is the same as the specified.",
 }
 
-function IsCommander:__eval(obj, context)
+function IsCommander:__eval(map_id, obj, context)
 	return GetCommanderProfile().name == self.CommanderProfile
 end
 
-function IsCommander:__eval_relaxed(obj, context)
+function IsCommander:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -656,12 +664,12 @@ DefineClass.IsCommander2 = {
 	Documentation = "Checks if player's Commander profile is one of the two specified.",
 }
 
-function IsCommander2:__eval(obj, context)
+function IsCommander2:__eval(map_id, obj, context)
 	local commander = GetCommanderProfile().name 
 	return commander == self.CommanderProfile1 or commander==self.CommanderProfile2
 end
 
-function IsCommander2:__eval_relaxed(obj, context)
+function IsCommander2:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -679,7 +687,7 @@ DefineClass.IsCommanders = {
 	Documentation = "Checks if player's Commander profile is one of the specified.",
 }
 
-function IsCommanders:__eval(obj, context)
+function IsCommanders:__eval(map_id, obj, context)
 	return table.find(self.Commanders, GetCommanderProfile().name)
 end
 
@@ -692,7 +700,7 @@ function IsCommanders:GetNamesText()
 	return table.concat(items, ", ")
 end
 
-function IsCommanders:__eval_relaxed(obj, context)
+function IsCommanders:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -709,12 +717,12 @@ DefineClass.IsCustomAnomaly = {
 	DescriptionNeg = Untranslated("Not associated anomaly"),
 	RequiredObjClasses = {
 	"PlanetaryAnomaly",
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Checks if asociated rocket is the Founder's rocket",
 }
 
-function IsCustomAnomaly:__eval(obj, context)
+function IsCustomAnomaly:__eval(map_id, obj, context)
 	if IsKindOf(obj, "RocketExpedition") then
 		obj = obj.expedition and obj.expedition.anomaly
 	end
@@ -737,13 +745,32 @@ DefineClass.IsFoundersRocket = {
 	Description = Untranslated("Rocket is Founder"),
 	DescriptionNeg = Untranslated("Rocket is not Founder"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Checks if asociated rocket is the Founder's rocket",
 }
 
-function IsFoundersRocket:__eval(obj, context)
+function IsFoundersRocket:__eval(map_id, obj, context)
 	return obj.category == "founder"
+end
+
+UndefineClass('IsMapEnvironment')
+DefineClass.IsMapEnvironment = {
+	__parents = { "Condition", },
+	properties = {
+		{ id = "Negate", name = "Negate Condition", help = "If true, checks for the opposite condition", 
+			editor = "bool", default = false, },
+		{ id = "SelectedMapEnvironment", help = "Map Environment to check", 
+			editor = "combo", default = "Surface", items = function (self) return EnvironmentTypes end, },
+	},
+	Description = T(835138577012, --[[ConditionDef Conditions IsMapEnvironment value]] "Is map environment <SelectedMapEnvironment>"),
+	DescriptionNeg = T(605538238925, --[[ConditionDef Conditions IsMapEnvironment value]] "Is map environment not <SelectedMapEnvironment>"),
+	Documentation = "Checks if the map environment is of specified type.",
+}
+
+function IsMapEnvironment:__eval(map_id, obj, context)
+	local map_data = ActiveMaps[map_id]
+	return map_data and map_data.Environment == self.SelectedMapEnvironment
 end
 
 UndefineClass('IsMysteryActive')
@@ -760,11 +787,11 @@ DefineClass.IsMysteryActive = {
 	Documentation = "Checks whether the specified mystery is active in this playthrough.",
 }
 
-function IsMysteryActive:__eval(obj, context)
-	return self.Mystery and IsKindOf(UICity.mystery, self.Mystery)
+function IsMysteryActive:__eval(map_id, obj, context)
+	return self.Mystery and IsKindOf(UIColony.mystery, self.Mystery)
 end
 
-function IsMysteryActive:__eval_relaxed(obj, context)
+function IsMysteryActive:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -782,7 +809,7 @@ DefineClass.IsRocketID = {
 	Documentation = "Checks if the rocket ID is the one specified.",
 }
 
-function IsRocketID:__eval(obj, context)
+function IsRocketID:__eval(map_id, obj, context)
 	return obj.custom_id == self.rocket_id
 end
 
@@ -798,12 +825,12 @@ DefineClass.IsRocketStatus = {
 	Description = Untranslated("Is rocket <Status>"),
 	DescriptionNeg = Untranslated("Is rocket not <Status>"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Checks if the associated rocket is in the specified status.",
 }
 
-function IsRocketStatus:__eval(obj, context)
+function IsRocketStatus:__eval(map_id, obj, context)
 	return obj:IsRocketStatus(self.Status)
 end
 
@@ -817,7 +844,7 @@ DefineClass.IsRocketType = {
 			editor = "bool", default = false, },
 	},
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Checks whether the associated rocket is the specified type.",
 }
@@ -826,11 +853,11 @@ function IsRocketType:GetEditorView()
 	return self.Negate and T(11885, "Rocket is <Type>") or T(11886, "Rocket is not <Type>")
 end
 
-function IsRocketType:__eval(obj, context)
+function IsRocketType:__eval(map_id, obj, context)
 	if self.Type == "Any" then return true end
 	if self.Type == "Trade" then return obj:IsKindOf("TradeRocket") end
 	if self.Type == "Refugee" then return obj:IsKindOf("RefugeeRocket") end
-	
+	if self.Type == "Lander" then return obj:IsKindOf("LanderRocket") end
 	return (self.Type == "Cargo") == (obj.category == "cargo")
 end
 
@@ -849,8 +876,8 @@ DefineClass.IsSolInRange = {
 	Documentation = "Checks whether the current Sol is in the specified time range.",
 }
 
-function IsSolInRange:__eval(obj, context)
-	return UICity.day>=self:ResolveValue("Min",context) and UICity.day<=self:ResolveValue("Max",context)
+function IsSolInRange:__eval(map_id, obj, context)
+	return UIColony.day>=self:ResolveValue("Min",context) and UIColony.day<=self:ResolveValue("Max",context)
 end
 
 UndefineClass('IsSpecialProjectCompleted')
@@ -867,7 +894,7 @@ DefineClass.IsSpecialProjectCompleted = {
 	Documentation = "Check if the specified special project has been completed at least onece.",
 }
 
-function IsSpecialProjectCompleted:__eval(obj, context)
+function IsSpecialProjectCompleted:__eval(map_id, obj, context)
 	if not self.project_id then return false end
 	return  g_SpecialProjectCompleted and g_SpecialProjectCompleted[self.project_id] and  g_SpecialProjectCompleted[self.project_id]>0
 end
@@ -890,11 +917,11 @@ DefineClass.IsSponsor = {
 	Documentation = "Check if the current mission sponsor is the specified one.",
 }
 
-function IsSponsor:__eval(obj, context)
+function IsSponsor:__eval(map_id, obj, context)
 	return GetMissionSponsor().name == self.SponsorName
 end
 
-function IsSponsor:__eval_relaxed(obj, context)
+function IsSponsor:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -912,7 +939,7 @@ DefineClass.IsSponsors = {
 	Documentation = "Check if the current mission sponsor is one of the specified ones.",
 }
 
-function IsSponsors:__eval(obj, context)
+function IsSponsors:__eval(map_id, obj, context)
 	return table.find(self.Sponsors, GetMissionSponsor().name)
 end
 
@@ -925,7 +952,7 @@ function IsSponsors:GetNamesText()
 	return table.concat(items, ", ")
 end
 
-function IsSponsors:__eval_relaxed(obj, context)
+function IsSponsors:__eval_relaxed(map_id, obj, context)
 	return true
 end
 
@@ -939,12 +966,12 @@ DefineClass.IsSupplyPod = {
 	Description = Untranslated("Rocket is a Supply Pod"),
 	DescriptionNeg = Untranslated("Rocket is not a Supply Pod"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Check if the associated object is a Supply Pod.",
 }
 
-function IsSupplyPod:__eval(obj, context)
+function IsSupplyPod:__eval(map_id, obj, context)
 	return IsKindOf(obj, "SupplyPod")
 end
 
@@ -967,7 +994,7 @@ DefineClass.IsTechId = {
 	Documentation = "Check if the associated tech is the one specified.",
 }
 
-function IsTechId:__eval(obj, context)
+function IsTechId:__eval(map_id, obj, context)
 	return obj.id == self.TechId
 end
 
@@ -1010,19 +1037,20 @@ function PickFromLabel:ConditionsFormat()
 	return table.concat(t, T(1000736, ", "))
 end
 
-function PickFromLabel:__eval(obj, context)
+function PickFromLabel:__eval(map_id, obj, context)
 	if not self.Label then
 		context:ShowError(self, "Label required!")
 		return
 	end
-	local objs = GetObjectsByLabel(self.Label)
+	local city = Cities[map_id]
+	local objs = GetObjectsByLabel(city, self.Label)
 	if not objs or #objs == 0 then return end
 	
 	local list = {}
 	for i = 1, #objs do
 		local obj, ok = objs[i], true
 		for _, condition in ipairs(self.Conditions or empty_table) do
-			if not condition:Evaluate(obj, context) then
+			if not condition:Evaluate(map_id, obj, context) then
 				ok = false
 				break
 			end
@@ -1056,8 +1084,9 @@ DefineClass.PickResident = {
 	Documentation = "Picks a random resident of the specified building who also satisfies certain conditions.",
 }
 
-function PickResident:__eval(obj, context)
-	local objs = GetObjectsByLabel(self.ParentBuildingLabel)
+function PickResident:__eval(map_id, obj, context)
+	local city = Cities[map_id]
+	local objs = GetObjectsByLabel(city, self.ParentBuildingLabel)
 	if not objs or #objs == 0 then return end
 	
 	local building = AsyncRandElement(objs)
@@ -1068,7 +1097,7 @@ function PickResident:__eval(obj, context)
 	for i = 1, #colonists do
 		local colonist, ok = colonists[i], true
 		for _, condition in ipairs(self.ResidentConditions or empty_table) do
-			if not condition:Evaluate(colonist, context) then
+			if not condition:Evaluate(map_id, colonist, context) then
 				ok = false
 				break
 			end
@@ -1096,9 +1125,10 @@ DefineClass.PickRocketWithStatus = {
 	Documentation = "Pick a random rocket with the specified status.",
 }
 
-function PickRocketWithStatus:__eval(obj, context)
+function PickRocketWithStatus:__eval(map_id, obj, context)
 	local matching = {}
-	for _, rocket in ipairs(UICity.labels.SupplyRocket) do
+	local city = Cities[map_id]
+	for _, rocket in ipairs(city.labels.SupplyRocket or empty_table) do
 		if rocket:IsRocketStatus(self.Status) then
 			matching[#matching + 1] = rocket
 		end
@@ -1117,8 +1147,9 @@ DefineClass.PickShuttle = {
 	Documentation = "Pick a random flying shuttle.",
 }
 
-function PickShuttle:__eval(obj, context)
-	local shuttles = UICity.labels.CargoShuttle
+function PickShuttle:__eval(map_id, obj, context)
+	local city = Cities[map_id]
+	local shuttles = city.labels.CargoShuttle
 	if #shuttles > 0 then
 		context.object = AsyncRandElement(shuttles)
 		return true
@@ -1138,8 +1169,9 @@ DefineClass.PickWorker = {
 	Documentation = "Pick a colonist with the specified workplace.",
 }
 
-function PickWorker:__eval(obj, context)
-	local objs = GetObjectsByLabel(self.ParentBuildingLabel)
+function PickWorker:__eval(map_id, obj, context)
+	local city = Cities[map_id]
+	local objs = GetObjectsByLabel(city, self.ParentBuildingLabel)
 	if not objs or #objs == 0 then return end
 	
 	local building = AsyncRandElement(objs)
@@ -1157,7 +1189,7 @@ function PickWorker:__eval(obj, context)
 	for i = 1, #colonists do
 		local colonist, ok = colonists[i], true
 		for _, condition in ipairs(self.WorkerConditions or empty_table) do
-			if not condition:Evaluate(colonist, context) then
+			if not condition:Evaluate(map_id, colonist, context) then
 				ok = false
 				break
 			end
@@ -1183,7 +1215,7 @@ DefineClass.SupplyMissionsEnabled = {
 	Documentation = "Checks whether supply missions are enabled.",
 }
 
-function SupplyMissionsEnabled:__eval(obj, context)
+function SupplyMissionsEnabled:__eval(map_id, obj, context)
 	return g_Consts.SupplyMissionsEnabled == 1
 end
 
@@ -1199,76 +1231,77 @@ DefineClass.TerraformingActive = {
 	Documentation = "Checks if terraforming is active in the current playthrough.",
 }
 
-function TerraformingActive:__eval(obj, context)
-	return not g_NoTerraforming
+function TerraformingActive:__eval(map_id, obj, context)
+	return IsDlcAvailable("armstrong") and not g_NoTerraforming
 end
 
 AreDomesOpen.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 24, AreDomesOpen.__eval)
 AreDomesOpen.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 36, AreDomesOpen.__eval)
 CanCauseFault.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 51, CanCauseFault.__eval)
-CheckAverageComfort.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 101, CheckAverageComfort.__eval)
-CheckAverageComfort.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 109, CheckAverageComfort.__eval_relaxed)
-CheckAverageMorale.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 143, CheckAverageMorale.__eval)
-CheckAverageMorale.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 151, CheckAverageMorale.__eval_relaxed)
-CheckBuildingCount.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 189, CheckBuildingCount.__eval)
-CheckBuildingCount.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 207, CheckBuildingCount.GetDescription)
-CheckColonistCount.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 264, CheckColonistCount.__eval)
-CheckColonistCount.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 280, CheckColonistCount.GetDescription)
-CheckColonistStat.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 331, CheckColonistStat.__eval)
-CheckDeaths.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 391, CheckDeaths.__eval)
-CheckDeaths.GetReasonsText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 408, CheckDeaths.GetReasonsText)
-CheckDeaths.GetNegText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 414, CheckDeaths.GetNegText)
-CheckDeaths.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 421, CheckDeaths.__eval_relaxed)
-CheckObjectCount.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 467, CheckObjectCount.__eval)
-CheckObjectCount.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 497, CheckObjectCount.GetObjName)
-CheckResource.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 537, CheckResource.__eval)
-CheckResource.GetResourceText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 564, CheckResource.GetResourceText)
-CheckTechStatus.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 606, CheckTechStatus.__eval)
-CheckTechStatus.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 622, CheckTechStatus.GetDescription)
-CountShuttles.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 659, CountShuttles.__eval)
-CountTechsResearched.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 744, CountTechsResearched.__eval)
-FounderStageCompleted.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 779, FounderStageCompleted.__eval)
-FounderStageCompleted.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 786, FounderStageCompleted.__eval_relaxed)
-HasTrait.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 833, HasTrait.__eval)
-HasWorkplace.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 875, HasWorkplace.__eval)
-IsAssociatedObject.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 899, IsAssociatedObject.__eval)
-IsAtmosphereBreathable.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 935, IsAtmosphereBreathable.__eval)
-IsBuildingClass.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 984, IsBuildingClass.__eval)
-IsBuildingClass.GetBuildingClasses = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1007, IsBuildingClass.GetBuildingClasses)
-IsBuildingClass.GetTemplates = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1013, IsBuildingClass.GetTemplates)
-IsBuildingWorking.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1055, IsBuildingWorking.__eval)
-IsCommander.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1093, IsCommander.__eval)
-IsCommander.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1100, IsCommander.__eval_relaxed)
-IsCommander2.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1144, IsCommander2.__eval)
-IsCommander2.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1152, IsCommander2.__eval_relaxed)
-IsCommanders.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1189, IsCommanders.__eval)
-IsCommanders.GetNamesText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1195, IsCommanders.GetNamesText)
-IsCommanders.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1207, IsCommanders.__eval_relaxed)
-IsCustomAnomaly.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1255, IsCustomAnomaly.__eval)
-IsFoundersRocket.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1306, IsFoundersRocket.__eval)
-IsMysteryActive.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1346, IsMysteryActive.__eval)
-IsMysteryActive.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1353, IsMysteryActive.__eval_relaxed)
-IsRocketID.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1392, IsRocketID.__eval)
-IsRocketStatus.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1440, IsRocketStatus.__eval)
-IsRocketType.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1468, IsRocketType.GetEditorView)
-IsRocketType.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1482, IsRocketType.__eval)
-IsSolInRange.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1523, IsSolInRange.__eval)
-IsSpecialProjectCompleted.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1568, IsSpecialProjectCompleted.__eval)
-IsSpecialProjectCompleted.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1575, IsSpecialProjectCompleted.GetWarning)
-IsSponsor.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1608, IsSponsor.__eval)
-IsSponsor.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1615, IsSponsor.__eval_relaxed)
-IsSponsors.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1652, IsSponsors.__eval)
-IsSponsors.GetNamesText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1658, IsSponsors.GetNamesText)
-IsSponsors.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1670, IsSponsors.__eval_relaxed)
-IsSupplyPod.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1712, IsSupplyPod.__eval)
-IsTechId.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1765, IsTechId.__eval)
-IsWorkplace.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1802, IsWorkplace.__eval)
-PickFromLabel.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1834, PickFromLabel.ConditionsFormat)
-PickFromLabel.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1845, PickFromLabel.__eval)
-PickFromLabel.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1873, PickFromLabel.GetWarning)
-PickResident.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1899, PickResident.__eval)
-PickRocketWithStatus.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1970, PickRocketWithStatus.__eval)
-PickShuttle.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2003, PickShuttle.__eval)
-PickWorker.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2030, PickWorker.__eval)
-SupplyMissionsEnabled.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2102, SupplyMissionsEnabled.__eval)
-TerraformingActive.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2134, TerraformingActive.__eval)
+CheckAverageComfort.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 102, CheckAverageComfort.__eval)
+CheckAverageComfort.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 111, CheckAverageComfort.__eval_relaxed)
+CheckAverageMorale.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 145, CheckAverageMorale.__eval)
+CheckAverageMorale.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 154, CheckAverageMorale.__eval_relaxed)
+CheckBuildingCount.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 192, CheckBuildingCount.__eval)
+CheckBuildingCount.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 211, CheckBuildingCount.GetDescription)
+CheckColonistCount.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 268, CheckColonistCount.__eval)
+CheckColonistCount.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 285, CheckColonistCount.GetDescription)
+CheckColonistStat.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 336, CheckColonistStat.__eval)
+CheckDeaths.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 396, CheckDeaths.__eval)
+CheckDeaths.GetReasonsText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 413, CheckDeaths.GetReasonsText)
+CheckDeaths.GetNegText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 419, CheckDeaths.GetNegText)
+CheckDeaths.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 426, CheckDeaths.__eval_relaxed)
+CheckObjectCount.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 472, CheckObjectCount.__eval)
+CheckObjectCount.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 503, CheckObjectCount.GetObjName)
+CheckResource.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 543, CheckResource.__eval)
+CheckResource.GetResourceText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 571, CheckResource.GetResourceText)
+CheckTechStatus.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 613, CheckTechStatus.__eval)
+CheckTechStatus.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 629, CheckTechStatus.GetDescription)
+CountShuttles.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 666, CountShuttles.__eval)
+CountTechsResearched.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 752, CountTechsResearched.__eval)
+FounderStageCompleted.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 787, FounderStageCompleted.__eval)
+FounderStageCompleted.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 794, FounderStageCompleted.__eval_relaxed)
+HasTrait.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 841, HasTrait.__eval)
+HasWorkplace.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 883, HasWorkplace.__eval)
+IsAssociatedObject.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 907, IsAssociatedObject.__eval)
+IsAtmosphereBreathable.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 943, IsAtmosphereBreathable.__eval)
+IsBuildingClass.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 992, IsBuildingClass.__eval)
+IsBuildingClass.GetBuildingClasses = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1015, IsBuildingClass.GetBuildingClasses)
+IsBuildingClass.GetTemplates = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1021, IsBuildingClass.GetTemplates)
+IsBuildingWorking.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1063, IsBuildingWorking.__eval)
+IsCommander.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1101, IsCommander.__eval)
+IsCommander.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1108, IsCommander.__eval_relaxed)
+IsCommander2.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1152, IsCommander2.__eval)
+IsCommander2.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1160, IsCommander2.__eval_relaxed)
+IsCommanders.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1197, IsCommanders.__eval)
+IsCommanders.GetNamesText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1203, IsCommanders.GetNamesText)
+IsCommanders.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1215, IsCommanders.__eval_relaxed)
+IsCustomAnomaly.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1263, IsCustomAnomaly.__eval)
+IsFoundersRocket.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1314, IsFoundersRocket.__eval)
+IsMapEnvironment.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1351, IsMapEnvironment.__eval)
+IsMysteryActive.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1392, IsMysteryActive.__eval)
+IsMysteryActive.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1399, IsMysteryActive.__eval_relaxed)
+IsRocketID.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1438, IsRocketID.__eval)
+IsRocketStatus.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1486, IsRocketStatus.__eval)
+IsRocketType.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1514, IsRocketType.GetEditorView)
+IsRocketType.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1528, IsRocketType.__eval)
+IsSolInRange.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1569, IsSolInRange.__eval)
+IsSpecialProjectCompleted.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1614, IsSpecialProjectCompleted.__eval)
+IsSpecialProjectCompleted.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1621, IsSpecialProjectCompleted.GetWarning)
+IsSponsor.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1654, IsSponsor.__eval)
+IsSponsor.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1661, IsSponsor.__eval_relaxed)
+IsSponsors.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1698, IsSponsors.__eval)
+IsSponsors.GetNamesText = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1704, IsSponsors.GetNamesText)
+IsSponsors.__eval_relaxed = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1716, IsSponsors.__eval_relaxed)
+IsSupplyPod.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1758, IsSupplyPod.__eval)
+IsTechId.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1811, IsTechId.__eval)
+IsWorkplace.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1848, IsWorkplace.__eval)
+PickFromLabel.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1880, PickFromLabel.ConditionsFormat)
+PickFromLabel.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1891, PickFromLabel.__eval)
+PickFromLabel.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1920, PickFromLabel.GetWarning)
+PickResident.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 1946, PickResident.__eval)
+PickRocketWithStatus.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2018, PickRocketWithStatus.__eval)
+PickShuttle.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2052, PickShuttle.__eval)
+PickWorker.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2080, PickWorker.__eval)
+SupplyMissionsEnabled.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2153, SupplyMissionsEnabled.__eval)
+TerraformingActive.__eval = SetFuncDebugInfo("@Data/ClassDef-Conditions.lua", 2185, TerraformingActive.__eval)

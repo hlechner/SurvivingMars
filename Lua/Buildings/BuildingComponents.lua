@@ -19,9 +19,9 @@ function DepositExploiter:HasNearbyDeposits()
 	return false
 end
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "NanoRefinement" then
-		MapForEach("map", "DepositExploiter",
+		MapsForEach("map", "DepositExploiter",
 			function(obj)
 				if IsKindOf(obj, "BaseBuilding") then
 					obj:UpdateConsumption()
@@ -44,6 +44,10 @@ DefineClass.BuildingDepositExploiterComponent = {
 	nearby_deposits = false,
 }
 
+local function BuildingDepositExploiterDepositFilterCb(deposit, exploiter)
+	return deposit:IsExploitableBy(exploiter)
+end
+
 function BuildingDepositExploiterComponent:Init()
 	self.nearby_deposits = {}
 end
@@ -51,7 +55,7 @@ end
 function BuildingDepositExploiterComponent:GameInit()
 	local city = self:HasMember("city") and self.city or UICity
 	city:AddToLabel("ResourceExploiter", self)
-	self:GatherNearbyDeposits()
+	self:GatherNearbyDeposits(BuildingDepositExploiterDepositFilterCb)
 end
 
 function BuildingDepositExploiterComponent:Done()
@@ -64,7 +68,7 @@ function BuildingDepositExploiterComponent:HasNearbyDeposits()
 end
 
 function BuildingDepositExploiterComponent:GetWorkNotPossibleReason()
-	if self.city:IsTechResearched("NanoRefinement") then
+	if self.city.colony:IsTechResearched("NanoRefinement") then
 		return
 	elseif not self:HasNearbyDeposits() then
 		return "NoDeposits"
@@ -84,7 +88,7 @@ function BuildingDepositExploiterComponent:SortNearbyDeposits() --override this 
 end
 
 function SortNearbyDeposits(deposits, ref_obj)
-	local max_exploitable_layer = UICity:GetMaxSubsurfaceExploitationLayer()
+	local max_exploitable_layer = UIColony:GetMaxSubsurfaceExploitationLayer()
 	ref_obj = ref_obj or self
 	for i=1,#deposits do
 		deposits[i].quality_mul = deposits[i]:GetQualityMultiplier(ref_obj)
@@ -129,13 +133,10 @@ function BuildingDepositExploiterComponent:StartExploit(deposit)
 	end
 end
 
-function BuildingDepositExploiterComponent:GatherNearbyDeposits(no_filter)
+function BuildingDepositExploiterComponent:GatherNearbyDeposits(filter)
 	local depo_hexaradius = self.exploitation_radius
-	local depo_filter = function(o, self) return o:IsExploitableBy(self) end
-	if no_filter then
-		depo_filter = nil
-	end
-	local deposits = MapGet(self, "hex", depo_hexaradius, "SubsurfaceDeposit", depo_filter, self)
+	local realm = GetRealm(self)
+	local deposits = realm:MapGet(self, "hex", depo_hexaradius, "SubsurfaceDeposit", filter, self)
 	for i=1,#deposits do
 		deposits[deposits[i]] = true
 	end
@@ -143,13 +144,18 @@ function BuildingDepositExploiterComponent:GatherNearbyDeposits(no_filter)
 	self:SortNearbyDeposits()
 end
 
+function BuildingDepositExploiterComponent:CanExploitResource(deposit)
+	local can_exploit = deposit.resource == self.exploitation_resource
+	return can_exploit
+end
+
 function BuildingDepositExploiterComponent:GatherConstructionStatuses(statuses)
-	self:GatherNearbyDeposits("no_filter")
+	self:GatherNearbyDeposits()
 	local require_tech
 	local resource_nearby
 	if #self.nearby_deposits > 0 then
 		for _, deposit in ipairs(self.nearby_deposits) do
-			if deposit.resource == self.exploitation_resource then
+			if self:CanExploitResource(deposit) then
 				resource_nearby = true
 				if self:IsTechLocked(deposit) then
 					require_tech = true
@@ -177,9 +183,9 @@ end
 
 function BuildingDepositExploiterComponent:UpdateIdleExtractorNotification()
 	if self:IsIdle() then
-		table.insert_unique(g_IdleExtractors, self)
+		RequestNewObjsNotif(g_IdleExtractors, self, self:GetMapID())
 	else
-		table.remove_entry(g_IdleExtractors, self)
+		DiscardNewObjsNotif(g_IdleExtractors, self, self:GetMapID())
 	end
 end
 
@@ -189,7 +195,7 @@ function BuildingDepositExploiterComponent:GetDepositGrade(deposit)
 end
 
 function BuildingDepositExploiterComponent:OnDepositDepleted(dep)
-	self:AttachSign(not self:CanExploit() and not self.city:IsTechResearched("NanoRefinement"), "SignNotWorking")
+	self:AttachSign(not self:CanExploit() and not self.city.colony:IsTechResearched("NanoRefinement"), "SignNotWorking")
 	if dep and IsValid(dep) then
 		dep:ClearGameFlags(const.gofPermanent)
 	end
@@ -224,7 +230,7 @@ function BuildingDepositExploiterComponent:ExtractResource(amount)
 	end
 	
 	if not IsValid(deposit) then
-		if self.city:IsTechResearched("NanoRefinement") then
+		if self.city.colony:IsTechResearched("NanoRefinement") then
 			return amount
 		else
 			self:AttachSign(true, "SignNotWorking")
@@ -249,7 +255,7 @@ function BuildingDepositExploiterComponent:GetCurrentDepositQualityMultiplier()
 	if next(self.nearby_deposits) then
 		return self.nearby_deposits[1]:GetQualityMultiplier(self)
 	end
-	if self.city:IsTechResearched("NanoRefinement") then
+	if self.city.colony:IsTechResearched("NanoRefinement") then
 		return GetDepositGradeToMultiplier("Depleted")
 	end
 	return 0
@@ -264,12 +270,11 @@ function AvailableDeposits(bld, items)
 		return
 	end
 	local deposit, resource = false
-	local amount = 0
+	local amounts = {}
 	if bld:IsKindOf("TerrainDepositExtractor") then
 		if bld.found_deposit then
 			deposit = bld.found_deposit
-			resource = bld.exploitation_resource
-			amount = bld:GetAmount()
+			amounts[bld.exploitation_resource] = bld:GetAmount()
 		end
 	else
 		if bld.nearby_deposits[1] then
@@ -277,14 +282,21 @@ function AvailableDeposits(bld, items)
 			resource = deposit.resource
 			for i = 1, #bld.nearby_deposits do
 				if IsValid(bld.nearby_deposits[i]) then
-					amount = amount + bld.nearby_deposits[i].amount
+					local resource = bld.nearby_deposits[i].resource
+					local resource_amount = amounts[resource] or 0
+					amounts[resource] = resource_amount + bld.nearby_deposits[i].amount
 				end
 			end
 		end
 	end
 	items[#items+1] = T(297, "<newline><center><em>Deposits</em>")
-	if amount > 0 then
-		items[#items+1] = T{298, "Available deposits<right><resource(amount,resource)>", amount = amount, resource = resource, bld}
+	local deposit_texts = {}
+	for resource,amount in pairs(amounts) do
+		deposit_texts[#deposit_texts+1] = T{298, "Available deposits<right><resource(amount,resource)>", amount = amount, resource = resource, bld}
+	end
+	
+	if #deposit_texts > 0 then
+		table.iappend(items, deposit_texts)
 	else
 		items[#items+1] = T(299, "Available deposits<right><red>Depleted</red>")
 	end
@@ -294,7 +306,7 @@ function OnMsg.DepositsSpawned()
 	local arr = UICity.labels.ResourceExploiter
 	
 	for i = 1, #(arr or "") do
-		arr[i]:GatherNearbyDeposits()
+		arr[i]:GatherNearbyDeposits(BuildingDepositExploiterDepositFilterCb)
 		arr[i]:OnDepositsLoaded()
 	end
 end
@@ -383,8 +395,9 @@ function BlockableCanExecuteAlone:BuildingUpdate(dt, day, hour)
 	if self.output_blocked and not self.destroyed then
 		local r = self.output_blocked
 		local pos = self:GetStockpileDumpSpotTestInputPos(r)
-		local res, q, r = FindStockpileDumpSpot(pos, r)
-		
+		local game_map = GetGameMap(self)
+		local res, q, r = FindStockpileDumpSpot(game_map, pos, r)
+
 		if res then
 			self:ExecuteAloneResourceOutputUnblocked(r)
 		end
@@ -403,7 +416,7 @@ end
 --------------------------------------------------------------------------------------------
 
 --ResourceProducers can produce multiple resource at once (see max_resources_produced).
---Resources are numbered 1..n. To produce something you need to set the approprate "Rsource Produced" property.
+--Resources are numbered 1..n. To produce something you need to set the approprate "Resource Produced" property.
 --See class SingleResourceProducer - anything from 'properties' and 'mandatory/optional parameters' can be assigned per resource from here.
 --The methods "Produce", "OnProduce", "OnCalcProducion", "GetPredictedProduction", "GetPredictedDailyProduction" can be overriden per resource
 --    by implementing "OnProduce_Metals" (for exmaple). See class SingleResourceProducer for explanation on each method.
@@ -492,7 +505,7 @@ function ResourceProducer:AddProducer(i) --expects relevant props to be filled
 				GetPredictedDailyProduction = SafeGetMember(self, GetPredictedDailyProduction_method_name, nil),
 			}
 			
-			local producer_obj = SingleResourceProducer:new(producer_def)
+			local producer_obj = SingleResourceProducer:new(producer_def, self:GetMapID())
 			
 			if resource_type == "WasteRock" then
 				self.wasterock_producer = producer_obj
@@ -720,24 +733,33 @@ function ResourceProducer:GetWasterockAmountStored()
 end
 
 function CalcWasteRockAmount(amount_produced, resource, deposit_grade)
-	return amount_produced * DepositGradeToWasteRockMultipliers[resource][deposit_grade] / const.ResourceScale
+	local deposit_grades = DepositGradeToWasteRockMultipliers[resource] or empty_table
+	local multiplier = deposit_grades[deposit_grade]
+	assert(multiplier > 0)
+	multiplier = multiplier or 0
+	return amount_produced * multiplier / const.ResourceScale
 end
 
+function GameMapGetObject(game_map, ...)
+	return game_map.object_hex_grid:GetObject(...)
+end
+	
 function PlaceWasteRockAround(obj, amount, pile)
 	local placed = 0
+	local game_map = GetGameMap(obj)
 	while amount > 0 do
 		if not IsValid(pile) or pile:GetEmptyStorage() == 0 then
-			pile = MapFindNearest(obj, obj, "hex", 4, "WasteRockStockpileBase", function(pile) return pile:GetEmptyStorage() > 0 and not pile:GetParent() end)
+			pile = game_map.realm:MapFindNearest(obj, obj, "hex", 4, "WasteRockStockpileBase", function(pile) return pile:GetEmptyStorage() > 0 and not pile:GetParent() end)
 		end
 		if not pile then
 			local q, r = WorldToHex(obj)
 			local p_shape = HexSurroundingsCheckShapeLarge
 			local success
-			success, q, r = TryFindStockpileDumpSpot(q, r, obj:GetAngle(), p_shape, HexGetAnyObj, true)
+			success, q, r = TryFindStockpileDumpSpotIn(game_map, q, r, obj:GetAngle(), p_shape, GameMapGetObject, true)
 			if not success then
 				break
 			end
-			pile = PlaceObject("WasteRockStockpileUngrided", {
+			pile = PlaceObjectIn("WasteRockStockpileUngrided", obj:GetMapID(), {
 				has_demand_request = true,
 				apply_to_grids = true,
 				has_platform = false,
@@ -875,6 +897,7 @@ DefineClass.SingleResourceProducer = {
 	--internals
 	parent = false, --use this to access the actual game object that produces resources (see class ResourceProducer)
 	
+	lifetime_production_values = false,
 	lifetime_production = 0,
 	today_production = 0, --as in from day reset till today, 
 	yesterday_production = 0, --as in today_prd for yesterday.
@@ -915,6 +938,20 @@ function SingleResourceProducer:ReleaseStockpiles()
 		self.last_production_start_ts = false
 	end
 	StockpileController.ReleaseStockpiles(self)
+end
+
+function SingleResourceProducer:ChangeResourceProduced(resource)
+	self:ReleaseStockpiles()
+	self.last_production_start_ts = GameTime()
+	
+	local old_resource = self.resource_produced
+	self.lifetime_production_values = self.lifetime_production_values or {}
+	self.lifetime_production_values[old_resource] = self.lifetime_production
+	self.lifetime_production = self.lifetime_production_values[resource] or 0
+	
+	self.resource_produced = resource
+	self.stockpiled_resource = resource
+	self:CreateStockpiles()
 end
 
 function SingleResourceProducer:GetResourceProduced()

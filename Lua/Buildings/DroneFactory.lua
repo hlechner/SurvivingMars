@@ -23,7 +23,7 @@ function DroneFactory:Init()
 end
 
 function DroneFactory:CreateResourceRequests()
-	local resource = self.city:IsTechResearched("PrintedElectronics") and "Metals" or "Electronics"
+	local resource = self.city.colony:IsTechResearched("PrintedElectronics") and "Metals" or "Electronics"
 	self.drone_construction_request = self:AddDemandRequest(resource, 0)
 	self.transport_request = self:AddSupplyRequest(resource, 0)
 end
@@ -31,7 +31,7 @@ end
 --savegame compatibility
 function DroneFactory:CreateResourceRequestsSupply()
 	if not self.transport_request then
-		local resource = self.city:IsTechResearched("PrintedElectronics") and "Metals" or "Electronics"
+		local resource = self.city.colony:IsTechResearched("PrintedElectronics") and "Metals" or "Electronics"
 		self:DisconnectFromCommandCenters()
 		self.transport_request = self:AddSupplyRequest(resource, 0)
 		self:ConnectToCommandCenters()
@@ -123,7 +123,7 @@ function DroneFactory:ConstructDroneInternal(queued_type_is_drone)
 		self.drones_in_construction = self.drones_in_construction - 1
 		self.drone_construction_resource = self.drone_construction_resource - g_Consts.DroneElectronicsCost --take cost
 		self:SpawnDrone()
-		if self.city:IsTechResearched("EvolutionaryAlgorithms") then
+		if self.city.colony:IsTechResearched("EvolutionaryAlgorithms") then
 			self:SpawnDrone(1500)
 		end
 		
@@ -132,7 +132,7 @@ function DroneFactory:ConstructDroneInternal(queued_type_is_drone)
 		self.androids_in_construction = self.androids_in_construction - 1	
 		self.drone_construction_resource = self.drone_construction_resource - g_Consts.AndroidElectronicsCost --take cost
 		self:SpawnAndroid()
-		--if self.city:IsTechResearched("EvolutionaryAlgorithms") then
+		--if self.city.colony:IsTechResearched("EvolutionaryAlgorithms") then
 		--	self:SpawnAndroid(1500)
 		--end
 	end
@@ -238,7 +238,7 @@ function DroneFactory:SpawnAndroid()
 	end
 	colonist_table.traits["Android"] = true
 	colonist_table.specialist = "none"
-	local colonist = Colonist:new(colonist_table)
+	local colonist = Colonist:new(colonist_table, self:GetMapID())
 	self:OnEnterUnit(colonist)
 	Msg("ColonistBorn", colonist, "android")
 end 
@@ -273,7 +273,7 @@ function DroneFactory:GetConstructAndroidCost()
 end
 
 function DroneFactory:GetConstructResource()
-	return UICity:IsTechResearched("PrintedElectronics") and "Metals" or "Electronics"
+	return UIColony:IsTechResearched("PrintedElectronics") and "Metals" or "Electronics"
 end
 
 function DroneFactory:GetConstructResourceAmount()
@@ -291,14 +291,22 @@ local ConstructionStatus = {
 }
 
 function DroneFactory:GetUIConstructionStatus()
-	if UICity:IsTechResearched("ThePositronicBrain") and self.ui_working and #self.construction_queue>0 then
+	if UIColony:IsTechResearched("ThePositronicBrain") and self.ui_working and #self.construction_queue>0 then
 		return ConstructionStatus[self.construction_queue[1]]
 	end
 	return ""
 end
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "PrintedElectronics" then
-		city:ForEachLabelObject("DroneFactory", "ChangeDroneConstructionResource", "Metals")
+		UIColony:ForEachLabelObject("DroneFactory", "ChangeDroneConstructionResource", "Metals")
 	end
+end
+
+function DroneFactory:CheatSpawnAndroid() 
+	self:SpawnAndroid() 
+end
+
+function DroneFactory:CheatSpawnDrone() 
+	self:SpawnDrone() 
 end

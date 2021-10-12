@@ -18,7 +18,7 @@ PlaceObj('XTemplate', {
 				})
 				SetSceneParam(1, "Vignette", 160, 0, 0)
 				SetSceneParam(1, "VignetteColor", RGB(0,0,0), 0, 0)
-				HideExplorationQueue()
+				HideExploration_Queue(UICity)
 			end,
 		}),
 		PlaceObj('XTemplateFunc', {
@@ -26,9 +26,10 @@ PlaceObj('XTemplate', {
 			'func', function (self, ...)
 				XLayer.Close(self, ...)
 				table.restore(hr, "BackgroundBlur")
-				SetSceneParam(1, "Vignette", CurrentLightmodel[1].vignette, 0, 0)
-				SetSceneParam(1, "VignetteColor", CurrentLightmodel[1].vignette_color, 0, 0)
-				DisplayExplorationQueue(true)
+				local current_lm = GetCurrentLightModel(1)
+				SetSceneParam(1, "Vignette", current_lm.vignette, 0, 0)
+				SetSceneParam(1, "VignetteColor", current_lm.vignette_color, 0, 0)
+				ShowExploration_Queue(UICity, true)
 			end,
 		}),
 		PlaceObj('XTemplateWindow', {

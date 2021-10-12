@@ -21,7 +21,7 @@ end
 function WindTurbine:CalcProduction()
 	local elevation_bonus = self:GetElevationBonus()
 	local production_bonus = 100 + (elevation_bonus - 50)
-	if g_DustStorm then
+	if HasDustStorm(self:GetMapID()) then
 		self.dust_storm_boost = true
 		production_bonus = g_DustStorm.type == "great" and production_bonus + self.great_dust_storm_bonus_percent or production_bonus + self.dust_storm_bonus_percent
 	else
@@ -39,7 +39,7 @@ end
 
 function WindTurbine:GetDustStormBonusProduction()
 	local dustStormBonus = 0
-	if g_DustStorm then
+	if HasDustStorm(self:GetMapID()) then
 		dustStormBonus = g_DustStorm.type == "great" and self.great_dust_storm_bonus_percent or self.dust_storm_bonus_percent
 	end
 	return MulDivRound(dustStormBonus, self:GetClassValue("electricity_production"), 100)
@@ -57,7 +57,7 @@ function WindTurbine:IsProducingEnoughToWork()
 end
 
 function WindTurbine:GetElevation()
-	return GetElevation(self:GetVisualPos())
+	return GetElevation(self:GetVisualPos(), self:GetMapID())
 end
 
 function WindTurbine:BuildingUpdate(dt, day, hour)

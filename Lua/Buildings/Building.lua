@@ -59,6 +59,47 @@ function BuildingFromGotoTarget(target)
 	return target
 end
 
+function IsBuildingAllowedIn(id, environments)
+	local props = GetPropertiesArray(BuildingTemplates[id], "disabled_in_environment")
+	for _,environment in pairs(environments or empty_table) do
+		if table.find(props, environment) ~= nil then
+			return false
+		end
+	end
+	return true
+end
+
+function IsCargoLocked(def)
+	local sponsor = g_CurrentMissionParams and g_CurrentMissionParams.idMissionSponsor or ""
+	local locked = def.locked
+	if locked and type(def.verifier) == "function" then 
+		locked = not def.verifier(def, sponsor)
+	else
+		locked = false
+	end
+	return locked
+end
+
+function GetAccessiblePrefabs(map_id, environments)
+	local city = Cities[map_id] or MainCity
+	local prefabs = {}
+	for _,def in ipairs(ResupplyItemDefinitions) do
+		local template = BuildingTemplates[def.id]
+		if template and template.can_refab then
+			local building_allowed = IsBuildingAllowedIn(template.id, environments)
+			if building_allowed then
+				local building_researched = IsBuildingTechResearched(template.template_class)
+				local building_unlocked = not def.locked or not IsCargoLocked(def) -- Remove function once Cargo is configured properly
+				local building_available = (building_unlocked and building_researched) or city:GetPrefabs(template.id) > 0
+				if building_available then
+					table.insert(prefabs, def)
+				end
+			end
+		end
+	end
+	return prefabs
+end
+
 ----------------------------------------
 
 --[[@@@
@@ -74,7 +115,7 @@ All buildings have a working state represented in the "working" bool member. Don
 Buildings can have up to three upgrades aquired and applied throughout the game session. The relevant properties needed to define them on per [building template](ModItemBuildingTemplate.md.html) basis are located in the [UpgradableBuilding](LuaFunctionDoc_UpgradableBuilding.md.html) parent class, and can be used directly in a template definition to spec upgrades. Functions dealing with upgrades are located in the Building class.
 --]]
 DefineClass.Building = {
-	__parents = { "ClassTemplateObject", "Shapeshifter", "BaseBuilding", "TaskRequester", "AutoAttachObject", "GridObject", "PinnableObject", "Constructable", "CityObject", "UpgradableBuilding", "ComponentCustomData", "NightLightObject", "Demolishable", "WaypointsObj", "RequiresMaintenance", "HasConsumption", "SkinChangeable", "InfopanelObj", "ColorizableObject", "Renamable" },
+	__parents = { "ClassTemplateObject", "Shapeshifter", "BaseBuilding", "TaskRequester", "AutoAttachObject", "GridObject", "PinnableObject", "Constructable", "CityObject", "BuildingRevealDarkness", "UpgradableBuilding", "ComponentCustomData", "NightLightObject", "Demolishable", "Refabable", "WaypointsObj", "RequiresMaintenance", "HasConsumption", "SkinChangeable", "InfopanelObj", "ColorizableObject", "Renamable", "SafariSight", "Shroudable" },
 	flags = { efBuilding = true, gofPermanent = true, gofTemporalConstructionBlock = true },
 	__hierarchy_cache = true,
 	
@@ -91,6 +132,8 @@ DefineClass.Building = {
 		{ template = true, name = T(155, "Entity"),               id = "entity",            category = "General",  editor = "dropdownlist", default = invalid_entity, items = function() return GetBuildingEntities(invalid_entity) end},
 		--
 		{ template = true, name = T(156, "Dome Comfort"),         id = "dome_comfort",      category = "General",  editor = "number",       default = 0 , scale = "Stat", modifiable = true },
+		{ template = true, name = T(13586, "Dome Morale"),          id = "dome_morale",       category = "General",  editor = "number",       default = 0 , scale = "Stat", modifiable = true },
+
 		{ template = true, name = T(10971, "Show Range for All"),   id = "show_range_all", 	 category = "General",  editor = "bool",         default = false, help = "Show range radii for all buildings of that class when selected" },
 		{ template = true, name = T(158, "Show Range"),   		 id = "show_range", 	 	category = "General",  editor = "bool",         default = false, help = "Show range radius for this building" },
 		{ template = true, name = T(7331, "Infopanel"),           id = "ip_template", 	    category = "General",  editor = "text",         default = "ipBuilding", help = "Template used for building infopanel" },
@@ -137,8 +180,18 @@ DefineClass.Building = {
 		
 		{ template = true, category = "General", name = T(9611, "Count as Building"), id = "count_as_building", editor = "bool", default = true, help = "Count as building for achievement / control center purposes"},
 		{ template = true, category = "General", name = T(12466, "Clear Soil Underneath"),   id = "clear_soil_underneath", editor = "bool", default = false, help = "If the soil underneath the building should be set to 0.", no_edit = function() return not IsDlcAvailable("armstrong") end },
+		
+		{ template = true, category = "Construction", name = T(12705, "Disable in environment"),   id = "disabled_in_environment1", editor = "dropdownlist", default = "Underground", help = "Map type where building should be disabled", no_edit = function() return not IsDlcAvailable("picard") end, items = function (self) return table.union({""}, EnvironmentTypes) end },
+		{ template = true, category = "Construction", name = T(12705, "Disable in environment"),   id = "disabled_in_environment2", editor = "dropdownlist", default = "Asteroid", help = "Map type where building should be disabled", no_edit = function() return not IsDlcAvailable("picard") end, items = function (self) return table.union({""}, EnvironmentTypes) end },
+		{ template = true, category = "Construction", name = T(12705, "Disable in environment"),   id = "disabled_in_environment3", editor = "dropdownlist", default = "", help = "Map type where building should be disabled", no_edit = function() return not IsDlcAvailable("picard") end, items = function (self) return table.union({""}, EnvironmentTypes) end },
+		{ template = true, category = "Construction", name = T(12705, "Disable in environment"),   id = "disabled_in_environment4", editor = "dropdownlist", default = "", help = "Map type where building should be disabled", no_edit = function() return not IsDlcAvailable("picard") end, items = function (self) return table.union({""}, EnvironmentTypes) end },	
+		
+		{ template = true, category = "Construction", name = T(13587, "Snap target"), id = "snap_target_type", editor = "combo", default = false, items = function(template) return ClassDescendantsList("Building") end, help = "Type to snap to when building" },	
+		{ template = true, category = "Construction", name = T(13588, "Only build on snapped locations"), id = "only_build_on_snapped_locations", editor = "bool", default = false, help = "Only allow building on snap target" },
+		{ template = true, category = "Construction", name = T(13589, "Snap error text"), id = "snap_error_text", editor = "text", default = "", translate = true, },
+		{ template = true, category = "Construction", name = T(13590, "Snap error short"), id = "snap_error_short", editor = "text", default = "", translate = true, },
 	},
-	
+
 	update_thread = false,
 	building_update_time = const.HourDuration,
 	
@@ -242,12 +295,12 @@ end
 
 function Building:ApplyToGrids()
 	GridObject.ApplyToGrids(self)
-	Flight_Mark(self)
+	GetFlightSystem(self):Mark(self)
 end
 
 function Building:RemoveFromGrids()
 	GridObject.RemoveFromGrids(self)
-	Flight_Unmark(self)
+	GetFlightSystem(self):Unmark(self)
 end
 
 function Building:GetIPDescription()
@@ -269,11 +322,12 @@ function Building:SetCustomLabels(obj, add)
 	local i = 1
 	while true do
 		if not self:HasMember("label"..i) then break end
-		if self["label"..i] ~= "" then
+		local label = self["label"..i]
+		if label ~= "" then
 			if add then
-				obj:AddToLabel(self["label"..i], self)
+				obj:AddToLabel(label, self)
 			else
-				obj:RemoveFromLabel(self["label"..i], self)
+				obj:RemoveFromLabel(label, self)
 			end
 		end
 		i = i + 1
@@ -283,6 +337,9 @@ end
 function Building:AddToCityLabels()
 	if self.default_label then
 		self.city:AddToLabel(self.default_label, self)
+		if self.default_label == "Building" and not IsKindOf(self, "Dome") and self.build_category ~= "Domes" then
+			self.city:AddToLabel("BuildingNoDomes", self)
+		end
 	end
 	self:SetCustomLabels(self.city, true)
 	if self.template_name ~= "" then
@@ -295,11 +352,41 @@ function Building:AddToCityLabels()
 	if category then
 		self.city:AddToLabel(category, self)
 	end
-	
-	if self.default_label == "Building" and not IsKindOf(self, "Dome") and self.build_category ~= "Domes" then
-		self.city:AddToLabel("BuildingNoDomes", self)
-	end
+
 	Msg("AddToCityLabels", self)
+end
+
+function Building:RemoveFromCityLabels()
+	if self.default_label then
+		self.city:RemoveFromLabel(self.default_label, self)
+		if self.default_label == "Building" and not IsKindOf(self, "Dome") then
+			self.city:RemoveFromLabel("BuildingNoDomes", self)
+		end
+	end
+	self:SetCustomLabels(self.city, false)
+	if self.template_name ~= "" then
+		self.city:RemoveFromLabel(self.template_name, self)
+	end
+	if self.class ~= self.template_name then
+		self.city:RemoveFromLabel(self.class, self)
+	end
+	local category = self:GetBuildMenuCategory()
+	if category then
+		self.city:RemoveFromLabel(category, self)
+	end
+	if self.suspended then
+		self.city:RemoveFromLabel("Suspended", self)
+	end
+
+	Msg("RemoveFromCityLabels", self)
+end
+
+function Building:DetachFromRealm(map_id)
+	self:RemoveFromCityLabels()
+end
+
+function Building:AttachedToRealm(map_id)
+	self:AddToCityLabels()
 end
 
 function Building:UpdateHexRanges(show)
@@ -318,7 +405,8 @@ end
 function Building:GameInit()
 	PlayFX("Spawn", "start", self, self:HasMember("building_class_proto") and self.building_class_proto or nil)
 	
-	local dome = GetDomeAtPoint(self)
+	local object_hex_grid = GetObjectHexGrid(self)
+	local dome = GetDomeAtPoint(object_hex_grid, self)
 	if dome and dome ~= self then
 		self:InitInside(dome)
 	else
@@ -336,7 +424,7 @@ function Building:GameInit()
 	self:Notify("UpdateNoCCSign")
 	self:Gossip("place", self:GetPos())
 	if not dome and self.suspend_on_dust_storm then
-		local dust_storm_start_time = g_DustStorm and g_DustStorm.start_time or GameTime()
+		local dust_storm_start_time = HasDustStorm(self:GetMapID()) and g_DustStorm.start_time or GameTime()
 		if GameTime() - dust_storm_start_time > const.HourDuration then
 			self:SetSuspended(true, const.DustStormSuspendReason)
 		end
@@ -348,28 +436,8 @@ function Building:Done()
 	self:Gossip("done")
 	PlayFX("Spawn", "end", self, self:HasMember("building_class_proto") and self.building_class_proto or nil)
 	self:KickUnitsFromHolder()
-	if self.default_label then
-		self.city:RemoveFromLabel(self.default_label, self)
-	end
-	self:SetCustomLabels(self.city, false)
-	if self.template_name ~= "" then
-		self.city:RemoveFromLabel(self.template_name, self)
-	end
-	if self.class ~= self.template_name then
-		self.city:RemoveFromLabel(self.class, self)
-	end
-	local category = self:GetBuildMenuCategory()
-	if category then
-		self.city:RemoveFromLabel(category, self)
-	end
-	if self.suspended then
-		self.city:RemoveFromLabel("Suspended", self)
-	end
-	if self.default_label == "Building" and not IsKindOf(self, "Dome") then
-		self.city:RemoveFromLabel("BuildingNoDomes", self)
-	end
-	Msg("RemoveFromCityLabels", self)
-	self:StopUpgradeModifiers()	
+	self:RemoveFromCityLabels()
+	self:StopUpgradeModifiers()
 	if self.parent_dome and IsValid(self.parent_dome) then
 		UpdateCoveredGrass(self, self.parent_dome, "clear")
 	end
@@ -384,7 +452,7 @@ function Building:Done()
 	self.demolish_debris_objs = nil
 	BumpDroneUnreachablesVersion()
 	RefreshConstructionCursor()
-	Flight_Unmark(self)
+	GetFlightSystem(self):Unmark(self)
 end
 
 function Building:InitInside(dome)
@@ -427,6 +495,19 @@ end
 
 function Building:GetInfopanelTemplate()
 	return not self:GetUIInteractionState() and "ipRogue" or self.ip_template
+end
+
+function Building:CanSnapTo()
+	return true
+end
+
+function Building:GetSnapError()
+	return {
+		type = "error",
+		priority = 90,
+		text = self.snap_error_text,
+		short = self.snap_error_short,
+	}
 end
 
 function Building:CanWorkInTurnedOffDome()
@@ -578,11 +659,12 @@ function Building:GetCurrentSkin()
 end
 
 function AttachAttaches(obj, attaches)
+	local map_id = obj:GetMapID()
 	for _, entry in ipairs(attaches or empty_table) do
 		local spot, class = entry[2], entry[1]
 		local first, last = obj:GetSpotRange(spot)
 		for i = first, last do
-			local attach = PlaceObject(class)
+			local attach = PlaceObjectIn(class, map_id)
 			obj:Attach(attach, i)
 		end
 	end
@@ -601,9 +683,9 @@ function Building:StartUpdateThread(randomize_tick)
 		local last_day
 		local city = self.city
 		local delta = 0
-		while IsValid(self) do
-			local day = city.day
-			self:RecursiveCall(true, "BuildingUpdate", delta, day, city.hour) --parents first
+		while IsValid(self) and city do
+			local day = UIColony.day
+			self:RecursiveCall(true, "BuildingUpdate", delta, day, UIColony.hour) --parents first
 			if IsValid(self) and last_day ~= day then
 				last_day = day
 				self:RecursiveCall(true, "BuildingDailyUpdate", day)
@@ -634,7 +716,7 @@ end
 
 function Building:ShouldShowNoCCSign()
 	if not self:DoesHaveConsumption() and not self:DoesRequireMaintenance() and not self.exceptional_circumstances
-		and (not IsKindOfClasses(self, "StorageDepot", "ConstructionSite") or IsKindOfClasses(self, "SupplyRocket")) then
+		and (not IsKindOfClasses(self, "StorageDepot", "ConstructionSite") or IsKindOfClasses(self, "RocketBase")) then
 		return false
 	end
 	
@@ -682,13 +764,13 @@ function Building:OnDemolish()
 	if self.demolish_return_resources then
 		self:ReturnResources()	
 	end
-	if self.ui_demolish and self.city:IsTechResearched("DecommissionProtocol") and self.auto_clear then
+	if self.ui_demolish and self.city.colony:IsTechResearched("DecommissionProtocol") and self.auto_clear then
 		CreateGameTimeThread(self.DestroyedClear, self)
 	end
 end
 
 function Building:CanDemolish()
-	return self.can_demolish and not self.destroyed and not self.indestructible and self.ui_interaction_state
+	return self.can_demolish and not self.destroyed and not self.indestructible and not self.refab_work_request and self.ui_interaction_state
 end
 
 function Building:AddRefundResource(tbl, res, amnt)
@@ -715,7 +797,7 @@ function Building:GetRefundResources()
 		end
 	else
 		for _, resource in ipairs(ConstructionResourceList) do
-			local amount = self.city:GetConstructionCost(self, resource)
+			local amount = UIColony.construction_cost:GetConstructionCost(self, resource)
 			if amount > 0 then
 				local refund_amount = self:CalcRefundAmount(amount)
 				self:AddRefundResource(refund, resource, refund_amount)
@@ -788,13 +870,14 @@ function Building:PlaceReturnStockpile(resource, amount)
 	end
 	
 	local pos, angle
+	local terrain = GetTerrain(self)
 	for k = 1, #self.resource_spots do
 		local spot_name = self.resource_spots[k][1]
 		if self:HasSpot(spot_name) then
 			local i1, i2 = self:GetSpotRange(spot_name)
 			for i=i1, i2 do
 				local pos_i = self:GetSpotPos(i)
-				if terrain.IsPassable(pos_i) then
+				if terrain:IsPassable(pos_i) then
 					pos = pos_i
 					angle = self:GetSpotRotation(i) + self.resource_spots[k][2]
 					break
@@ -809,7 +892,7 @@ function Building:PlaceReturnStockpile(resource, amount)
 		pos = self:GetRandomSpotPosAsync("Workrover") or self:GetRandomSpotPosAsync("Workdrone") or self:GetVisualPos()
 		angle = self:GetAngle()
 	end
-	PlaceResourceStockpile_Delayed(pos, resource, amount, angle, true)
+	PlaceResourceStockpile_Delayed(pos, self:GetMapID(), resource, amount, angle, true)
 end
 
 function Building:GetDisplayName()
@@ -903,11 +986,11 @@ end
 function Building:ApplyUpgrade(tier, force)
 	local id = self:GetUpgradeID(tier)
 	
-	if not self.city:IsUpgradeUnlocked(id) then
+	if not UIColony:IsUpgradeUnlocked(id) then
 		print(id, " - Upgrade not researched!")
 		if not force then return end
 		
-		self.city:UnlockUpgrade(id)
+		UIColony:UnlockUpgrade(id)
 	end
 	
 	if self:HasUpgrade(id) then 
@@ -1161,7 +1244,7 @@ function DestroyBuildingImmediate(bld, return_resources, dont_notify)
 		return
 	end
 	if not dont_notify then
-		table.insert_unique(g_DestroyedBuildings, bld)
+		RequestNewObjsNotif(g_DestroyedBuildings, bld, bld:GetMapID())
 	end
 	bld.demolishing = true
 	bld.demolishing_countdown = 0
@@ -1182,7 +1265,8 @@ function Building:RestoreTerrain(shape_obj, force_restore_type, force_restore_he
 		return
 	end
 	shape_obj = shape_obj or self
-	if (force_restore_type or HasAnySurfaces(self, EntitySurfaces.Terrain, true)) and not terrain.HasRestoreType() then
+	local terrain = GetTerrain(self)
+	if (force_restore_type or HasAnySurfaces(self, EntitySurfaces.Terrain, true)) and not terrain:HasRestoreType() then
 		local type_noise, type_thres
 		local type_idx1, type_idx2 = self.orig_terrain1, self.orig_terrain2
 		if not IsSandTerrain(type_idx1) or not IsSandTerrain(type_idx2) then
@@ -1206,7 +1290,7 @@ function Building:RestoreTerrain(shape_obj, force_restore_type, force_restore_he
 			GridOpFree(type_noise)
 		end
 	end
-	if (force_restore_height or HasAnySurfaces(self, EntitySurfaces.Height, true)) and not terrain.HasRestoreHeight() then
+	if (force_restore_height or HasAnySurfaces(self, EntitySurfaces.Height, true)) and not terrain:HasRestoreHeight() then
 		FlattenTerrainInBuildShape(shape_obj:GetFlattenShape(), self)
 	end
 end
@@ -1216,7 +1300,8 @@ function Building:Destroy()
 		return
 	end
 	
-	SuspendPassEdits("Building.Destroy")
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("Building.Destroy")
 	local flags = self:GetEnumFlags(const.efCollision + const.efApplyToGrids)
 	self:ClearEnumFlags(const.efWalkable + const.efCollision + const.efApplyToGrids)
 	
@@ -1258,7 +1343,7 @@ function Building:Destroy()
 	local tilt, sink = 0, 0
 	if not HasAnySurfaces(self, EntitySurfaces.TerrainHole + EntitySurfaces.Height, true) then
 		local bbox = ObjectHierarchyBBox(self, const.efVisible, const.cfConstructible)
-		--terrain.InvalidateType(bbox)
+		--terrain:InvalidateType(bbox)
 		local sx, sy, sz = 0, 0, 0
 		if bbox then
 			sx, sy, sz = bbox:sizexyz()
@@ -1281,13 +1366,15 @@ function Building:Destroy()
 	
 	if sink > 0 or tilt > 0 then
 		local spots = {Drone.work_spot_task, BaseRover.work_spot_task}
-		for i = 1, #spots do
-			local arr = {}
-			local b, e = self:GetSpotRange(spots[i])
-			for j = b, e do
-				table.insert(arr, self:GetSpotPos(j))
+		for _, spot in pairs(spots) do
+			if self:HasSpot(spot) then
+				local arr = {}
+				local b, e = self:GetSpotRange(spot)
+				for j = b, e do
+					table.insert(arr, self:GetSpotPos(j))
+				end
+				self.orig_state[spot] = #arr > 0 and arr or nil
 			end
-			self.orig_state[spots[i]] = arr
 		end
 		-- attach demolish objects
 		for i=1,#demolish_objs do
@@ -1324,7 +1411,7 @@ function Building:Destroy()
 				local hx, hy = HexToWorld(cq + q, cr + r)
 				local debris_class = self.city:TableRand(DecDebrisClasses)
 				if debris_class ~= "" then
-					local debris = PlaceObject(debris_class)
+					local debris = PlaceObjectIn(debris_class, self:GetMapID())
 					debris:SetAngle(self:Random(360*60))
 					debris:SetPos(hx, hy, const.InvalidZ)
 					objs[#objs + 1] = debris
@@ -1336,7 +1423,7 @@ function Building:Destroy()
 	
 	PlayFX("Destroyed", "start", self)
 	self:SetEnumFlags(flags)
-	ResumePassEdits("Building.Destroy")
+	realm:ResumePassEdits("Building.Destroy")
 	
 	self:Notify("DisableCustomFX")
 end
@@ -1431,7 +1518,7 @@ function Building:DestroyedClear(broadcast)
 	end
 
 	if not self.destroyed or self.bulldozed or 
-	not self.city:IsTechResearched("DecommissionProtocol")
+	not self.city.colony:IsTechResearched("DecommissionProtocol")
 	or self.clear_work_request or not IsValid(self) then
 		return
 	end
@@ -1441,7 +1528,7 @@ function Building:DestroyedClear(broadcast)
 	self:DisconnectFromCommandCenters()
 	self.bulldozed = true
 	if self:HasSpot("Top") then
-		self:Attach(PlaceObject("RotatyThing"), self:GetSpotBeginIndex("Top"))
+		self:Attach(PlaceObjectIn("RotatyThing", self:GetMapID()), self:GetSpotBeginIndex("Top"))
 	end
 	if self.parent_dome then
 		self.parent_dome:UpdateColonists()
@@ -1481,21 +1568,50 @@ function Building:ClearDone()
 	DoneObject(self)
 end
 
+function Building:OnRefabricate()
+	Msg("Refabricated", self)
+	self:OnDestroyed()
+end
+
+function Building:Refabricate()
+	self:OnRefabricate()
+	
+	PlayFX("Deconstruct", "end", self, nil, self:GetPos())
+	self.city:AddPrefabs(self.template_name, 1)
+	
+	PlayFXAroundBuilding(self, "Remove")
+	self:RestoreTerrain()
+	DoneObject(self)
+end
+
 function Building:DroneWork(drone, request, resource, amount)
-	if request and request == self.clear_work_request then
-		amount = DroneResourceUnits.repair
+	if request then
+		if request == self.clear_work_request then
+			amount = DroneResourceUnits.repair
 
-		drone:PushDestructor(function(drone)
-			local self = drone.target
-			if drone.w_request:GetActualAmount() <= 0 and IsValid(self) then
-				self:ClearDone()
-			end
-		end)
+			drone:PushDestructor(function(drone)
+				local self = drone.target
+				if drone.w_request:GetActualAmount() <= 0 and IsValid(self) then
+					self:ClearDone()
+				end
+			end)
 
-		drone:ContinuousTask(request, amount, g_Consts.DroneBuildingRepairBatteryUse, "repairBuildingStart", "repairBuildingIdle", "repairBuildingEnd", "Repair")
-		drone:PopAndCallDestructor()
-	else
-		RequiresMaintenance.DroneWork(self, drone, request, resource, amount)
+			drone:ContinuousTask(request, amount, g_Consts.DroneBuildingRepairBatteryUse, "repairBuildingStart", "repairBuildingIdle", "repairBuildingEnd", "Repair")
+			drone:PopAndCallDestructor()
+		elseif request == self.refab_work_request then
+			drone:PushDestructor(function(drone)
+				local self = drone.target
+				if drone.w_request:GetActualAmount() <= 0 and IsValid(self) then
+					self:Refabricate()
+				end
+			end)
+
+			PlayFX("Deconstruct", "start", self)
+			drone:ContinuousTask(request, amount, g_Consts.DroneDeconstructBatteryUse, "constructStart", "constructIdle", "constructEnd", "Deconstruct")
+			drone:PopAndCallDestructor()
+		else
+			RequiresMaintenance.DroneWork(self, drone, request, resource, amount)
+		end
 	end
 end
 
@@ -1547,7 +1663,7 @@ local function CheatSpawnRunPrg(bld, id, prg, can_spawn_children, visit_duration
 	end
 	local angle = CalcOrientation(pos, #(entrance or "") > 1 and entrance[#entrance-1] or bld:GetPos())
 
-	local unit = PlaceObject("Unit")
+	local unit = PlaceObjectIn("Unit", bld:GetMapID())
 	NetTempObject(unit)
 	unit.traits = {}
 	unit.entity_gender = AsyncRand(2) == 1 and "Male" or "Female"
@@ -1628,7 +1744,7 @@ function Building:ConstructUpgrade3(change)
 end
 
 function Building:ConstructUpgrade(id)
-	if UICity:IsUpgradeUnlocked(id) and not self:HasUpgrade(id) then
+	if UIColony:IsUpgradeUnlocked(id) and not self:HasUpgrade(id) then
 		if self:IsUpgradeBeingConstructed(id) then
 			self:StopUpgradeConstruction(id)
 		else
@@ -1794,7 +1910,7 @@ function Building:GetCostsTArray(id, include_total_cost)
 			local total_cost = self:GetUpgradeCost(data.tier, r_n)
 			local amount_supplying = sreq and sreq:GetActualAmount() or nil
 			costs[#costs + 1] = FormatResource(empty_table, data.canceled and amount_supplying or (total_cost - amount_remaining), total_cost, r_n)
-			available[#available + 1] = FormatResource(empty_table, ResourceOverviewObj:GetAvailable(r_n), r_n)
+			available[#available + 1] = FormatResource(empty_table, GetCityResourceOverview(UICity):GetAvailable(r_n), r_n)
 		end
 	else
 		local tier = self:GetUpgradeTier(id)
@@ -1807,7 +1923,7 @@ function Building:GetCostsTArray(id, include_total_cost)
 				else
 					costs[#costs + 1] = FormatResource(empty_table, c, r_n)
 				end
-				available[#available + 1] = FormatResource(empty_table, ResourceOverviewObj:GetAvailable(r_n), r_n)
+				available[#available + 1] = FormatResource(empty_table, GetCityResourceOverview(UICity):GetAvailable(r_n), r_n)
 			end
 		end
 	end
@@ -1861,11 +1977,9 @@ function Building:CleanUpgradeConstructionRequests(id, preserve_requestes)
 											return drone.d_request and table.find(reqs, drone.d_request) and drone or
 													drone.s_request and table.find(sreqs, drone.s_request) and drone
 										end, nil)
-		
-		
+
 		self:DisconnectFromCommandCenters()
-		
-		
+
 		for i = 1, #reqs do
 			table.remove_entry(self.task_requests, reqs[i])
 		end
@@ -2048,7 +2162,8 @@ function Building:ChangeSkin(skin, palette)
 	if SelectedObj == self then
 		PlayFX("Select", "end", self)
 	end
-	SuspendPassEdits("Building.ChangeSkin")
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("Building.ChangeSkin")
 	if self.working then
 		self:ChangeWorkingStateAnim(false)
 	end
@@ -2059,7 +2174,7 @@ function Building:ChangeSkin(skin, palette)
 	if self.working then
 		self:ChangeWorkingStateAnim(true)
 	end
-	ResumePassEdits("Building.ChangeSkin")
+	realm:ResumePassEdits("Building.ChangeSkin")
 
 	if SelectedObj == self then
 		PlayFX("Select", "start", self)
@@ -2122,7 +2237,7 @@ function OnMsg.BinAssetsLoaded()
 	ReloadShortcuts()
 end
 
-local BuildingCSVColumns = {
+BuildingCSVColumns = {
 	{ "name", "Name" },
 	{ "display_name", "Display Name" },
 	{ "description", "Description" },
@@ -2131,6 +2246,7 @@ local BuildingCSVColumns = {
 	{ "max_dust", "Max Dust" },
 	{ "cold_sensitive", "Cold Sensitive" },
 	{ "dome_comfort", "Dome Comfort" },
+	{ "dome_morale", "Dome Morale" },
 	{ "service_comfort", "Comfort" },
 	{ "construction_cost_Concrete", "Concrete Cost" },
 	{ "construction_cost_Metals", "Metals Cost" },
@@ -2231,7 +2347,26 @@ NotWorkingWarning = {
 	DomeNotWorking = T(10548, "This building doesn't work because the Dome has been turned off"),
 	Halted = T(11000, "The construction process has been halted due to exceptional circumstances."),
 	MechDepotUnloading = T(12389, "Waiting for stored resources to be moved out before demolishing."),
+	Refab = T(13591, "This building is being converted to a Prefab."),
 }
+
+local function UIWarningNoDeposits(self)
+	return IsKindOf(self, "BuildingDepositExploiterComponent") and not self:HasNearbyDeposits() and not self.city.colony:IsTechResearched("NanoRefinement")
+end
+
+local function UIWarningNoExploitableDeposits(self)
+	return IsKindOf(self, "BuildingDepositExploiterComponent") and not self:CanExploit() and not self.city.colony:IsTechResearched("NanoRefinement")
+end
+
+local function UIWarningAirConsumer(self)
+	return IsKindOf(self, "AirConsumer") and self:ShouldShowNotConnectedToLifeSupportGridSign() and
+		self:NeedsAir() and #self.air.grid.producers <= 0
+end
+
+local function UIWarningWaterConsumer(self)
+	return IsKindOf(self, "WaterConsumer") and self:ShouldShowNotConnectedToLifeSupportGridSign() and
+		self:NeedsWater() and #self.water.grid.producers <= 0
+end
 
 function Building:GetUIWarning()
 	-- errors
@@ -2240,6 +2375,8 @@ function Building:GetUIWarning()
 		reason = "TurnedOff" 
 	elseif self.demolishing then
 		reason = "Demolish"
+	elseif self.refab_work_request then
+		reason = "Refab"
 	elseif self.exceptional_circumstances_maintenance then
 		reason = self:IsMalfunctioned() and "ExceptionalCircumstancesMalafunction" or "ExceptionalCircumstancesMaintenance"
 		if self.maintenance_resource_type == "no_resource" or self.maintenance_resource_type == "no_maintenance" then
@@ -2258,12 +2395,12 @@ function Building:GetUIWarning()
 	elseif #(self.ion_storms or empty_table) > 0 then
 		reason = "IonStorm"
 	elseif self.frozen then
-		reason = g_ColdWave and "Frozen" or self:IsFreezing() and "FrozenPerma" or "Defrosting"
+		reason = HasColdWave(self:GetMapID()) and "Frozen" or self:IsFreezing() and "FrozenPerma" or "Defrosting"
 	elseif self.suspended then
 		reason = self.suspended
-	elseif IsKindOf(self, "BuildingDepositExploiterComponent") and not self:HasNearbyDeposits() and not self.city:IsTechResearched("NanoRefinement") then
+	elseif UIWarningNoDeposits(self) then
 		reason = "NoDeposits" 
-	elseif IsKindOf(self, "BuildingDepositExploiterComponent") and not self:CanExploit() and not self.city:IsTechResearched("NanoRefinement") then
+	elseif UIWarningNoExploitableDeposits(self) then
 		reason = "NoExploitableDeposits"
 	elseif IsKindOf(self, "ResourceProducer") and ResourceProducer.GetWorkNotPossibleReason(self) then 
 		local waste_rock_producer = self.wasterock_producer
@@ -2286,15 +2423,17 @@ function Building:GetUIWarning()
 		reason = IsKindOf(self, "ElectricityProducer") and "NotConnectedToPowerGridConsumer" or "NotConnectedToPowerGridProducer"
 	elseif IsKindOf(self, "ElectricityConsumer") and self:ShouldShowNoElectricitySign() then
 		reason = "NoPower"
-	elseif IsKindOf(self, "LifeSupportGridObject") and self:ShouldShowNotConnectedToLifeSupportGridSign() then
-		reason = IsKindOf(self, "AirProducer") and "NotConnectedToAirConsumer"
-			or IsKindOf(self, "WaterProducer") and "NotConnectedToWaterConsumer"
-			or self:NeedsAir() and #self.air.grid.producers <= 0 and "NotConnectedToAirProducer"
-			or self:NeedsWater() and "NotConnectedToWaterProducer"
+	elseif UIWarningAirConsumer(self) then
+		reason = "NotConnectedToAirProducer"
+	elseif UIWarningWaterConsumer(self) then
+		reason = "NotConnectedToWaterProducer"
 	elseif IsKindOf(self, "LifeSupportConsumer") and self:ShouldShowNoAirSign() then
 		reason = "NoOxygen"
 	elseif IsKindOf(self, "LifeSupportConsumer") and self:ShouldShowNoWaterSign() then
 		reason = "NoWater"
+	elseif IsKindOf(self, "LifeSupportGridObject") and self:ShouldShowNotConnectedToLifeSupportGridSign() then
+		reason = IsKindOf(self, "AirProducer") and "NotConnectedToAirConsumer"
+			or IsKindOf(self, "WaterProducer") and "NotConnectedToWaterConsumer"
 	elseif IsKindOf(self, "BaseResearchLab") and not self:TechId() then
 		reason = "NoResearch"
 	elseif IsKindOf(self, "WindTurbine") and not self:IsProducingEnoughToWork() then
@@ -2303,7 +2442,7 @@ function Building:GetUIWarning()
 		reason = "Renegades"
 	elseif IsKindOf(self, "BuildingDepositExploiterComponent") and self:IsTechLocked() then
 		reason = "UnexploitableDeposit"
-	elseif IsKindOf(self, "SupplyRocket") and self.landed and not self:HasEnoughFuelToLaunch() then
+	elseif IsKindOf(self, "RocketBase") and self.landed and not self:HasEnoughFuelToLaunch() then
 		--reason = "WaitingFuel"
 	elseif not self:CanConsume() then
 		if IsKindOf(self, "Workshop") then
@@ -2399,13 +2538,15 @@ function Building:GetUIConsumptionTexts(short)
 			or not_permited and statuses["PowerRequired"]
 			or statuses["Power"]
 	end
-	if self:IsKindOf("LifeSupportConsumer") then
+	if self:IsKindOf("AirConsumer") then
 		if self.air_consumption and (self.air_consumption>0 or self:GetClassValue("air_consumption")>0) then
 			local no_air = not (self:HasAir() or intentionally_not_consuming) and permited
 			res.air = no_air and statuses["OxygenNotEnough"]
 				or not_permited and statuses["OxygenRequired"]
 				or statuses["Oxygen"]
 		end
+	end
+	if self:IsKindOf("WaterConsumer") then
 		if IsKindOf(self, "ArtificialSun") then
 			if self.work_state ~= "produce" then
 				res.water = not (self:HasWater() or intentionally_not_consuming) and permited and statuses["WaterNotEnough"]
@@ -2421,7 +2562,7 @@ function Building:GetUIConsumptionTexts(short)
 				or statuses["Water"]
 		end
 	end
-	if self:IsKindOf("HasConsumption") and self:DoesHaveConsumption() and self.consumption_stored_resources then
+	if self:IsKindOf("HasConsumption") and self:UIShowConsumption() and self.consumption_stored_resources then
 		res.resource = self.consumption_stored_resources > 0 and statuses["Resource"] 
 			or statuses["InsufficientResource"]
 	end
@@ -2459,7 +2600,7 @@ function Building:GetUISectionConsumptionRollover()
 		end
 		items[#items+1] = T(316, "<newline>")
 	end
-	if self:IsKindOf("LifeSupportConsumer") and self.air and self.air_consumption and (self.air_consumption>0 or self:GetClassValue("air_consumption")>0) then
+	if self:IsKindOf("AirConsumer") and self.air and self.air_consumption and (self.air_consumption>0 or self:GetClassValue("air_consumption")>0) then
 		grid = self.air.grid
 		items[#items+1] = T{324, "Oxygen production<right><air(current_production)>", grid}
 		items[#items+1] = T{325, "Max production<right><air(production)>", grid}
@@ -2468,7 +2609,7 @@ function Building:GetUISectionConsumptionRollover()
 		items[#items+1] = T{328, "Stored Oxygen<right><air(current_storage)>", grid}
 		items[#items+1] = T(316, "<newline>")
 	end
-	if self:IsKindOf("LifeSupportConsumer") and self.water and self.water_consumption and (self.water_consumption>0 or self:GetClassValue("water_consumption")>0) then
+	if self:IsKindOf("WaterConsumer") and self.water and self.water_consumption and (self.water_consumption>0 or self:GetClassValue("water_consumption")>0) then
 		grid = self.water.grid
 		items[#items+1] = T{329, "Water production<right><water(current_production)>", grid}
 		items[#items+1] = T{330, "Max production<right><water(production)>", grid}
@@ -2477,7 +2618,7 @@ function Building:GetUISectionConsumptionRollover()
 		items[#items+1] = T{333, "Stored Water<right><water(current_storage)>", grid}
 		items[#items+1] = T(316, "<newline>")
 	end
-		-- consumption from upgrades
+	-- consumption from upgrades
 	if #(self.upgrade_consumption_objects or empty_table)>0 then
 		for _, cons_obj in ipairs(self.upgrade_consumption_objects) do
 			if self.upgrade_on_off_state[cons_obj.upgrade_id] then
@@ -2675,7 +2816,7 @@ function GetBuildingSkins(template_name, entity)
 		if entity == "" then
 			break
 		end
-		if IsDlcAvailable(template["entitydlc" .. i]) then
+		if IsDlcAccessible(template["entitydlc" .. i]) then
 			table.insert(skins, entity)
 			table.insert(palettes, { template["palette" .. i .. "_color1"], template["palette" .. i .. "_color2"], template["palette" .. i .. "_color3"], template["palette" .. i .. "_color4"] })
 		end
@@ -2696,6 +2837,10 @@ function Building:SetDustVisuals(dust)
 	if self:GetGameFlags(const.gofUnderConstruction) ~= 0 then return end
 	
 	return BuildingVisualDustComponent.SetDustVisuals(self, dust)
+end
+
+function Building:CanGetDamagedBy(object)
+	return true
 end
 
 ----
@@ -2730,7 +2875,9 @@ function PlayFXAroundBuilding(obj, action)
 	end
 	local shape = GetEntityPeripheralHexShape(obj:GetEntity())
 	local size = #shape > 30 and "Big" or "Small"
-	local res = HexGridGetObject(ObjectGrid, obj, "DomeInterior")
+	local object_hex_grid = GetObjectHexGrid(obj)
+	local res = object_hex_grid:GetObjectAtPos(obj, "DomeInterior")
+
 	local inside = res and res.dome and obj ~= res.dome and "Inside" or "Outside"
 	local action = fx_actions[size][action][inside]
 	
@@ -2786,7 +2933,8 @@ function SelectNextBuildingOfSameType(dir)
 				bld = buildings[idx]
 			until bld.template_name == name or bld.template_name == "" and name == "ConstructionSite"
 		else
-			bld = MapFindNearest(GetTerrainGamepadCursor(), "map", "Building", const.efSelectable, function(obj) return obj.build_category ~= "Hidden" end)
+			local realm = GetActiveRealm()
+			bld = realm:MapFindNearest(GetTerrainGamepadCursor(), "map", "Building", const.efSelectable, function(obj) return obj.build_category ~= "Hidden" end)
 		end
 		ViewAndSelectObject(bld)
 	end
@@ -2843,8 +2991,9 @@ function Building:BlowUp(kill_colonists, reason, single_building, explosion_rang
 		end
 	end
 	
-	SuspendPassEdits("MeteorLargeExplode")
-	local objects = single_building and {self} or MapGet(GetExplosionQuery(self, explosion_range))
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("MeteorLargeExplode")
+	local objects = single_building and {self} or realm:MapGet(GetExplosionQuery(self, explosion_range))
 	local chain_id_counter = 1
 	local passages_fractured = {}
 	local destroyed_pipes = {}
@@ -2863,10 +3012,10 @@ function Building:BlowUp(kill_colonists, reason, single_building, explosion_rang
 				PlayFX("MeteorDestruction", "start", obj)
 				obj:SetCommand("Die", reason)
 			elseif IsKindOf(obj, "UniversalStorageDepot") then
-				if not IsKindOf(obj, "SupplyRocket") and obj:GetStoredAmount("Fuel") > 0 then
+				if not IsKindOf(obj, "RocketBase") and obj:GetStoredAmount("Fuel") > 0 then
 					PlayFX("FuelExplosion", "start", obj)
 					obj:CheatEmpty()
-					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj})
+					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj}, self:GetMapID())
 				end
 			elseif IsKindOf(obj, "ResourceStockpileBase") then
 				local amount = obj:GetStoredAmount()
@@ -2919,13 +3068,13 @@ function Building:BlowUp(kill_colonists, reason, single_building, explosion_rang
 		end
 	end
 	
-	KillCablesAndPipesAndRebuildThem(cablesnpipes_to_kill, destroyed_cables, destroyed_pipes)
+	KillCablesAndPipesAndRebuildThem(self.city, cablesnpipes_to_kill, destroyed_cables, destroyed_pipes)
 	
 	for i = 1, #colonists_to_kill do
 		colonists_to_kill[i]:SetCommand("Die", reason)
 	end
 	
-	ResumePassEdits("MeteorLargeExplode")
+	realm:ResumePassEdits("MeteorLargeExplode")
 end
 
 function BuildingTemplate:OnEditorSetProperty(prop_id, old_value)
@@ -2951,3 +3100,9 @@ function Building:SetWorkshift()
 end
 
 ----
+
+function Building:SnappedTo(building)
+end
+
+function Building:SnappedObjectPlaced(building)
+end

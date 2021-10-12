@@ -32,7 +32,7 @@ local function black_cube_counter_filter(o)
 	else
 		--building, determine costs, and add that
 		local building_cost = 0
-		building_cost = building_cost + UICity:GetConstructionCost(o, "BlackCube")
+		building_cost = building_cost + UIColony.construction_cost:GetConstructionCost(o, "BlackCube")
 		
 		if o.in_dome_construction_modifier ~= 100 and IsObjInDome(o) then
 			building_cost = MulDivRound(building_cost, o.in_dome_construction_modifier, 100)
@@ -145,7 +145,7 @@ end
 local cube_thread = false
 
 function OnMsg.MysteryChosen()
-	if UICity.mystery_id ~= "BlackCubeMystery" then return end --black cubes only exist in this mystery
+	if UIColony.mystery_id ~= "BlackCubeMystery" then return end --black cubes only exist in this mystery
 	--init
 	solar_panel_bc_modifiers = {}
 	cube_thread = CreateGameTimeThread(function()
@@ -157,7 +157,7 @@ function OnMsg.MysteryChosen()
 end
 
 function OnMsg.MysteryEnd(hint)
-	if UICity.mystery_id ~= "BlackCubeMystery" then return end --black cubes only exist in this mystery
+	if UIColony.mystery_id ~= "BlackCubeMystery" then return end --black cubes only exist in this mystery
 	
 	if hint == "neutral aliens" then
 		if IsValidThread(cube_thread) then

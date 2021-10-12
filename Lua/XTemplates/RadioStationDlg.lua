@@ -116,17 +116,17 @@ PlaceObj('XTemplate', {
 		PlaceObj('XTemplateWindow', {
 			'Margins', box(115, 0, 0, 30),
 			'Dock', "bottom",
+			'LayoutMethod', "VList",
 		}, {
 			PlaceObj('XTemplateWindow', {
 				'__class', "XFrame",
-				'Margins', box(-350, 0, 0, 0),
+				'Margins', box(-350, -25, 0, 0),
 				'Dock', "box",
 				'MinWidth', 794,
+				'MinHeight', 170,
 				'Image', "UI/CommonNew/pg_header_big1.tga",
 				'FrameBox', box(50, 0, 500, 0),
-				'TileFrame', true,
 				'SqueezeX', false,
-				'SqueezeY', false,
 			}),
 			PlaceObj('XTemplateWindow', {
 				'__class', "XTextButton",
@@ -192,6 +192,9 @@ PlaceObj('XTemplate', {
 							local obj = GetDialog(self)
 							obj.idList:SetFocus()
 							obj.idList:SetSelection(#obj.idList)
+						elseif shortcut == "DPadDown" or shortcut == "LeftThumbDown"  then
+							local obj = GetDialog(self)
+							obj.idPicardMusic:SetFocus()
 						elseif shortcut == "DPadLeft" or shortcut == "LeftThumbLeft" then
 							local slider = self.idSlider
 							slider:ScrollTo(slider.Scroll - slider.StepSize)
@@ -202,6 +205,10 @@ PlaceObj('XTemplate', {
 					end,
 				}),
 				}),
+			PlaceObj('XTemplateTemplate', {
+				'__dlc', "picard",
+				'__template', "RadioStationEnablePicard",
+			}),
 			}),
 		}),
 })

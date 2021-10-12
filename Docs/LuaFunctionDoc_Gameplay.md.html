@@ -94,6 +94,15 @@ string tech_id
 : technology internal id.
 
 
+## GrantReconPoints
+
+Instantly grant recon points, as if a recon center generated them.<br>
+
+void **GrantReconPoints**(int amount)
+int amount
+: amount of points to grant.
+
+
 ## GrantResearchPoints
 
 Instantly grant research points, as if a research center generated them.<br>
@@ -110,6 +119,18 @@ Research technology and gain its effect. If the technology property 'repeatable'
 void **GrantTech**(string tech_id)
 string tech_id
 : technology internal id.
+
+
+## IsBuildingTechResearched
+
+Gets whether all required tech is researched.<br>
+
+number **IsBuildingTechResearched**(string class)
+string class
+: building class id.
+
+_returns_ 
+: required building tech is researched.
 
 
 ## IsCropAvailable

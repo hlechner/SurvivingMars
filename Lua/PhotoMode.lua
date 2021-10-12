@@ -48,7 +48,7 @@ function OnMsg.PhotoModeEnd()
 		SetResourceIconsVisible(false)
 	end
 	--restore time of day
-	SetTimeOfDay(LocalToEarthTime((UICity.hour*const.MinutesPerHour + UICity.minute)*1000), const.HourDuration)
+	SetTimeOfDay(LocalToEarthTime((UIColony.hour*const.MinutesPerHour + UIColony.minute)*1000), const.HourDuration)
 	--restore FOV
 	camera.SetAutoFovX(1, 0, const.Camera.DefaultFovX_16_9, 16, 9)
 end
@@ -61,8 +61,9 @@ function PhotoModeApply(pm_object, prop_id)
 	elseif prop_id == "timeOfDay" then
 		SetTimeOfDay(LocalToEarthTime(pm_object.timeOfDay*1000), const.HourDuration)
 		if GetTimeFactor() == 0 then
-			local lm = FindPrevLightmodel(GetCurrentLightmodelList(), pm_object.timeOfDay)
-			if lm.id ~= CurrentLightmodel[1].id then
+			local light_model_list = GetCurrentLightmodelList(ActiveMapID)
+			local lm = FindPrevLightmodel(light_model_list, pm_object.timeOfDay)
+			if lm.id ~= GetCurrentLightModel(1).id then
 				SetLightmodel(1, lm.id, 0)
 			end
 		end
@@ -99,19 +100,19 @@ end
 local old_PhotoObjectCreateAndLoad = PhotoObjectCreateAndLoad
 function PhotoObjectCreateAndLoad()
 	local obj = old_PhotoObjectCreateAndLoad()
-	PropertyObject.SetProperty(obj, "timeOfDay", UICity.hour * const.MinutesPerHour + UICity.minute)
+	PropertyObject.SetProperty(obj, "timeOfDay", UIColony.hour * const.MinutesPerHour + UIColony.minute)
 	return obj
 end
 
 function OnMsg.AfterLightmodelChange()
 	if g_PhotoMode and GetTimeFactor() ~= 0 then
 		--in photo mode in resumed state
-		PhotoModeObj:SetProperty("timeOfDay", UICity.hour * const.MinutesPerHour + UICity.minute)
+		PhotoModeObj:SetProperty("timeOfDay", UIColony.hour * const.MinutesPerHour + UIColony.minute)
 	end
 end
 
 function OnMsg.NewHour(hour)
-	if g_PhotoMode and PhotoModeObj.timeOfDay ~= UICity.hour * const.MinutesPerHour then
+	if g_PhotoMode and PhotoModeObj.timeOfDay ~= UIColony.hour * const.MinutesPerHour then
 		PhotoModeObj:SetProperty("timeOfDay", hour * const.MinutesPerHour)
 	end
 end

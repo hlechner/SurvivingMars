@@ -10,7 +10,7 @@ PlaceObj('XTemplate', {
 			'__context_of_kind', "EffectDeposit",
 			'__condition', function (parent, context) return context:GetInfopanelDetails() ~= "" end,
 			'__template', "InfopanelSection",
-			'RolloverText', T(785, --[[XTemplate ipEffectDeposit RolloverText]] "Remaining resources in the deposit."),
+			'RolloverText', T(13766, --[[XTemplate ipEffectDeposit RolloverText]] "Bonus applied to domes in range."),
 			'Title', T(439960885808, --[[XTemplate ipEffectDeposit Title]] "Effects"),
 			'Icon', "UI/Icons/Sections/deposit.tga",
 		}, {

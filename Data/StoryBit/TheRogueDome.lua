@@ -25,6 +25,7 @@ PlaceObj('StoryBit', {
 		"TheRogueDome_Clear",
 	},
 	Image = "UI/Messages/emergency.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickFromLabel', {
 			'Label', "Dome",
@@ -42,6 +43,10 @@ PlaceObj('StoryBit', {
 				}),
 			},
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(918977694838, --[[StoryBit TheRogueDome Text]] "<effect>All residents of <DisplayName> Dome have been converted to Renegades. The Dome is Quarantined. You are no longer allowed to build any construction there or interact with the Dome or its buildings."),
@@ -51,6 +56,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(663315412307, --[[voice:narrator]] "One of our Domes has gone rogue! The population has declared independence and dubbed themselves the First Martian Republic."),
 	group = "Renegades",
 	id = "TheRogueDome",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625147898,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(942765339346, --[[StoryBit TheRogueDome Text]] "This is madness! We are dependent on each other and they have no chance on their own."),
 	}),

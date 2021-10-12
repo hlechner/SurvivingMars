@@ -21,7 +21,8 @@ function MoistureVaporator:OnSetWorking(working)
 		return vaporator ~= this and vaporator.working
 	end
 	local delta = working and 1 or -1
-	local vaporators = MapGet(self, "hex", const.MoistureVaporatorRange, "MoistureVaporator", vap_filter , self)
+	local realm = GetRealm(self)
+	local vaporators = realm:MapGet(self, "hex", const.MoistureVaporatorRange, "MoistureVaporator", vap_filter , self)
 	for i=1,#vaporators do
 		local overlapped_vaporator = vaporators[i]
 		overlapped_vaporator:UpdateNearbyVaporatorsCount(delta)

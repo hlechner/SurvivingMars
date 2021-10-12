@@ -27,7 +27,7 @@ function ResearchBuilding:BuildingDailyUpdate(...)
 end
 
 function ResearchBuilding:TechId()
-	local tech_id = self.city:GetResearchInfo()
+	local tech_id = self.city.colony:GetResearchInfo()
 	return tech_id
 end
 
@@ -39,7 +39,7 @@ function ResearchBuilding:GetWorkNotPossibleReason()
 end
 
 function ResearchBuilding:GetResearchProgress()
-	return self.city:GetResearchProgress()
+	return self.city.colony:GetResearchProgress()
 end
 
 function ResearchBuilding:GetEstimatedDailyProduction()
@@ -91,9 +91,10 @@ function ResearchBuilding:AddResearchPoints(dt)
 	
 	self.research_points_day = self.research_points_day + points_to_add
 	self.research_points_lifetime = self.research_points_lifetime + points_to_add
-	local tech_id_1, points_1, max_points_1, repetitions_1 = self.city:GetResearchInfo()
-	self.city:AddResearchPoints(points_to_add)
-	local tech_id_2, points_2, max_points_2, repetitions_2 = self.city:GetResearchInfo()
+	local research = self.city.colony
+	local tech_id_1, points_1, max_points_1, repetitions_1 = research:GetResearchInfo()
+	research:AddResearchPoints(points_to_add)
+	local tech_id_2, points_2, max_points_2, repetitions_2 = research:GetResearchInfo()
 	--fx
 	if tech_id_1 ~= tech_id_2
 	or repetitions_1 ~= repetitions_2
@@ -146,11 +147,11 @@ function ResearchBuilding:SetUIWorking(work)
 end
 
 function ResearchBuilding:GetUIResearchProject()
-	return self.city:GetUIResearchProject()
+	return self.city.colony:GetUIResearchProject()
 end
 
 function ResearchLabUpdateAll()
-	MapForEach("map", "ResearchBuilding",
+	MapsForEach("map", "ResearchBuilding",
 		function(lab)
 			lab:UpdateWorking()
 		end)

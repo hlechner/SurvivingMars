@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/22_collapsing_building.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('AreDomesOpen', {
 			'Negate', true,
@@ -15,6 +16,10 @@ PlaceObj('StoryBit', {
 			'Filters', {},
 			'Condition', ">=",
 			'Amount', 1,
+		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
 		}),
 	},
 	ScriptDone = true,
@@ -32,6 +37,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1550837539,
 				user = "Radomir",
+			},
+			{
+				action = "Modified",
+				time = 1625148294,
 			},
 		},
 	}),

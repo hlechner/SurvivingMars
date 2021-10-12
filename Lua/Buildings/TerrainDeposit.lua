@@ -4,16 +4,17 @@ for i=1,#TerrainDeposits do
 end
 
 local rscale = const.ResourceScale
-local type_tile = terrain.TypeTileSize()
+local type_tile = const.TerrainTypeTileSize
 local noise_size = 128
 local noise_center = point(noise_size / 2, noise_size / 2)
 
-GlobalVar("TerrainDepositGrid", function()
-	if HexMapWidth == 0 or HexMapHeight == 0 then return false end
-	return NewHierarchicalGrid(HexMapWidth, HexMapHeight, const.DepositGridTile, const.DepositGridBits)
-end)
-
+GlobalVar("TerrainDepositGrid", false)
 GlobalVar("MaxTerrainDepositRadius", 0)
+
+function OnMsg.PreNewMap()
+	if HexMapWidth == 0 or HexMapHeight == 0 then return false end
+	TerrainDepositGrid = NewHierarchicalGrid(HexMapWidth, HexMapHeight, const.DepositGridTile, const.DepositGridBits)
+end
 
 TerrainDepositsInfo = {
 	Concrete = {
@@ -143,7 +144,7 @@ function TerrainDepositMarker:SpawnDeposit(rand)
 	local marker = PrefabMarkers[self.prefab]
 	if marker then
 		radius_max = marker.max_radius * type_tile
-		err, new_bbox = PlacePrefab(self.prefab, pos, rand:Get(360 * 60))
+		err, new_bbox = PlacePrefab(self.prefab, pos, self:GetMapID(), rand:Get(360 * 60))
 		if err then
 			StoreErrorSource(self, "Failed to place prefab", self.prefab, err)
 		end
@@ -207,7 +208,7 @@ function TerrainDepositMarker:SpawnDeposit(rand)
 		local unscaled_amount = MulDivRound(tiles * info.density + grade2_tiles * info.density2, type_tile, guim)
 		local scale = sqrt(MulDivRound(10000, amount, unscaled_amount))
 		radius_max = MulDivRound(radius_max * type_tile, scale, 100)
-		err, new_bbox = terrain.SetTypeGrid{
+		err, new_bbox = GetTerrain(self):SetTypeGrid{
 			type_grid = pattern, 
 			pos = pos,
 			scale = scale, 
@@ -274,6 +275,7 @@ function ToggleTerrainDepositGrid()
 	end
 	local delta = gmax - gmin
 	local circles = {}
+	local terrain = GetActiveTerrain()
 	for i=1,#gpts do
 		mx, my, data = gpts[i]:xyz()
 		gtype, gvol = TerrainDeposit_Decode(data)
@@ -283,7 +285,7 @@ function ToggleTerrainDepositGrid()
 			local color_max = info.color_max
 			local color_min = info.color_min
 			local color = InterpolateRGB(color_min, color_max, dv, delta)
-			local mz = terrain.GetHeight(mx, my) + guim
+			local mz = terrain:GetHeight(mx, my) + guim
 			local center = point(mx, my, mz)
 			local circle = Circle:new()
 			circle:SetColor(color)
@@ -449,7 +451,7 @@ function TerrainDepositExtractor:GetDeposit()
 end
 
 function TerrainDepositExtractor:GetDepositGrade(deposit)
-	local refinement_researched = self.city:IsTechResearched("NanoRefinement")
+	local refinement_researched = self.city.colony:IsTechResearched("NanoRefinement")
 	if self.depleted and refinement_researched then
 		return "Depleted"
 	end
@@ -502,7 +504,8 @@ function TerrainDepositExtractor:ExtractResource(amount)
 	
 	if remaining == 0 and IsValid(deposit) and not deposit.depleting then
 		deposit.depleting = true
-		MapForEach("map", "TerrainDepositExtractor", function(o, deposit)
+		local realm = GetRealm(self)
+		realm:MapForEach("map", "TerrainDepositExtractor", function(o, deposit)
 			if o:GetDeposit() == deposit then 
 				o:OnDepositDepleted()
 			end 
@@ -511,7 +514,7 @@ function TerrainDepositExtractor:ExtractResource(amount)
 		DoneObject(deposit)
 	end
 	
-	if extracted == 0 and self.city:IsTechResearched("NanoRefinement") then
+	if extracted == 0 and self.city.colony:IsTechResearched("NanoRefinement") then
 		return amount
 	end
 

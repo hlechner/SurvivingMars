@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/14_fungal_farm.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickWorker', {
 			'ParentBuildingLabel', "FungalFarm",
@@ -24,6 +25,10 @@ PlaceObj('StoryBit', {
 			'Condition', "<=",
 			'Amount', 100,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(901953834498, --[[StoryBit Fungahol Text]] "We will definitely bring Mr. <DisplayName> to your attention, if only we could catch him sober enough...\n\nYet his still apparatus is an example for an amazingly simple and effective design. It’s a shame he didn’t focus these skills on his work."),
@@ -33,6 +38,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(992498811031, --[[voice:narrator]] "A Colonist has discovered a new way to use fungal waste by-products in order to create alcohol. "),
 	group = "Colonists",
 	id = "Fungahol",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625144220,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(614026050258, --[[StoryBit Fungahol Text]] "Destroy the still and forbid such experiments."),
 		'OutcomeText', "custom",

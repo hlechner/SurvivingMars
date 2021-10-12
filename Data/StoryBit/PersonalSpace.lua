@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/26_colonist.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -18,6 +19,10 @@ PlaceObj('StoryBit', {
 			'TechId', "HomeCollective",
 			'Negate', true,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(477346266344, --[[StoryBit PersonalSpace Text]] 'You arrive at the scene just to see a chair flying out of the window, smashing right in front of the crowd of concerned citizens. You hear the hysterical cries from inside: "Leave me alone! I don’t need to see any of you!"\n\nAs you come closer, the crowd turns towards you.'),
@@ -27,6 +32,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(916015661721, --[[voice:narrator]] "A Colonist has snapped. They demand more personal space and are barricaded inside their house until their demands are met."),
 	group = "Colonists",
 	id = "PersonalSpace",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625144708,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "colonist_comfort_penalty",
 		'Value', -20,

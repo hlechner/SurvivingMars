@@ -413,7 +413,7 @@ PlaceObj('XTemplate', {
 								PlaceObj('XTemplateForEach', {
 									'comment', "item",
 									'array', function (parent, context) return context:GetProperties() end,
-									'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and item.category == "Resources" end,
+									'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and not item.hidden and item.category == "Resources" end,
 									'item_in_context', "prop_meta",
 									'run_after', function (child, context, item, i, n)
 										child:SetRolloverTitle(item.rollover.title)

@@ -175,6 +175,17 @@ PlaceObj('XTemplate', {
 					}),
 					}),
 				PlaceObj('XTemplateTemplate', {
+					'__template', "InfopanelSection",
+					'RolloverText', T(955943745443, --[[XTemplate ipResourceOverview RolloverText]] "The average <em>Satisfaction</em> of all Colonists."),
+					'RolloverTitle', T(472814587215, --[[XTemplate ipResourceOverview RolloverTitle]] "Average Satisfaction <Stat(AverageSatisfaction)>"),
+					'Icon', "UI/Icons/Sections/satisfaction.tga",
+				}, {
+					PlaceObj('XTemplateTemplate', {
+						'__template', "InfopanelStat",
+						'BindTo', "AverageSatisfaction",
+					}),
+					}),
+				PlaceObj('XTemplateTemplate', {
 					'comment', "Jobs",
 					'__template', "InfopanelSection",
 					'Title', T(282453782313, --[[XTemplate ipResourceOverview Title]] "Jobs"),

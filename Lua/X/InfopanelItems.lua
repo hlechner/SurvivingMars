@@ -139,7 +139,7 @@ function FillTraitSelectorItems(object, items, traits, align, list)
 	local start = #items
 	for i = 1, #traits do
 		local trait = TraitPresets[traits[i].value]
-		if IsTraitAvailable(trait, object.city) then
+		if IsTraitAvailable(trait) then
 			local icon = "UI/Icons/Buildings/numbers_0"..start+i..".tga"
 			local enabled = trait.id~= object.trait1 and trait.id~= object.trait2 and trait.id~= object.trait3	
 			table.insert(items, HexButtonInfopanel:new({
@@ -164,7 +164,7 @@ function FillTraitSelectorItems(object, items, traits, align, list)
 end
 
 local base_resources = {Concrete = true, Food = true, Metals = true, PreciousMetals = true}
-local advance_resources = {Polymers = true,MachineParts = true, Electronics = true,Fuel = true, BlackCube = true, MysteryResource = true}
+local advance_resources = {Polymers = true,MachineParts = true, Electronics = true,Fuel = true, BlackCube = true, MysteryResource = true, PreciousMinerals = true}
 function GetInfopanelSelectorItems(dataset, list)
 	local object = dataset.object
 	local items = {}	
@@ -225,14 +225,14 @@ function GetInfopanelSelectorItems(dataset, list)
 		}, list))
 	elseif object:IsKindOf("School") then
 		align = FillTraitSelectorItems(object, items, SchoolTraitsCombo(object), align, list)
-		if object.city:IsTechResearched("InterplanetaryLearning") then
+		if object.city.colony:IsTechResearched("InterplanetaryLearning") then
 			align = FillTraitSelectorItems(object, items, BuildingTraitsCombo(object, const.SchoolExtraTraits),align, list)
 		end
-		if object.city:IsTechResearched("DreamSimulation") then
+		if object.city.colony:IsTechResearched("DreamSimulation") then
 			align = FillTraitSelectorItems(object,items,{{value = "Dreamer", text = TraitPresets["Dreamer"].display_name}},align, list)
 		end
 	elseif object:IsKindOf("Sanatorium") then
-		if object.city:IsTechResearched("DreamSimulation") then
+		if object.city.colony:IsTechResearched("DreamSimulation") then
 			align = FillTraitSelectorItems(object,items,{{value = "Dreamer", text = TraitPresets["Dreamer"].display_name}},align, list)
 		end
 		local idx = #items+1

@@ -168,6 +168,7 @@ DefineClass.SA_WaitChoice = {
 		{ category = "General", id = "actor",   name = T(6857, "Voice Actor"), editor = "combo", items = VoiceActors, default = "narrator" },
 		{ category = "General", id = "image",          name = T(3794, "Image"),            editor = "browse", default = "", folder = "UI"},
 		{ category = "General", id = "start_minimized", name = T(10914, "Start Minimized"), editor = "bool", default = true, },
+		{ category = "General", id = "multimap",        name = "Show on all maps",   editor = "bool", default = false },
 		{ category = "General", id = "validate_context", name = T(10915, "Validate Context"), editor = "func", default = false, params = "context", help = T(849714426285, "Periodically validates the context of the OnScreenNotification (only used when start_minimized == true)"), },
 		{ category = "General", id = "text_param1", 	name = T(3795, "Text Param 1"), 		editor = "text", translate = true, default = "", help = T(3796, "This is translatable text, ref as text_param1 in the body"), },
 		{ category = "General", id = "text_param2", 	name = T(3797, "Text Param 2"), 		editor = "text", translate = true, default = "", help = T(3798, "This is translatable text, ref as text_param2 in the body"), },
@@ -285,6 +286,9 @@ function SA_WaitChoice:Exec(seq_player, ip, seq, registers)
 			context[prop_id] = value
  		end
  	end
+ 	if not self.multimap then
+		context.map_id = seq_player.map_id
+	end
 	self:PopMessage(context, registers)
 end
 
@@ -310,6 +314,9 @@ end
 function SA_ShowChoice:PopMessage(context, registers)
 	local function callback(cur_obj, params, res)
 		registers[ "choice_result" .. self.choice_register ] = res
+	end
+	if not self.multimap then
+		context.map_id = seq_player.map_id
 	end
 	ShowPopupNotification(self.preset, context, nil, nil, callback)
 end
@@ -375,6 +382,9 @@ function SA_WaitMessage:Exec(seq_player, ip, seq, registers)
 		else
 			context[prop_id] = value
 		end
+	end
+	if not self.multimap then
+		context.map_id = seq_player.map_id
 	end
 	self:PopMessage(context, registers)
 end

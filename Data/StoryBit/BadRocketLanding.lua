@@ -25,6 +25,7 @@ PlaceObj('StoryBit', {
 		PlaceObj('IsSupplyPod', {
 			'Negate', true,
 		}),
+		PlaceObj('IsMapEnvironment', nil),
 	},
 	ScriptDone = true,
 	Text = T(975948320076, --[[StoryBit BadRocketLanding Text]] "Our <DisplayName> Rocket seems to have suffered a malfunction in her fuel tank. There are worries that the Rocket won’t survive the landing sequence.\n\nIf the Rocket lands successfully we can fix the malfunction with some polymers."),
@@ -35,6 +36,9 @@ PlaceObj('StoryBit', {
 	VoicedText = T(334816819426, --[[voice:narrator]] "The satellite camera shows the rocket you are trying to land in standard Mars orbit. A small jet of liquid is gushing out from the side."),
 	group = "Rocket",
 	id = "BadRocketLanding",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(277165707548, --[[StoryBit BadRocketLanding Text]] "Attempt the landing with full payload."),
 		'OutcomeText', "custom",

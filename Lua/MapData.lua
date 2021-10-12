@@ -36,9 +36,35 @@ local oldSaveMapData = MapDataPreset.SaveMapData
 function MapDataPreset:SaveMapData(folder)
 	if not folder then
 		-- precalc minimap size bounding box
-		local minimap_image = mapdata.IsRandomMap and "memoryscreenshot/minimap.tga" or (CurrentMapFolder .. "minimap.tga")
+		local minimap_image = self.IsRandomMap and "memoryscreenshot/minimap.tga" or (GetMapPath() .. "minimap.tga")
 		self.MinimapActiveArea = GetTextureBoundingBox(minimap_image, 100)
 		self.MinimapSize = point(UIL.MeasureImage(minimap_image))
 	end
 	oldSaveMapData(self, folder)
+end
+
+local orig_MapDataPresetOnEditorSetProperty = MapDataPreset.OnEditorSetProperty
+
+function MapDataPreset:OnEditorSetProperty(prop_id, old_value, ged)
+	if prop_id == "playable_height_range" then
+		local width = self.Width * guim
+		local height = self.Height * guim
+		local x = width / 2
+		local y = height / 2		
+		local z_low = self.playable_height_range.from * guim
+		local z_high = self.playable_height_range.to * guim
+		
+		local tavg, tmin, tmax = GetActiveTerrain():GetAreaHeight()
+		local low_opacity = z_low < tmin and 30 or 128
+		local high_opacity = z_high > tmax and 30 or 128
+		
+		local width_half = (width / 2) - self.PassBorder
+		local height_half = (height / 2) - self.PassBorder
+
+		DbgClearVectors()
+		DbgDrawPlane(point(x, y, z_low), width_half, height_half, RGBA(255, 100, 100, low_opacity))
+		DbgDrawPlane(point(x, y, z_high), width_half, height_half, RGBA(100, 255, 100, high_opacity))
+	else
+		orig_MapDataPresetOnEditorSetProperty(self, prop_id, old_value, ged)
+	end
 end

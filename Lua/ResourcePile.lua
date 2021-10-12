@@ -93,13 +93,15 @@ local function ResourceFilter(pile, resource)
 	return pile.resource == resource
 end
 
-function PlaceResourcePile(pos, resource, amount)
-	local pile = MapFindNearest(pos, pos, const.HexSize, "ResourcePile", ResourceFilter, resource)
+function PlaceResourcePile(pos, resource, amount, map_id)
+	local game_map = GameMaps[map_id or MainMapID]
+	local pile = game_map.realm:MapFindNearest(pos, pos, const.HexSize, "ResourcePile", ResourceFilter, resource)
 	if pile then
 		pile:AddAmount(amount)
 	else
-		local dome_at_pt = GetDomeAtPoint(pos)
-		pile = PlaceObject("ResourcePile", {resource = resource, amount = amount, parent_dome = dome_at_pt})
+		local object_hex_grid = game_map.object_hex_grid
+		local dome_at_pt = GetDomeAtPoint(object_hex_grid, pos)
+		pile = PlaceObjectIn("ResourcePile", map_id, {resource = resource, amount = amount, parent_dome = dome_at_pt})
 		pile:SetPos(pos)
 	end
 	
@@ -109,8 +111,9 @@ end
 function SpawnResourcePile(piles, res, amount, pos)
 	if amount<=0 then return end
 	local pt
+	local map_id = ActiveMapID
 	for i = 1, 200 do
-		pt = GetRandomPassableAround(pos, 10*guim)
+		pt = GetRandomPassableAroundOnMap(map_id, pos, 10*guim)
 		local bover = false
 		for j=1, #piles do
 			if piles[j]:GetDist2D(pt) < 1*guim then
@@ -122,5 +125,5 @@ function SpawnResourcePile(piles, res, amount, pos)
 			break
 		end
 	end
-	piles[#piles + 1] = PlaceResourcePile(pt, res, amount)
+	piles[#piles + 1] = PlaceResourcePile(pt, res, amount, map_id)
 end

@@ -85,14 +85,14 @@ function MirrorSphere:GetDisplayName()
 end
 
 function MirrorSphere:GameInit()
-	if UICity then
-		UICity:AddToLabel("MirrorSpheres", self)
+	if MainCity then
+		MainCity:AddToLabel("MirrorSpheres", self)
 	end
 end
 
 function MirrorSphere:Done()
-	if UICity then
-		UICity:RemoveFromLabel("MirrorSpheres", self)
+	if MainCity then
+		MainCity:RemoveFromLabel("MirrorSpheres", self)
 	end
 	self:ColdWaveDstr()
 end
@@ -161,9 +161,9 @@ function MirrorSphere:CaptureCmd(decoy)
 		PlayFX("Release", "end", self)
 		PlayFX("Captured", "end", self, decoy)
 		self:SetDecoy(false)
-		self:IdleMark(false)
 		self.collision_radius = nil
 		if IsValid(self) then
+			self:IdleMark(false)
 			self:SetAcceleration(0)
 			self:SetState("idle")
 		end
@@ -256,7 +256,7 @@ end
 local total_drained = 0
 local function drain_func(obj, self)
 	if IsKindOf(obj, "Colonist") then
-		if obj.city:IsTechResearched("Anti-Sphere Shield") then
+		if obj.city.colony:IsTechResearched("Anti-Sphere Shield") then
 			return
 		end
 		self:IrradiateAdd(obj)
@@ -291,14 +291,14 @@ function MirrorSphere:ColdWaveCmd()
 	self.cold_wave = true
 	self:ShowRadius()
 	
-	self.city = UICity
+	self.city = MainCity
 	self:ApplyHeat(true)
 	self:IdleMark(true)
 	
 	SetIceStrength(ice_strength, self)
 	self.irradiated = self.irradiated or setmetatable({}, weak_keys_meta)
 
-	local move_delay = min_move_delay + UICity:Random(max_move_delay - min_move_delay + 1)
+	local move_delay = min_move_delay + SessionRandom:Random(max_move_delay - min_move_delay + 1)
 	local auto_charge = MulDivRound(split_progress_per_day, power_drain_interval, const.DayDuration)
 	while IsValid(self) and move_delay > 0 do
 		total_drained = 0
@@ -356,7 +356,7 @@ end
 
 function MirrorSphere:SetCharge(new_charge, forced)
 	new_charge = Clamp(new_charge, 0, max_progress)
-	if new_charge == max_progress and #(UICity and UICity.labels.MirrorSpheres or "") >= max_spheres then
+	if new_charge == max_progress and #(self.city and self.city.labels.MirrorSpheres or "") >= max_spheres then
 		new_charge = max_progress - 1
 	end
 	local old_charge = self.sphere_charge
@@ -381,7 +381,7 @@ function MirrorSphere:Split()
 	self:SetState("idle2")
 	
 	local x, y, z, r = self:GetBSphere(true)
-	local sphere = PlaceObject("MirrorSphere")
+	local sphere = PlaceObjectIn("MirrorSphere", self:GetMapID())
 	sphere:SetAnimSpeedModifier(100)
 	sphere:SetState("shrink", const.eReverse + const.eDontCrossfade)
 	sphere:SetPos(x, y, z - r / 2)
@@ -389,7 +389,7 @@ function MirrorSphere:Split()
 	sphere:SetCommand("Idle")
 	Sleep(split_time)
 	
-	local spheres = UICity.labels.MirrorSpheres or empty_table
+	local spheres = self.city.labels.MirrorSpheres or empty_table
 	if not IsValidThread(MirrorSphereResonanceThread) and #spheres >= const.MirrorSphere_ResonanceAccumSpheresStart then
 		MirrorSphereResonanceThread = CreateGameTimeThread(function()
 			local resonance_per_day = MulDivRound(max_progress, const.MirrorSphere_ResonancePtsPerDay, const.MirrorSphere_ResonancePtsMax)
@@ -441,7 +441,7 @@ function MirrorSphere:GetTarget()
 end
 
 function MirrorSphere:Idle()
-	if not UICity then
+	if not MainCity then
 		Sleep(10000)
 		return
 	end
@@ -462,7 +462,7 @@ function MirrorSphere:Idle()
 		MirrorSphereForcedTarget = false
 	else
 		local decoys
-		local buildings = UICity.labels.PowerDecoy or empty_table
+		local buildings = MainCity.labels.PowerDecoy or empty_table
 		for i=1,#buildings do
 			local decoy = buildings[i]
 			if IsValid(decoy) and not IsValid(decoy.sphere) and decoy.working
@@ -471,12 +471,12 @@ function MirrorSphere:Idle()
 			end
 		end
 	end
-	if not target and UICity:Random(100) < target_building_chance then
+	if not target and SessionRandom:Random(100) < target_building_chance then
 		local buildings = MapGet("map","ElectricityStorage", "ElectricityProducer", "ElectricityConsumer", nil, const.efVisible ) 
 		if #buildings > 0 then
 			local last_building
 			for i=1,10 do
-				local building = UICity:TableRand(buildings)
+				local building = SessionRandom:TableRand(buildings)
 				assert(not IsKindOf(building, "MirrorSphereBuilding"))
 				if IsValid(building) and building ~= last_building and not IsValid(l_mirror_sphere_targets[building]) then
 					target = building
@@ -487,7 +487,7 @@ function MirrorSphere:Idle()
 		end
 	end
 	for i=1,10 do
-		local pos = IsValid(target) and target:GetPos() or GetRandomPassable()
+		local pos = IsValid(target) and target:GetPos() or GetRandomPassable(self.city)
 		local far_from_to_target = not self:IsCloser2D(pos, min_building_dist)
 		if far_from_to_target or IsKindOf(target, "PowerDecoy") then
 			local too_close_to_another
@@ -550,7 +550,7 @@ DefineClass.MirrorSphereMystery = {
 }
 
 function MirrorSphereMystery:Init()
-	self.city:InitEmptyLabel("MirrorSpheres")
+	MainCity:InitEmptyLabel("MirrorSpheres")
 end
 
 ----
@@ -610,7 +610,7 @@ function MirrorSphereBuilding:GameInit()
 	local pos = self:GetVisualPos()
 	self:SetPos(pos) -- avoid being lifted off by the prefab
 	local offset_fix = Rotate(point(-50, 429, -9), angle)
-	local err, bbox, objs = PlacePrefab(prefab_name, pos + offset_fix, angle, "+", {[self] = true})
+	local err, bbox, objs = PlacePrefab(prefab_name, pos + offset_fix, self:GetMapID(), angle, "+", {[self] = true})
 	if err then
 		StoreErrorSource(self, err, prefab_name)
 		return
@@ -649,7 +649,7 @@ function MirrorSphereBuilding:PlaceAnomaly(revealed)
 	elseif revealed then
 		anomaly:SetRevealed(true)
 	else
-		local sector = GetMapSector(anomaly)
+		local sector = GetMapSector(self.city, anomaly)
 		assert(sector, "Mirror sphere anomaly at invalid position!")
 		if not sector or sector.status ~= "unexplored" then
 			anomaly:SetRevealed(true)
@@ -725,7 +725,7 @@ function MirrorSphereBuilding:SetProgress(new_progress)
 	
 	local prev_depth = MulDivRound(excavation_depth, self.progress, max_progress)
 	local new_depth = MulDivRound(excavation_depth, new_progress, max_progress)
-	SmoothChangeHeightCircle(self:GetPos(), excavation_radius, -new_depth, -prev_depth)
+	SmoothChangeHeightCircle(self:GetMapID(), self:GetPos(), excavation_radius, -new_depth, -prev_depth)
 	
 	self.building_update_time = 5000
 	self.progress = new_progress
@@ -762,7 +762,7 @@ function MirrorSphereBuilding:IsActionEnabled(action)
 	elseif self.dbg_enable_all then
 		return true
 	elseif action == "PierceTheShell" then
-		if MapCount(self,"hex",const.CommandCenterMaxRadius,"DroneControl", function (center, sphere) return #center.drones > 0 and HexAxialDistance(sphere, center) <= center.work_radius end , self) > 0 then
+		if GetRealm(self):MapCount(self,"hex",const.CommandCenterMaxRadius,"DroneControl", function (center, sphere) return #center.drones > 0 and HexAxialDistance(sphere, center) <= center.work_radius end , self) > 0 then
 			return true
 		end
 		return false, T(1190, "Too far from any Drone commander.")
@@ -776,7 +776,7 @@ function MirrorSphereBuilding:IsActionEnabled(action)
 		end
 		return false, T(1191, "No Sensor Tower in range.")
 	elseif action == "FeedPower" then
-		if MapCount(self, effect_range, "ElectricityStorage", is_valid_el_storage, self) > 0 then
+		if GetRealm(self):MapCount(self, effect_range, "ElectricityStorage", is_valid_el_storage, self) > 0 then
 			return true
 		end
 		return false, T(1192, "No Accumulator with stored Power in range.")
@@ -894,7 +894,7 @@ function PowerDecoy:Done()
 end
 							
 function PowerDecoy:IsActionEnabled()
-	if not self.city:IsTechResearched("Xeno-Terraforming") then
+	if not self.city.colony:IsTechResearched("Xeno-Terraforming") then
 		return false, T(1193, "The necessary technology hasn't been researched.")
 	elseif not self:IsOccupied() then
 		return false, T(1194, "There's no trapped Sphere.")
@@ -970,7 +970,7 @@ function PowerDecoy:StartAction(action)
 		end
 		PlayFX("TurnToDepositComplete", "start", sphere, self)
 		if resource_type then
-			PlaceResourceStockpile_Delayed(self:GetPos(), resource_type, resource_amount, 0, true)
+			PlaceResourceStockpile_Delayed(self:GetPos(), self:GetMapID(), resource_type, resource_amount, 0, true)
 		end
 		DoneObject(sphere)
 		DoneObject(self)

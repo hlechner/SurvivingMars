@@ -16,7 +16,7 @@ DefineClass.Tutorial_5_UpgradeExtractor_2=     { __parents = { "BaseHint" }, }
 DefineClass.Tutorial_5_CommandCenterUI =       { __parents = { "BaseHint" }, }
 -- Tutorial 5 thread function
 g_TutorialScenarios.Tutorial5 = function()
-	local domes = UICity.labels.Dome
+	local domes = MainCity.labels.Dome
 	local mining_dome
 	local research_dome
 	for _, dome in ipairs(domes) do
@@ -38,7 +38,7 @@ g_TutorialScenarios.Tutorial5 = function()
 	GetSector("C1"):Scan("scanned")
 	GetSector("D1"):Scan("scanned")
 	GetSector("D2"):Scan("scanned")
-	UICity:SetTechResearched("DecommissionProtocol")
+	UIColony:SetTechResearched("DecommissionProtocol")
 	IsDepositObstructed = old
 	ViewObjectMars(research_dome)
 	
@@ -58,11 +58,11 @@ g_TutorialScenarios.Tutorial5 = function()
 	WaitBuildMenuItemSelected("Infrastructure", "ShuttleHub", "place")
 	g_Tutorial.ConstructionTarget = nil
 	DoneObject(ghost)
-	if #(UICity.labels.ShuttleHub or empty_table)==0 then
+	if #(MainCity.labels.ShuttleHub or empty_table)==0 then
 		WaitConstruction("ShuttleHub")
 	end	
 	Sleep(100)
-	local shuttlehubs  = UICity.labels.ShuttleHub
+	local shuttlehubs  = MainCity.labels.ShuttleHub
 	local working = false
 	while not working do
 		for _, hub in ipairs(shuttlehubs) do
@@ -87,11 +87,11 @@ g_TutorialScenarios.Tutorial5 = function()
 	WaitBuildMenuItemSelected("Production", "PreciousMetalsExtractor","place", pos)
 	g_Tutorial.ConstructionTarget = nil
 	DoneObject(ghost)
-	if #(UICity.labels.PreciousMetalsExtractor or empty_table)==0 then
+	if #(MainCity.labels.PreciousMetalsExtractor or empty_table)==0 then
 		WaitConstruction("PreciousMetalsExtractor")
 	end	
 	Sleep(100)
-	local extractors  = UICity.labels.PreciousMetalsExtractor 
+	local extractors  = MainCity.labels.PreciousMetalsExtractor 
 	local supplyed = false
 	while not supplyed do
 		for _, extractor in ipairs(extractors) do
@@ -109,7 +109,7 @@ g_TutorialScenarios.Tutorial5 = function()
 		
 	-- Show arrow on empty Dome
 	local top_spot_idx = mining_dome:GetSpotBeginIndex("Top")
-	local ingame_arrow = PlaceObject("ArrowTutorialBase")
+	local ingame_arrow = PlaceObjectIn("ArrowTutorialBase", MainMapID)
 	mining_dome:Attach(ingame_arrow, top_spot_idx)
 	
 	g_Tutorial.BuildMenuWhitelist.LivingQuarters = true
@@ -189,17 +189,28 @@ g_TutorialScenarios.Tutorial5 = function()
 	TutorialNextHint("Tutorial_5_FilterUI")
 
 	-- Show arrow on both Domes if not selected
-	local domes = UICity.labels.Dome
+	local domes = MainCity.labels.Dome
 	if not IsKindOf(SelectedObj, "Dome") then
 		for _,dome in ipairs(domes) do 
 			local top_spot_idx = dome:GetSpotBeginIndex("Top")
-			local ingame_arrow = PlaceObject("ArrowTutorialBase")
+			local ingame_arrow = PlaceObjectIn("ArrowTutorialBase", MainMapID)
 			dome:Attach(ingame_arrow, top_spot_idx)
 		end
 	end
+	
+	local function IsDomeSetupCorrectly(dome, positive, negative)
+		return dome.traits_filter[positive] == TraitFilterState.Positive and dome.traits_filter[negative] == TraitFilterState.Negative
+	end
+	local function IsResearchDomeSetupCorrectly()
+		return IsDomeSetupCorrectly(research_dome, "scientist", "geologist")
+	end
+	
+	local function IsMiningDomeSetupCorrectly()
+		return IsDomeSetupCorrectly(mining_dome, "geologist", "scientist")
+	end
+	
 	while true do
-		if not GetDialog("DomeTraits") and research_dome.traits_filter["scientist"] and research_dome.traits_filter["geologist"]==false 
-		   and mining_dome.traits_filter["geologist"] and mining_dome.traits_filter["scientist"]==false
+		if not GetDialog("DomeTraits") and IsResearchDomeSetupCorrectly() and IsMiningDomeSetupCorrectly()
 		   then
 		  -- end of filter tutorial
 			break 			
@@ -231,10 +242,10 @@ g_TutorialScenarios.Tutorial5 = function()
 		SelectColonistFilter()	
 		--if filter is set skip filter tutorial
 		if IsKindOf(SelectedObj, "Dome") then
-			if SelectedObj == research_dome then
+			if SelectedObj == research_dome and not IsResearchDomeSetupCorrectly() then
 				WaitTutorialPopupImmediate("Tutorial5_Popup6_FilterUI_2_Research", false, false, terminal.desktop)
 				TutorialNextHint("Tutorial_5_FilterUI_2_Scientists")
-			elseif SelectedObj == mining_dome then
+			elseif SelectedObj == mining_dome and not IsMiningDomeSetupCorrectly() then
 				WaitTutorialPopupImmediate("Tutorial5_Popup7_FilterUI_3_Mining", false, false, terminal.desktop)
 				TutorialNextHint("Tutorial_5_FilterUI_3_Geologists")
 			end
@@ -306,7 +317,7 @@ g_TutorialScenarios.Tutorial5 = function()
 						if not dlg then break end
 						if dlg.Mode ~= "items" or category ~= "Specialization" then break end
 						SelectColonistFilter()
-						if (dlg.context.filter[add] and dlg.context.filter[remove]==false) then
+						if (dlg.context.filter[add] == TraitFilterState.Positive and dlg.context.filter[remove] == TraitFilterState.Negative) then
 							clicked = true
 							break
 						end	
@@ -321,10 +332,9 @@ g_TutorialScenarios.Tutorial5 = function()
 							FindTarget = function()
 								local dlg = GetDialog("DomeTraits")
 								if not dlg then return false end
-								local bFiltersSet = research_dome.traits_filter["scientist"] and research_dome.traits_filter["geologist"]==false 
-										   and mining_dome.traits_filter["geologist"] and mining_dome.traits_filter["scientist"]==false
-								if dlg.context.filter[add] and dlg.context.filter[remove]==false then
-									if IsKindOf(SelectedObj,"Dome") and not (SelectedObj.traits_filter[add] and SelectedObj.traits_filter[remove]==false) then
+								local bFiltersSet = IsResearchDomeSetupCorrectly() and IsMiningDomeSetupCorrectly()
+								if dlg.context.filter[add] == TraitFilterState.Positive and dlg.context.filter[remove] == TraitFilterState.Negative then
+									if IsKindOf(SelectedObj,"Dome") and not IsDomeSetupCorrectly(SelectedObj, add, remove) then
 										return dlg and dlg.idActionBar[2].idapply	or false
 									elseif dlg.Mode=="items" then									
 										if bFiltersSet then	
@@ -350,7 +360,7 @@ g_TutorialScenarios.Tutorial5 = function()
 								break
 							end	
 							SelectColonistFilter()								
-							if not(dlg.context.filter[add] and dlg.context.filter[remove]==false) then
+							if not(dlg.context.filter[add] == TraitFilterState.Positive and dlg.context.filter[remove] == TraitFilterState.Negative) then
 								break
 							end
 							Sleep(50)
@@ -397,19 +407,26 @@ g_TutorialScenarios.Tutorial5 = function()
 	g_Tutorial.ConstructionTarget = nil
 	local dome3
 	while true do
-		local domes = UICity.labels.Dome
-		local build = false
+		local domes = MainCity.labels.Dome
 		for _, dome in ipairs(domes) do
-			if dome~=mining_dome and dome~= research_dome and #(dome.labels.HydroponicFarm or empty_table)>=2 then
-				build = true
+			if dome ~= mining_dome and dome ~= research_dome then
 				dome3 = dome
 				break
 			end	
 		end
-		if build then
+		if dome3 then
 			break
-		end	
-		WaitMsg("ConstructionComplete")
+		end
+	end
+	
+	while true do
+		local ok, bld, dome = WaitMsg("ConstructionComplete")
+		if dome == dome3 and IsKindOf(bld, "FarmHydroponic") then
+			local number_farms = #(dome3.labels.HydroponicFarm or empty_table) + 1
+			if number_farms >= 2 then
+				break
+			end
+		end
 	end
 	
 	--8. Passages 
@@ -466,7 +483,7 @@ g_TutorialScenarios.Tutorial5 = function()
 	end)
 	WaitResearchQueued("ExtractorAmplification", "close")
 	TutorialNextHint("Tutorial_5_ResearchUpgrade_1")
-	while not UICity:IsTechResearched("ExtractorAmplification") do
+	while not UIColony:IsTechResearched("ExtractorAmplification") do
 		WaitMsg("TechResearched")
 	end
 	g_Tutorial.ExtractorAmplification = nil
@@ -474,7 +491,7 @@ g_TutorialScenarios.Tutorial5 = function()
 	--10.Upgrades 2
  	WaitTutorialPopup("Tutorial5_Popup12_Upgrades_2")
 	TutorialNextHint("Tutorial_5_UpgradeExtractor")
-	local extractor = UICity.labels.WaterExtractor and UICity.labels.WaterExtractor[1]
+	local extractor = MainCity.labels.WaterExtractor and MainCity.labels.WaterExtractor[1]
 	ViewObjectMars(extractor)
 	if extractor then
 		WaitObjectSelected(extractor)

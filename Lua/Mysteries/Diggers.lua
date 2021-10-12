@@ -14,7 +14,7 @@ DefineClass.DiggersMystery = {
 }
 
 function DiggersMystery:Init()
-	self.city:InitEmptyLabel("AlienDiggers")
+	MainCity:InitEmptyLabel("AlienDiggers")
 end
 
 -------------------------------------------------------------------------------
@@ -24,7 +24,10 @@ end
 GlobalVar("AlienDiggerID", 0)
 
 DefineClass.AlienDigger = {
-	__parents = { "CommandObject", "TaskRequester", "GridObject", "InfopanelObj" },
+	__parents = { "CommandObject", "TaskRequester", "GridObject", "InfopanelObj", "SafariSight"},
+	sight_name = T(1172, "Dredger"),
+	sight_category = "Mystery",
+	sight_satisfaction = 3,
 	
 	entity = "AlienDiggerSmall",
 	--spawn
@@ -79,7 +82,7 @@ function AlienDigger:CreateResourceRequests()
 end
 
 function AlienDigger:GameInit()
-	UICity:AddToLabel("AlienDiggers", self)
+	MainCity:AddToLabel("AlienDiggers", self)
 	self:SetCommand("Idle")
 	
 	if self.pre_hit_ground_t < self.pre_hit_ground_t_2 then
@@ -90,13 +93,13 @@ function AlienDigger:GameInit()
 end
 
 function AlienDigger:Done()
-	UICity:RemoveFromLabel("AlienDiggers", self)
+	MainCity:RemoveFromLabel("AlienDiggers", self)
 end
 
 function AlienDigger:Land()
 	local my_pos = self:GetPos()
 	assert(my_pos ~= InvalidPos()) --will cause a game crash in GetAccelerationAndTime
-	local target_z = terrain.GetHeight(my_pos)
+	local target_z = GetTerrain(self):GetHeight(my_pos)
 	local initial_z = my_pos:z()
 	local delta_z = abs(initial_z - target_z)
 
@@ -132,7 +135,7 @@ function AlienDigger:LiftOff()
 		self.auto_connect = false
 	end
 
-	local my_pos = self:GetVisualPos() --assumes terrain.GetHeight(my_pos) == my_pos:z(), i.e. we are landed when lifting off
+	local my_pos = self:GetVisualPos() --assumes GetTerrain(self):GetHeight(my_pos) == my_pos:z(), i.e. we are landed when lifting off
 	local target_z = my_pos:z() + 1000 * guim
 
 	self:PushDestructor(function(self)
@@ -176,7 +179,7 @@ function AlienDigger:ToggleDestroyFromUI()
 		self:ConnectToCommandCenters()
 		self.auto_connect = true
 		
-		self.fx_rotating_obj = PlaceObject("RotatyThing")
+		self.fx_rotating_obj = PlaceObjectIn("RotatyThing", self:GetMapID())
 		self:Attach(self.fx_rotating_obj, self:GetSpotBeginIndex("Top"))
 		PlayFX("AlienDiggerDestroyWarning", "start", self)
 	end
@@ -188,15 +191,16 @@ function AlienDigger:ClearCables()
 	--destroy all cables.
 	local outline, interior = GetEntityHexShapes(self:GetEntity())
 	
-	UICity:SetCableCascadeDeletion(false, "digger")
+	MainCity:SetCableCascadeDeletion(false, "digger")
 	local dir = HexAngleToDirection(self:GetAngle() * 60)
 	local q, r = WorldToHex(self)
+	local object_hex_grid = GetObjectHexGrid(self)
 	for i = 1, 2 do
 		local shape_data = i == 1 and outline or interior
 		for _, shape_pt in ipairs(shape_data) do
 			local x, y = shape_pt:xy()
 			x, y = HexRotate(x, y, dir)
-			local remove = HexGridGetObjects(ObjectGrid, x + q, y + r, "DoesNotObstructConstruction", nil, function(o)
+			local remove = object_hex_grid:GetObjects(x + q, y + r, "DoesNotObstructConstruction", nil, function(o)
 				return not IsKindOfClasses(o, "LifeSupportGridElement", "DomeInterior")
 			end)
 			for j=1,#remove do
@@ -205,7 +209,7 @@ function AlienDigger:ClearCables()
 		end
 	end
 		
-	UICity:SetCableCascadeDeletion(true, "digger")
+	MainCity:SetCableCascadeDeletion(true, "digger")
 end
 
 function AlienDigger:InteractWithDeposit()
@@ -225,9 +229,11 @@ function AlienDigger:Idle()
 		return
 	end
 	
-	if not spawn_pos:z() or abs(spawn_pos:z() - terrain.GetHeight(spawn_pos)) < 10 then --epsilon is == 10
+	local realm = GetRealm(self)
+	if not spawn_pos:z() or abs(spawn_pos:z() - GetTerrain(self):GetHeight(spawn_pos)) < 10 then --epsilon is == 10
 		--set the object somewhere above the ground so it can land properly
-		self:SetPos(spawn_pos:SetTerrainZ(self.initial_height))
+		local snapped_pos = realm:SnapToTerrain(spawn_pos, self.initial_height)
+		self:SetPos(snapped_pos)
 	end
 	
 	self:SetEnumFlags(const.efVisible)
@@ -261,11 +267,11 @@ function AlienDigger:Idle()
 	--leave
 	--self:GetPos should be == to spawn_pos but in case someone moved us..
 	--PlaceResourceStockpile_Delayed cant handle waste rock because it has too much variation.
-	local stock = PlaceObject("WasteRockStockpileUngrided",
+	local stock = PlaceObjectIn("WasteRockStockpileUngrided", GetMapID(),
 								{init_with_amount = WasteRockStockpileUngrided:GetMax() * const.ResourceScale,
 								has_demand_request = false,})
-	stock:SetPos(self:GetPos():SetTerrainZ())
-	
+	local snapped_pos = realm:SnapToTerrain(self:GetPos())
+	stock:SetPos(snapped_pos)	
 	
 	self:PlayState("diggingEnd")
 	self:PopAndCallDestructor()
@@ -281,7 +287,7 @@ end
 
 function AlienDigger:FindDeposit()
 	--look for subsurface
-	return MapFindNearest(self, self, const.HexHeight * 5, "SubsurfaceDeposit", function(dep)
+	return GetRealm(self):MapFindNearest(self, self, const.HexHeight * 5, "SubsurfaceDeposit", function(dep)
 		return not IsKindOf(dep, "SubsurfaceAnomaly")
 	end)
 	
@@ -299,7 +305,7 @@ local digger_rewards_on_dismantle = {
 function AlienDigger:SpawnResources()
 	local entry = table.rand(digger_rewards_on_dismantle)
 	local amount = AsyncRand(entry.max + 1 - entry.min) + entry.min
-	PlaceResourceStockpile_Delayed(self:GetPos(), entry.resource, amount * const.ResourceScale, self:GetAngle(), true)
+	PlaceResourceStockpile_Delayed(self:GetPos(), self:GetMapID(), entry.resource, amount * const.ResourceScale, self:GetAngle(), true)
 end
 
 function AlienDigger:GetUIStatusOverrideForWorkCommand(request, drone)
@@ -312,7 +318,7 @@ function AlienDigger:DroneWork(drone, request, resource, amount)
 		if drone.w_request:GetActualAmount() <= 0 and IsValid(self) then
 			local city = drone.city
 			if IsKindOf(self, "AlienDiggerBig") then
-				city.mystery.is_big_digger_destroyed = true
+				city.colony.mystery.is_big_digger_destroyed = true
 			end
 			if SelectedObj == self then
 				SelectObj(false)
@@ -320,7 +326,7 @@ function AlienDigger:DroneWork(drone, request, resource, amount)
 			PlayFX("Deconstruct", "end", self, nil, self:GetPos())
 			self:SpawnResources()
 			DoneObject(self)
-			city.mystery.destroyed_diggers = city.mystery.destroyed_diggers + 1
+			city.colony.mystery.destroyed_diggers = city.colony.mystery.destroyed_diggers + 1
 		else
 			PlayFX("Deconstruct", "cancel", self)
 		end
@@ -342,6 +348,9 @@ DefineClass.AlienDiggerBig = {
 	work_required_to_destroy = 90 * const.HourDuration,
 	work_max_drones = 6,
 	dig_time = 100 * const.HourDuration,
+	sight_name = T(1179, "Dredgenaught"),
+	sight_category = "Mystery",
+	sight_satisfaction = 7,
 	
 	digger_big_id = 0,
 }
@@ -363,7 +372,7 @@ local big_digger_rewards_on_dismantle = {
 function AlienDiggerBig:SpawnResources()
 	for _,entry in ipairs(big_digger_rewards_on_dismantle) do		
 		local amount = AsyncRand(entry.max + 1 - entry.min) + entry.min
-		PlaceResourceStockpile_Delayed(self:GetPos(), entry.resource, amount * const.ResourceScale, self:GetAngle(), true)
+		PlaceResourceStockpile_Delayed(self:GetPos(), self:GetMapID(), entry.resource, amount * const.ResourceScale, self:GetAngle(), true)
 	end
 end
 

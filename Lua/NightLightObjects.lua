@@ -19,10 +19,29 @@ NightLightColors = {
 	red = RGB(255, 60, 60),
 }
 
-GlobalVar("NightLightsState", false)
+GlobalVar("NightLightsState", {})
 
 function InitNightLightState()
-	NightLightsState = next(CurrentLightmodel) and CurrentLightmodel[1].night or false
+	if not NightLightsState then
+		NightLightsState = {}
+	end
+	UpdateNightLightState(ActiveMapID)
+end
+
+function UpdateNightLightState(map_id)
+	NightLightsState[map_id] = next(CurrentLightmodel) and CurrentLightmodel[map_id] and CurrentLightmodel[map_id][1].night or false
+end
+
+function FixupNightlightState()
+	if NightLightsState == true or NightLightsState  == false then
+		local state = NightLightsState
+		NightLightsState = {}
+		NightLightsState[ActiveMapID] = state
+	end
+end
+
+function SavegameFixups.NightLightsStateFixup()
+	FixupNightlightState()
 end
 
 NightLightColorNames = { }
@@ -87,7 +106,9 @@ DefineClass.NightLightObject = {
 }
 
 function NightLightObject:IsNightLightPossible()
-	return NightLightsState and self:GetGameFlags(const.gofNightLightsEnabled) ~= 0
+	local map_id = self:GetMapID()
+	NightLightsState[map_id] = NightLightsState[map_id] or false
+	return NightLightsState[map_id] and self:GetGameFlags(const.gofNightLightsEnabled) ~= 0
 end
 
 function NightLightObject:SetIsNightLightPossible(val, all_lights)
@@ -125,7 +146,7 @@ end
 function NightLightObject:NightLightOnAttaches(att, rebind)
 	local default_specifications = NightLightDefaultSpecifications
 	local cl = att.class
-	local light = PlaceObject(cl)
+	local light = PlaceObjectIn(cl, self:GetMapID())
 	
 	light:SetSourceRadius(att.src_radius or default_specifications.src_radius)
 	light:SetAttenuationRadius(att.radius or default_specifications.radius)
@@ -262,7 +283,7 @@ function GetNightLightObjectsAttaches()
 	MapForEach("map","NightLightObject", nil, nil, const.gofNightLightsEnabled, exec )
 	
 	if #nlattaches > 0 then
-		local seed = UICity.day or 0
+		local seed = UIColony and UIColony.day or 0
 		
 		-- Fisher-Yates shuffle of pairs
 		local rand
@@ -285,7 +306,7 @@ local function CreateNightLightThread(delay, ...)
 end
 
 function NightLightsOn(total_delay)
-	NightLightsState = true
+	NightLightsState[ActiveMapID] = true
 	local nlattaches = GetNightLightObjectsAttaches()
 	local num_randomized = 0
 
@@ -348,7 +369,7 @@ function NightLightsOn(total_delay)
 end
 
 function NightLightsOff(total_delay)
-	NightLightsState = false
+	NightLightsState[ActiveMapID] = false
 	local nlattaches = GetNightLightObjectsAttaches()
 	local num_randomized = 0
 	for i=1,#nlattaches,2 do
@@ -566,3 +587,7 @@ function AssignPredefinedColor(editor, light)
 end
 
 OnMsg.EntitiesLoaded = RebuildNightLightSpecs
+
+function OnMsg.SwitchMap(map_id)
+	UpdateNightLightState(map_id)
+end

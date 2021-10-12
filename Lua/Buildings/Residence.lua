@@ -4,10 +4,11 @@ DefineClass.Residence = {
 	__parents = { "StatsChange", "Holder"},
 	
 	properties = {		
-		{  template = true, modifiable = true, id = "capacity",        name = T(687, "Number of Residents"), default = 5,  category = "Residence", editor = "number", min = 1 },
-		{  template = true, modifiable = true, id = "rest_duration",   name = T(688, "Rest Duration"),         default = 7*const.HourDuration, category = "Residence", editor = "number", scale = "hours", },
-		{  template = true, modifiable = true, id = "children_only",   name = T(689, "Children only"),         default = false, category = "Residence", editor = "bool", },
-		{  template = true, modifiable = true, id = "sanity_increase", name = T(691, "Sanity recover per rest"), default = 0, editor = "number", scale = "Stat", },			
+		{  template = true, modifiable = true, id = "capacity",        	name = T(687, "Number of Residents"),     default = 5,  category = "Residence", editor = "number", min = 1 },
+		{  template = true, modifiable = true, id = "rest_duration",   	name = T(688, "Rest Duration"),           default = 7*const.HourDuration, category = "Residence", editor = "number", scale = "hours", },
+		{  template = true, modifiable = true, id = "children_only",   	name = T(689, "Children only"),           default = false, category = "Residence", editor = "bool", },
+		{  template = true, modifiable = true, id = "sanity_increase", 	name = T(691, "Sanity recover per rest"), default = 0, editor = "number", scale = "Stat", },			
+		{  template = true, modifiable = true, id = "exclusive_trait",  name = T(12905, "Trait Restrictions"),  default = false, category = "Residence", editor = "choice", items = function (self) return PresetsCombo("TraitPreset") end },
 	},
 	colonists = false,  -- colonists arrays in this home
 	reserved = false,  -- from emigrating colonsit waiting for the shuttle
@@ -21,6 +22,11 @@ end
 	
 function Residence:GameInit()
 	self.city:AddToLabel("Residence", self)
+
+	if self.children_only and not self.exclusive_trait then
+		self.exclusive_trait = "Child"
+	end
+
 	self:CheckHomeForHomeless()
 	
 	if HintsEnabled then
@@ -28,7 +34,7 @@ function Residence:GameInit()
 	end
 	
 	if self.parent_dome then
-		self.parent_dome:RecalcFreeSpace()
+		self.parent_dome:ResetFreeSpace()
 	end
 end
 
@@ -54,7 +60,7 @@ function Residence:OnDestroyed()
 	end
 	self.reserved = {}
 	if self.parent_dome then
-		self.parent_dome:RecalcFreeSpace()
+		self.parent_dome:ResetFreeSpace()
 	end
 end
 
@@ -69,7 +75,7 @@ function Residence:AddResident(unit)
 	self.colonists[#self.colonists+1] = unit
 	self:UpdateOccupation(#self.colonists, self.capacity)
 	if self.parent_dome then
-		self.parent_dome:RecalcFreeSpace()
+		self.parent_dome:ResetFreeSpace()
 	end
 end
 
@@ -78,7 +84,7 @@ function Residence:RemoveResident(unit)
 	table.remove_entry(self.colonists, unit)
 	self:UpdateOccupation(#self.colonists, self.capacity)
 	if self.parent_dome then
-		self.parent_dome:RecalcFreeSpace()
+		self.parent_dome:ResetFreeSpace()
 	end
 end
 
@@ -99,14 +105,14 @@ function Residence:ClosePositions(idx)
 		end
 	end
 	if self.parent_dome then
-		self.parent_dome:RecalcFreeSpace()
+		self.parent_dome:ResetFreeSpace()
 	end
 end
 
 function Residence:OpenPositions(idx)
 	self.closed = Clamp(self.capacity - idx, 0, self.capacity - #self.colonists)
 	if self.parent_dome then
-		self.parent_dome:RecalcFreeSpace()
+		self.parent_dome:ResetFreeSpace()
 	end
 end
 
@@ -143,7 +149,10 @@ function Residence:SetUIWorking(working)
 end
 
 function Residence:IsSuitable(colonist)
-	return not self.children_only or colonist.traits.Child
+	if self.exclusive_trait then
+		return colonist.traits[self.exclusive_trait]
+	end
+	return true
 end
 
 Residence.CheckHomeForHomless = Residence.CheckHomeForHomeless
@@ -173,7 +182,7 @@ function Residence:OnModifiableValueChanged(prop, old_value, new_value)
 	if prop == "capacity"  then
 		local dome  = self.parent_dome 
 		if dome then
-			dome:RecalcFreeSpace()
+			dome:ResetFreeSpace()
 		end
 		if old_value > new_value then
 			local ncolonists = #self.colonists	
@@ -218,9 +227,8 @@ function Residence:OnModifiableValueChanged(prop, old_value, new_value)
 	end
 end
 
-
 function Residence:CanReserveResidence(unit)
-	if self.children_only and not unit.traits.Child then
+	if self.exclusive_trait and not unit.traits[self.exclusive_trait] then
 		return false
 	end
 	return self.reserved[unit] or self:GetFreeSpace() > 0
@@ -237,7 +245,7 @@ function Residence:ReserveResidence(unit)
 		self.reserved[unit] = true
 		unit.reserved_residence = self
 		if self.parent_dome then
-			self.parent_dome:RecalcFreeSpace()
+			self.parent_dome:ResetFreeSpace()
 		end
 		return true
 	end
@@ -251,6 +259,9 @@ function Residence:ColonistCanInteract(col)
 	if self.children_only and not col.traits.Child then
 		return false, T(4306, "<red>Building accepts only children</red>")
 	end
+	if self.exclusive_trait == "Tourist" and not col.traits[self.exclusive_trait] then
+		return false, T(12709, "<red>Building accepts only Tourists</red>")
+	end
 	if self == col.residence then
 		return false, T(4307, "Current Residence")
 	end
@@ -263,6 +274,8 @@ end
 function Residence:ColonistInteract(col)
 	if col.residence == self then return end
 	if self.children_only and not col.traits.Child then return end
+	if self.exclusive_trait and not col.traits[self.exclusive_trait] then return end
+
 	if col.user_forced_residence and col.user_forced_residence[1] == self then return end --setting same residence
 	if col.user_forced_residence and IsValid(col.user_forced_residence[1]) then
 		--cancel reservation
@@ -274,12 +287,13 @@ function Residence:ColonistInteract(col)
 	if not self:CanReserveResidence(col) and not self:KickOldestResident() then
 		return
 	end
-	if self.parent_dome == col.dome then
+	
+	local dome = self.parent_dome or self
+	if dome == col.dome then
 		col:SetResidence(self)
 	else
-		assert(self.parent_dome, "Residence outside of a dome")
 		self:ReserveResidence(col)
-		col:SetForcedDome(self.parent_dome)
+		col:SetForcedDome(dome)
 	end
 	return true
 end
@@ -323,12 +337,12 @@ function Residence:CancelResidenceReservation(unit)
 		unit.reserved_residence = false
 	end
 	if self.parent_dome then
-		self.parent_dome:RecalcFreeSpace()
+		self.parent_dome:ResetFreeSpace()
 	end
 end
 
 function Residence:Service(unit, duration)
-  if unit.traits.Introvert and  unit.dome and #unit.dome.labels.Colonist>30 then -- Loner
+	if unit.traits.Introvert and  unit.dome and #unit.dome.labels.Colonist>30 then -- Loner
 		unit:ChangeComfort(-4*stat_scale, "Loner")
 	end
 	StatsChange.Service(self, unit, duration, "rest")
@@ -342,36 +356,43 @@ function Residence:GetUIResidentsCount()
 	return #self.colonists
 end
 
-local function GetResidenceComfort(residence, is_child)
+local function GetResidenceComfort(residence, unit)
 	local valid = IsValid(residence) and not residence.destroyed and not residence.demolishing
 	if not valid then
 		return
 	end
 	local score = residence.service_comfort 
 	if residence.children_only then
-		return is_child and score * 2
+		return unit.traits["Child"] and score * 2
+	end
+
+	if residence.exclusive_trait and unit.traits[residence.exclusive_trait] then
+		return score * 2
+	end
+
+	if residence:IsKindOf("Hotel") and unit.traits["Tourist"] then
+		return score * 2
 	end
 	return score
 end
 
 --Choose 'best' Residence for that unit
-function ChooseResidence(unit)	
-	local is_child = unit.traits["Child"]
+function ChooseResidence(unit, residences)
 	local best_home = false
 	local dome = unit.dome
 	local best_score, best_space = min_int, 0
 	local current_home = unit.residence
 	if current_home and current_home.parent_dome == dome and current_home.ui_working and current_home:IsSuitable(unit) then
 		best_home = current_home
-		best_score = GetResidenceComfort(current_home, is_child) or min_int
+		best_score = GetResidenceComfort(current_home, unit) or min_int
 		best_space = current_home:GetFreeSpace() + 1
 	end
-	local buildings = dome and dome.labels.Residence or empty_table
-	for i = 1, #buildings do
-		local home = buildings[i]
+
+	for i = 1, #residences do
+		local home = residences[i]
 		local space = home.ui_working and home:GetFreeSpace() or 0
 		if space > 0 and home:IsSuitable(unit) then
-			local score = GetResidenceComfort(home, is_child) or min_int
+			local score = GetResidenceComfort(home, unit) or min_int
 			if score > best_score or score == best_score and space > best_space and best_home ~= current_home then
 				best_home = home
 				best_score = score
@@ -453,7 +474,6 @@ DefineClass.SmartHome = {
 	living_attaches = { "SmartHomeHouse_01", "SmartHomeHouse_02" },
 }
 
-
 function SmartHome:GetBroadcastLabel()
 	return self.class --so small and big smart homes get broadcasted to together.
 end
@@ -462,8 +482,17 @@ DefineClass.Nursery = {
 	__parents = { "LivingBase", "WaypointsObj" },
 	flags = { efWalkable = true },
 }
-function SavegameFixups.SetOccupationForExistingResidences()
+
+function SavegameFixups.SetOccupationForExistingResidences()
 	MapForEach("map", "Residence", function(o)
 		o.occupation = #o.colonists
+	end)
+end
+
+function SavegameFixups.ResidenceExclusiveTrait()
+	MapForEach("map", "Residence", function(o)
+		if o.children_only and not o.exclusive_trait then
+			o.exclusive_trait = "Child"
+		end
 	end)
 end

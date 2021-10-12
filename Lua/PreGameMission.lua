@@ -1,8 +1,3 @@
-GlobalVar("g_InitialRocketCargo", false)
-GlobalVar("g_InitialCargoCost", 0)
-GlobalVar("g_InitialCargoWeight", 0)
-GlobalVar("g_InitialSessionSeed", false)
-
 function HasParadoxSponsor()
 	if Platform.developer or AccountStorage.has_paradox_sponsor then
 		return true
@@ -170,7 +165,7 @@ function OnMsg.ClassesBuilt()
 		for i = 1, #all_mysteries do
 			local mystery_id = all_mysteries[i]
 			local class = g_Classes[mystery_id]
-			if (Platform.developer or IsDlcAvailable(class.dlc)) and not table.find(items, "id", mystery_id) then
+			if (Platform.developer or IsDlcAccessible(class.dlc)) and not table.find(items, "id", mystery_id) then
 				items[#items + 1] = {
 					id = mystery_id,
 					display_name = class.display_name,
@@ -186,6 +181,7 @@ function OnMsg.ChangeMap(map)
 	g_CurrentMissionParams.idMissionSponsor = g_Tutorial and "None" or g_CurrentMissionParams.idMissionSponsor or "IMM"
 	g_CurrentMissionParams.idCommanderProfile = g_Tutorial and "None" or g_CurrentMissionParams.idCommanderProfile or "rocketscientist"
 	g_CurrentMissionParams.idGameRules = g_Tutorial and {} or g_CurrentMissionParams.idGameRules or {}
+	g_CurrentMissionParams.GameMode = g_Tutorial and "tutorial" or g_CurrentMissionParams.GameMode or "unknown"
 end
 
 function InitNewGameMissionParams()
@@ -208,11 +204,8 @@ function InitNewGameMissionParams()
 		end
 	end
 	g_CurrentMapParams = {}
-	g_RocketCargo = false
-	g_CargoCost = 0
-	g_CargoWeight = 0
-	g_CargoMode = false
 	g_SessionSeed = AsyncRand()
+	ResetCargo()
 end
 
 function OnMsg.DataLoaded()
@@ -221,21 +214,8 @@ end
 
 if FirstLoad then
 	g_CurrentMissionParams = false
-	g_CurrentMapParams = false
-	
-	g_RocketCargo = false
-	g_CargoCost = 0
-	g_CargoWeight = 0
-	g_CargoMode = false
-	
+	g_CurrentMapParams = false	
 	g_SessionSeed = false
-end
-
-function ResetCargo()
-	g_RocketCargo = false
-	g_CargoCost = 0
-	g_CargoWeight = 0
-	g_CargoMode = false
 end
 
 function OnMsg.PersistSave(data)
@@ -387,8 +367,12 @@ local function ModifyResupplyDef(def, param, percent)
 	local orig_def = def and CargoPreset[def.id]
 	if not orig_def then
 		-- asserts olny if all dlcs are available and cannot find the cargo preset
-		-- otherwise the preset may be in disabled dlc and return is enough 
-		assert(DbgAreDlcsMissing(), "No such cargo preset " .. tostring(def and def.id))
+		-- otherwise the preset may be in disabled dlc and return is enough
+		if Platform.developer then
+			assert(DbgAreDlcsMissing(), "No such cargo preset " .. tostring(def and def.id))
+		else
+			print("No such cargo preset " .. tostring(def and def.id))
+		end
 		return
 	end
 	if param == "price" then
@@ -411,7 +395,8 @@ Change price or weight of resupply item. If called multiple times, first sums pe
 @param int percent - percent to change with.
 --]]
 function ModifyResupplyParam(id, param, percent)
-	return ModifyResupplyDef(RocketPayload_GetMeta(id), param, percent)
+	local def = RocketPayload_GetMeta(id)
+	return ModifyResupplyDef(def, param, percent)
 end
 
 --[[@@@
@@ -426,31 +411,48 @@ function ModifyResupplyParams(param, percent)
 	end
 end
 
-function RocketPayload_Init()
+function UpdateResupplyDef(sponsor, mods, locks, def)
+	local mod = mods[def.id] or 0
+	if mod ~= 0 then
+		ModifyResupplyDef(def, "price", mod)
+	end
+	local lock = locks[def.id]
+	if lock ~= nil then
+		def.locked = lock
+	end
+	if type(def.verifier) == "function" then 
+		def.locked = def.locked or not def.verifier(def, sponsor)
+	end
+end
+
+function RocketPayload_Init(ignore_existing_defs)
 	local sponsor = g_CurrentMissionParams and g_CurrentMissionParams.idMissionSponsor or ""
 	local mods = GetSponsorModifiers(sponsor)
 	local locks = GetSponsorLocks(sponsor)
 	local defs = {}
 	ForEachPreset("Cargo", function(item, group, self, props)
 		local def = setmetatable({}, {__index = item})
-		defs[#defs + 1] = def
-		local mod = mods[def.id] or 0
-		if mod ~= 0 then
-			ModifyResupplyDef(def, "price", mod)
-		end
-		local lock = locks[def.id]
-		if lock ~= nil then
-			def.locked = lock
-		end
-		if type(def.verifier) == "function" then 
-			def.locked = def.locked or not def.verifier(def, sponsor)
+		if ignore_existing_defs then
+			local resupply_item = GetResupplyItem(def.id)
+			if not resupply_item then
+				defs[#defs + 1] = def
+				UpdateResupplyDef(sponsor, mods, locks, def)
+			else
+				table.insert(defs, resupply_item)
+			end
+		else
+			defs[#defs + 1] = def
+			UpdateResupplyDef(sponsor, mods, locks, def)
 		end
 	end)
+	if _G["Cargo"].HasSortKey then
+		table.sort(defs, PresetSortLessCb)
+	end
 	ResupplyItemDefinitions = defs
 end
 
-function OnMsg.NewMapLoaded()
-	--when a new map is loaded, ResupplyItemDefinitions gets initialized with default values
+function OnMsg.PostNewGame()
+	--when a new game is loaded, ResupplyItemDefinitions gets initialized with default values
 	--so we need to apply the sponsor modifiers once again
 	RocketPayload_Init()
 end
@@ -482,6 +484,12 @@ directlyModifiableConsts = {
 
 function SavegameFixups.ModifiableRocketPrice()
 	g_Consts:SetBase("RocketPrice", GetMissionSponsor().rocket_price)
+end
+
+function SavegameFixups.CorrectOrderingOfResources()
+	if _G["Cargo"].HasSortKey then
+		table.sort(ResupplyItemDefinitions, PresetSortLessCb)
+	end
 end
 
 function DirectlyModifiedConstValue(label, base_value)
@@ -583,6 +591,9 @@ function GetSponsorDescr(sponsor, include_flavor, include_rockets, include_comma
 	if IsGameRuleActive("MoreApplicants") then
 		context.ApplicantsPoolStartingSize = context.ApplicantsPoolStartingSize + 500
 	end
+	if IsGameRuleActive("MoreTourists") then
+		context.ApplicantsPoolStartingSize = context.ApplicantsPoolStartingSize + 20
+	end
 	if IsGameRuleActive("EasyResearch") then
 		context.SponsorResearch = context.SponsorResearch + 3000
 	end
@@ -671,8 +682,8 @@ function GetMapChallengeRating()
 	end
 	local gen = GetRandomMapGenerator()
 	local blank_map = FillRandomMapProps(gen)
-	local mapdata = MapData[blank_map]
-	return mapdata and mapdata.challenge_rating or 0
+	local map_data = MapDataPresets[blank_map]
+	return map_data and map_data.challenge_rating or 0
 end
 
 function CalcChallengeRating(replace_param, replacement_id, map_challenge_rating)
@@ -727,6 +738,7 @@ function GenerateRandomMissionParams()
 	g_CurrentMissionParams.idCommanderProfile = g_Tutorial and "None" or "rocketscientist"
 	g_CurrentMissionParams.idMystery = "random"
 	g_CurrentMissionParams.idGameRules = {}
+	g_CurrentMissionParams.GameMode = "unknown"
 	g_CurrentMissionParams.GameSessionID = srp.random_encode64(96)
 	GenerateRocketCargo()
 end
@@ -836,19 +848,22 @@ function ChooseToPlayTutorial(host)
 	return false
 end 
 
-function StartNewGame(host, mode, rules)
+function StartNewGame(host, mode, session_mode, rules)
 	CreateRealTimeThread(function()
 		if ChooseToPlayTutorial(host) then
 			return
 		end	
+		
 		InitNewGameMissionParams()
+		g_CurrentMissionParams.idGameRules = rules or {}
+		g_CurrentMissionParams.GameMode = session_mode or "unknown"
+		
 		LoadingScreenOpen("idLoadingScreen", "pre_game")
 		if host.window_state ~= "destroying" then
 			host:SetMode("Empty")
 		end
 		ChangeMap("PreGame")
 		if host.window_state ~= "destroying" then
-			g_CurrentMissionParams.idGameRules = rules or {}
 			host:SetMode(mode or "Mission")
 		end
 		LoadingScreenClose("idLoadingScreen", "pre_game")

@@ -10,7 +10,13 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/25_medical_check.tga",
-	Prerequisites = {},
+	MainMapExclusive = false,
+	Prerequisites = {
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
+	},
 	ScriptDone = true,
 	Text = T(423557782917, --[[StoryBit HelloDarkness Text]] "<DisplayName> couldn’t bear any responsibility anymore and lost the motivation to go on. Their co-workers fear that their colleague could make some irreparable mistakes.\n\n<effect>Colonist <DisplayName> is unable to work."),
 	TextReadyForValidation = true,
@@ -20,6 +26,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(220340351580, --[[voice:narrator]] "A colonist has snapped, and after regaining consciousness, has plunged into the deepest depression."),
 	group = "Sanity Breakdown",
 	id = "HelloDarkness",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625148040,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(828525431944, --[[StoryBit HelloDarkness Text]] "Who am I to judge?"),
 		'OutcomeText', "custom",

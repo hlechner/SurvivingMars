@@ -152,8 +152,9 @@ end
 function TaskRequester:RoverWork(rover, request, resource, amount)
 end
 
-local command_center_search = function (center, building, dist_obj)
-	if center.accept_requester_connects and center.work_radius >= HexAxialDistance((dist_obj or building), center) then
+local command_center_search = function (node, building, dist_obj)
+	local center = node:GetCommandCenter()
+	if center and center.accept_requester_connects and node.work_radius >= HexAxialDistance((dist_obj or building), node) then
 		building:AddCommandCenter(center)
 	end
 end
@@ -166,7 +167,15 @@ function TaskRequester:ConnectToCommandCenters()
 			self:AddCommandCenter(cc)
 		end
 	else
-		MapForEach(self, "hex", const.CommandCenterMaxRadius, "DroneControl", command_center_search, self)
+		GetRealm(self):MapForEach(self, "hex", const.CommandCenterMaxRadius, "DroneNode", command_center_search, self)
+		if #(self.command_centers or "") == 0 then
+			for _, drone_control in ipairs(UICity.labels.DroneControl or empty_table) do 
+				if not drone_control:IsRestrictingDroneWorkRadius() then
+					self:AddCommandCenter(drone_control)
+					return
+				end
+			end
+		end
 	end
 end
 
@@ -179,14 +188,7 @@ function TaskRequester:ConnectToOtherBuildingCommandCenters(other_building)
 			self:AddCommandCenter(cc)
 		end
 	else
-		MapForEach(other_building, "hex", const.CommandCenterMaxRadius, "DroneControl", command_center_search, self, other_building)
-	end
-end
-
-function TaskRequester:DisconnectFromCommandCenters()
-	local command_centers = self.command_centers or ""
-	while #command_centers > 0 do
-		self:RemoveCommandCenter(command_centers[#command_centers])
+		GetRealm(self):MapForEach(other_building, "hex", const.CommandCenterMaxRadius, "DroneNode", command_center_search, self, other_building)
 	end
 end
 

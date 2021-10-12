@@ -312,6 +312,10 @@ function CloseXInfopanel()
 	CloseDialog("Infopanel")
 end
 
+function OnMsg.PreSwitchMap(map_id)
+	CloseXInfopanel()
+end
+
 function ReopenSelectionXInfopanel(obj, slide_in)
 	local mode, template
 	if obj == nil then

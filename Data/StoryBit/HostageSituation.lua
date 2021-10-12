@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/02_video_call_2.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickFromLabel', {
 			'Label', "Colonist",
@@ -20,11 +21,15 @@ PlaceObj('StoryBit', {
 			'Amount', "<money>",
 		}),
 		PlaceObj('CheckObjectCount', {
-			'Label', "Casino Complex",
+			'Label', "CasinoComplex",
 			'InDome', true,
 			'Filters', {},
 			'Condition', ">",
 			'Amount', 0,
+		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
 		}),
 	},
 	ScriptDone = true,
@@ -35,6 +40,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(768660382627, --[[voice:narrator]] "A crisis has arisen in one of our Casinos. A Renegade has taken hostages inside the building."),
 	group = "Renegades",
 	id = "HostageSituation",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625147651,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamFunding', {
 		'Name', "money",
 		'Value', 550000000,

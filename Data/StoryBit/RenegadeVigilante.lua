@@ -31,6 +31,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/04_interrogation.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -65,6 +66,10 @@ PlaceObj('StoryBit', {
 			'Condition', ">=",
 			'Amount', 2,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(308180305462, --[[StoryBit RenegadeVigilante Text]] "Several Renegades have been pushed to their deaths during the night, in what seems like nothing short of an execution.\n\nJust as you are about to begin coordinating a plan with the ranking Officers, a Colonist admits to being the culprit.\n\n<DisplayName> says the murdered group of renegades had been tormenting youngsters left and right around the Domes - some of which had been pushed to suicide. \n\nWhen they saw that the authorities were not going to solve this problem, <DisplayName> decided to take matters into their own hands. They punished the predatory group of renegades and are now ready to accept their fate."),
@@ -74,6 +79,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(967910574769, --[[voice:narrator]] "News of the gruesome crime have reached your ears with the sunrise."),
 	group = "Renegades",
 	id = "RenegadeVigilante",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625147828,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(317832898775, --[[StoryBit RenegadeVigilante Text]] "This is wrong and immoral. Prepare to ship <DisplayName> back to Earth."),
 	}),

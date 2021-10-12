@@ -82,8 +82,14 @@ function DoorWithFX:Close()
 end
 
 function DoorWithFX:DoOpen()
+	local map_id = self:GetMapID()
 	self:PushDestructor(function(self)
-		PlayFX("DoorOpen", "end", self)
+		PlayFX({
+			actionFXClass = "DoorOpen",
+			actionFXMoment = "end",
+			actor = self,
+			action_map_id = map_id,
+		})
 	end)
 	
 	PlayFX("DoorOpen", "start", self)
@@ -98,8 +104,14 @@ function DoorWithFX:DoOpen()
 end
 
 function DoorWithFX:DoClose()
+	local map_id = self:GetMapID()
 	self:PushDestructor(function(self)
-		PlayFX("DoorClose", "end", self)
+		PlayFX({
+			actionFXClass = "DoorClose",
+			actionFXMoment = "end",
+			actor = self,
+			action_map_id = map_id,
+		})
 	end)
 	
 	PlayFX("DoorClose", "start", self)

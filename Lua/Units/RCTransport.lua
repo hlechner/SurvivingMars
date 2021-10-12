@@ -20,7 +20,7 @@ DefineClass.RCTransport = {
 	fx_actor_class = "RCTransport",
 	
 	--storage -> Total resource storage is 30. Any combination of resources up to 30 is permitted to be stored in the Rover. The Rover never transports waste rock.
-	storable_resources = {"Concrete", "Metals", "Polymers", "Food", "Electronics", "MachineParts", "PreciousMetals", "Fuel", "MysteryResource", "WasteRock", "Seeds"},
+	storable_resources = {"Concrete", "Metals", "Polymers", "Food", "Electronics", "MachineParts", "PreciousMetals", "PreciousMinerals", "Fuel", "MysteryResource", "WasteRock", "Seeds"},
 	stockpiled_amount = false, --shared storage base knows what's stored in it due to its requests, we don't have any requests, so diff aproach
 	max_x = 5,
 	max_y = 3,
@@ -51,7 +51,7 @@ DefineClass.RCTransport = {
 	malfunction_idle_state = "malfunctionIdle",
 	malfunction_end_state = "malfunctionEnd",
 	
-	pin_rollover = T(12093, "<Description><newline><newline><left>Concrete<right><concrete(Stored_Concrete)><newline><left>Metals<right><metals(Stored_Metals)><newline><left>Polymers<right><polymers(Stored_Polymers)><newline><left>Food<right><food(Stored_Food)><newline><left>Electronics<right><electronics(Stored_Electronics)><newline><left>Machine Parts<right><machineparts(Stored_MachineParts)><newline><left>Rare Metals<right><preciousmetals(Stored_PreciousMetals)><newline><left>Fuel<right><fuel(Stored_Fuel)><newline><left>Waste Rock<right><wasterock(Stored_WasteRock)><if_all(has_dlc('armstrong'),has_researched('MartianVegetation'))><newline><left>Seeds<right><seeds(Stored_Seeds)></if>"),
+	pin_rollover = T(12093, "<Description><newline><newline><left>Metals<right><metals(Stored_Metals)><newline><left>Concrete<right><concrete(Stored_Concrete)><newline><left>Rare Metals<right><preciousmetals(Stored_PreciousMetals)><newline><left>Polymers<right><polymers(Stored_Polymers)><newline><left>Machine Parts<right><machineparts(Stored_MachineParts)><newline><left>Fuel<right><fuel(Stored_Fuel)><newline><left>Electronics<right><electronics(Stored_Electronics)><if_all(has_dlc('armstrong'),has_researched('MartianVegetation'))><newline><left>Seeds<right><seeds(Stored_Seeds)></if><if_all(has_dlc('picard'))><newline><left>Exotic Minerals<right><preciousminerals(Stored_PreciousMinerals)></if><newline><left>Waste Rock<right><wasterock(Stored_WasteRock)>"),
 	encyclopedia_id = "RCTransport",
 
 	palette = {"rover_accent","rover_base","rover_dark","none"} ,
@@ -68,12 +68,28 @@ DefineClass.RCTransport = {
 	Select = BaseRover.Select,
 	
 	has_auto_mode = true,
+	
+	environment_entity = {
+		base = "RoverTransport",
+		Asteroid = "RoverFlyingTransporter",
+	},
 }
 
 --resolve inheritance
 function RCTransport:Gossip()    return Unit.Gossip(self) end
 function RCTransport:GossipName()return Unit.GossipName(self)end
 --
+
+function RCTransport:AddToLabels()
+	self.city:AddToLabel("RCTransportAndChildren", self)
+	BaseRover.AddToLabels(self)
+end
+
+function RCTransport:RemoveFromLabels()
+	self.city:RemoveFromLabel("RCTransportAndChildren", self)
+	BaseRover.RemoveFromLabels(self)
+end
+
 function RCTransport:CreateResourceRequests()
 	BaseRover.CreateResourceRequests(self) --repair
 	SharedStorageBaseVisualOnly.CreateResourceRequests(self) --stockpile init
@@ -135,9 +151,9 @@ function RCTransport:ContinuousTask(request, amount, anim_start, anim_idle, anim
 	local amount_transfered = 0
 	local add_r_functor = custom_add_r_functor
 	if not add_r_functor then
-		if building:HasMember("AddResource") then
+		if building:HasMember("RoverLoadResource") then
 			add_r_functor = function(a)
-				building:AddResource(abs(a) * (is_supplying and 1 or -1), resource, true)
+				building:RoverLoadResource(abs(a) * (is_supplying and 1 or -1), resource, request)
 			end
 		else
 			add_r_functor = function(a)
@@ -220,7 +236,7 @@ local function ProcessRocketExportReqs(self, depot)
 	for res, amount in pairs(self.stockpiled_amount) do
 		if res ~= "Fuel" then
 			if amount > 0 then
-				local idx = table.find_if(reqs, function(r) return r:GetResource() == res end)
+				local idx = table.ifind_if(reqs, function(r) return r:GetResource() == res end)
 				if idx and reqs[idx]:GetActualAmount() > 0 then
 					return true
 				end
@@ -251,14 +267,6 @@ local function CanUnloadAt(self, depot)
 	end
 	
 	return false
-end
-
-function table.find_if(t, f)
-	for i = 1, #(t or "") do
-		if f(t[i]) then
-			return i
-		end
-	end
 end
 
 local function FullAndCanUnload(self, depot)
@@ -430,7 +438,12 @@ function RCTransport:InteractWithObject(obj, interaction_mode)
 	
 	if actual_im == "route" then
 		if not IsValid(obj) or (type(obj.resource) == "table" and #obj.resource > 1) then
-			OpenResourceSelector(self,{target = obj, meta_key = const.vkControl, close_on_rmb = true})
+			OpenResourceSelector(self, {
+				target = obj,
+				meta_key = const.vkControl,
+				close_on_rmb = true,
+				cancel_callback = function (obj) GetInGameInterface():SetMode("selection") end
+			})
 		else
 			self.temp_route_transport_resource = type(obj.resource) == "table" and obj.resource[1] or obj.resource
 		end
@@ -612,7 +625,7 @@ end
 local dest_tolerance = 50 * guim
 
 function RCTransport:FindNextRouteSource()
-	return MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius, "SurfaceDeposit", "ResourceStockpile", "ResourcePile", "StorageDepot", "WasteRockStockpileBase", ResourceSourcesRoute_func, self)
+	return GetRealm(self):MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius, "SurfaceDeposit", "ResourceStockpile", "ResourcePile", "StorageDepot", "WasteRockStockpileBase", ResourceSourcesRoute_func, self)
 end
 
 function RCTransport:TransportRouteLoad()
@@ -690,7 +703,7 @@ end
 function RCTransport:OnResourceCubePlaced(cube, resource)
 	if resource == "WasteRock" then
 		cube:SetScale(150)
-		cube:SetAngle(UICity:Random(360*60))
+		cube:SetAngle(SessionRandom:Random(360*60))
 	end
 end
 
@@ -699,15 +712,16 @@ local function create_stockpile(self, resource, value, ignore_z_delta)
 	local forward_len = const.HexSize * 2 / 3
 	local forward = RotateRadius(const.HexSize * 2 / 3, self:GetAngle(), self:GetPos())
 	local q, r = WorldToHex(forward)
-	result, q, r = TryFindStockpileDumpSpot(q, r, self:GetAngle(), HexSurroundingsCheckShapeLarge, HexGetLandscapeOrLowBuilding, nil, ignore_z_delta)
+	local game_map = GetGameMap(self)
+	result, q, r = TryFindStockpileDumpSpotIn(game_map, q, r, self:GetAngle(), HexSurroundingsCheckShapeLarge, HexGetLandscapeOrLowBuilding, nil, ignore_z_delta)
 	if not result then return false end
 	
 	local stock
 	if resource == "WasteRock" then
-		stock = PlaceObject("WasteRockStockpileUngrided", {has_demand_request = true, apply_to_grids = true, has_platform = false, snap_to_grid = false, additional_demand_flags = const.rfSpecialDemandPairing})
+		stock = PlaceObjectIn("WasteRockStockpileUngrided", game_map.map_id, {has_demand_request = true, apply_to_grids = true, has_platform = false, snap_to_grid = false, additional_demand_flags = const.rfSpecialDemandPairing})
 		stock:SetPos(point(HexToWorld(q, r)))
 	else
-		stock = PlaceResourceStockpile_Instant(point(HexToWorld(q, r)), resource, 0, self:GetAngle() - 90 * 60, false)
+		stock = PlaceResourceStockpile_InstantIn(game_map.map_id, point(HexToWorld(q, r)), resource, 0, self:GetAngle() - 90 * 60, false)
 	end
 	
 	self:PushDestructor(function(self)
@@ -775,9 +789,10 @@ function RCTransport:TransportRouteUnload()
 		return
 	end
 
+	local realm = GetRealm(self)
 	while self:GetStoredAmount() > 0 do
 		resource_dest_type = self:GetPredominantStoredResource()
-		local next_dest = MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius, "StorageDepot", "ResourceStockpile", "WasteRockStockpileBase", ResourceDestinations_func, self)
+		local next_dest = realm:MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius, "StorageDepot", "ResourceStockpile", "WasteRockStockpileBase", ResourceDestinations_func, self)
 		if next_dest then
 			self.route_visited_dests[next_dest] = true
 			local result = self:TransferResources(next_dest, "unload", resource_dest_type)
@@ -852,9 +867,14 @@ end
 max_auto_rovers_per_pickup = 4
 local max_auto_rovers_per_depot = 4
 
+function RCTransport:GetAutoGatherDeposits()
+	return {"SurfaceDepositMetals", "SurfaceDepositConcrete", "SurfaceDepositPolymers"}
+end
+
 function RCTransport:Automation_Gather()
 	local unreachable_objects = self:GetUnreachableObjectsTable()
-	local deposit = MapFindNearest(self, "map", "SurfaceDepositMetals", "SurfaceDepositConcrete", "SurfaceDepositPolymers",
+	local realm = GetRealm(self)
+	local deposit = realm:MapFindNearest(self, "map", self:GetAutoGatherDeposits(),
 											function(d)
 												local grp = d:GetDepositGroup()
 												if grp and (grp.auto_rovers or 0) >= max_auto_rovers_per_pickup then
@@ -881,7 +901,8 @@ end
 function RCTransport:Automation_Unload()
 	local unreachable_objects = self:GetUnreachableObjectsTable()
 	local nearest_reachable = false
-	local depot = MapFindNearest(self, "map", "UniversalStorageDepot", "MechanizedDepot", "WasteRockDumpSite",
+	local realm = GetRealm(self)
+	local depot = realm:MapFindNearest(self, "map", "UniversalStorageDepot", "MechanizedDepot", "WasteRockDumpSite",
 											function(d)
 												if d.auto_rovers < max_auto_rovers_per_depot and
 														not IsKindOf(d, "SupplyRocket") and
@@ -904,7 +925,7 @@ function RCTransport:Automation_Unload()
 			if command == "TransferAllResources" then
 				self:SetCommand(command, IsKindOf(depot, "MechanizedDepot") and depot.stockpiles[1] or depot, "unload", empty_table, self.stockpiled_amount)
 			else
-				self:SetCommand(command, GetPassablePointNearby(depot:GetPos()), "all")
+				self:SetCommand(command, realm:GetPassablePointNearby(depot:GetPos()), "all")
 			end
 		else
 			unreachable_objects[depot] = true
@@ -980,7 +1001,7 @@ end
 
 function RCTransport:ReturnStockpiledResources()
 	for resource_flag, value in pairs(self.stockpiled_amount or empty_table) do
-		PlaceResourceStockpile_Delayed(self:GetVisualPos(), resource_flag, value, self:GetAngle(), true)
+		PlaceResourceStockpile_Delayed(self:GetVisualPos(), self:GetMapID(),  resource_flag, value, self:GetAngle(), true)
 	end
 end
 
@@ -1015,8 +1036,9 @@ function RCTransport:SetTransportRoute(route)
 			resources = o.exploitation_resource
 		end
 	end
-	route.from = GetPassablePointNearby(route.from, self.pfclass) or route.from
-	route.to = GetPassablePointNearby(route.to, self.pfclass) or route.to
+	local realm = GetRealm(self)
+	route.from = realm:GetPassablePointNearby(route.from, self.pfclass) or route.from
+	route.to = realm:GetPassablePointNearby(route.to, self.pfclass) or route.to
 	self.transport_route = route
 	
 	local dlg = GetDialog("ResourceItems")
@@ -1084,7 +1106,7 @@ function RCTransport:PickupResource(request, pile, goto_loading_complete, force_
 		building:RoverWork(self, request, resource, amount, nil, "load", total_amount)
 		RebuildInfopanel(self)
 		if not pile and not force_one_pickup and self:GetEmptyStorage(resource) > 0 then
-			local deposit = MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius,"SurfaceDeposit", DepositsNearby_func, resource)
+			local deposit = GetRealm(self):MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius,"SurfaceDeposit", DepositsNearby_func, resource)
 			request = deposit and deposit.transport_request
 		else
 			request = false
@@ -1110,7 +1132,7 @@ function RCTransport:TransferResources(storage_depot, interaction_type, resource
 	
 	local s_req, d_req
 	if interaction_type == "unload" and IsKindOf(storage_depot, "SupplyRocket") and IsRocketExporting(storage_depot) then
-		local idx = table.find_if(storage_depot.export_requests, function(r) return r:GetResource() == resource end)
+		local idx = table.ifind_if(storage_depot.export_requests, function(r) return r:GetResource() == resource end)
 		if idx then
 			s_req = storage_depot.export_requests[idx]
 			if s_req:GetActualAmount() <= 0 then
@@ -1310,13 +1332,14 @@ function RCTransport:LoadWithNoTarget(pos, resources, amounts, load_all)
 		return not has_inf and not has_remaining, next_not_inf, next_inf
 	end
 	
+	local realm = GetRealm(self)
 	while true do
 		local is_done, next_r, next_inf_r = IsDone(self, amounts_at_start, resources, amounts)
 		if not is_done then
 			if next_r or next_inf_r then
 				self.can_pickup_from_resources = next_r or next_inf_r and resources
 				local amount = next_r and amounts[next_r] or nil
-				local next_source = MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius, "ResourceStockpile", "ResourcePile", "SurfaceDeposit", "StorageDepot", "WasteRockStockpileBase", NoRoute_func, self)
+				local next_source = realm:MapFindNearest(self, self, "hex", RCTransport_AutoRouteRadius, "ResourceStockpile", "ResourcePile", "SurfaceDeposit", "StorageDepot", "WasteRockStockpileBase", NoRoute_func, self)
 				if not next_source then
 					--no source for this, rem it from tasks
 					if type(self.can_pickup_from_resources) == "table" then
@@ -1426,7 +1449,7 @@ function RCTransport:GetSelectorItems(dataset)
 		for i=1, #self.storable_resources do
 			local res_id = self.storable_resources[i]
 			
-			if IsDlcAvailableForResource(res_id) and (res_id ~= "MysteryResource" or (m_s and m_e)) then
+			if IsDlcAccessibleForResource(res_id) and (res_id ~= "MysteryResource" or (m_s and m_e)) then
 				if (not dataset.target or (dataset.target:HasMember("DoesHaveSupplyRequestForResource") and dataset.target:DoesHaveSupplyRequestForResource(res_id)
 										and (transport_mode == "route" or 
 											dataset.target:GetStoredAmount(res_id) > 0 ))) then
@@ -1513,7 +1536,7 @@ function RCTransport:GetSelectorItems(dataset)
 	elseif transport_mode == "unload" then
 		for i=1, #self.storable_resources do
 			local res_id = self.storable_resources[i]
-			if IsDlcAvailableForResource(res_id) and (not dataset.target or dataset.target:DoesAcceptResource(res_id)) and self.resource_storage[res_id] and self.resource_storage[res_id]>0 then
+			if IsDlcAccessibleForResource(res_id) and (not dataset.target or dataset.target:DoesAcceptResource(res_id)) and self.resource_storage[res_id] and self.resource_storage[res_id]>0 then
 				local res = Resources[res_id]
 				if res then
 					all_resources[#all_resources+1] = res_id
@@ -1581,7 +1604,7 @@ function RCTransport:ToggleCreateRouteMode()
 	local v = unit_ctrl_dlg.interaction_mode ~= "route" and "route" or false
 	
 	if v then
-		SetUnitControlInteractionMode(self, "route")
+		SetUnitControlInteractionMode(self, "route", TransportRouteInteractionHandler)
 		unit_ctrl_dlg:SetFocus(true)
 	else
 		SetUnitControlInteractionMode(self, false)
@@ -1616,8 +1639,14 @@ function SetupRouteVisualsForTransport(obj)
 	local new_visuals = { }
 	transport_route_visuals[obj] = new_visuals
 	
-	new_visuals[1] = PlaceObject("WireFramedPrettification", {entity = "RoverTransport", construction_stage = 0})
-	new_visuals[2] = PlaceObject("WireFramedPrettification", {entity = "RoverTransport", construction_stage = 1})
+	new_visuals[1] = PlaceObjectIn("WireFramedPrettification", obj:GetMapID(), {
+		entity = "RoverTransport",
+		construction_stage = 0,
+	})
+	new_visuals[2] = PlaceObjectIn("WireFramedPrettification", obj:GetMapID(), {
+		entity = "RoverTransport",
+		construction_stage = 1,
+	})
 	new_visuals[1]:SetPos(route.from)
 	new_visuals[2]:SetPos(route.to)
 	local a = CalcOrientation(route.from, route.to)

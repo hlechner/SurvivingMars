@@ -39,7 +39,8 @@ function DustGenerator:ThrowDust()
 					obj:AddDust(dust)
 				end
 			end
-			MapForEach(self, "hex", self.dust_range, "DustGridElement", "Building", dust_func, dust, self)
+			local realm = GetRealm(self)
+			realm:MapForEach(self, "hex", self.dust_range, "DustGridElement", "Building", dust_func, dust, self)
 			self.last_dust_throw_time = GameTime()
 		end
 	end

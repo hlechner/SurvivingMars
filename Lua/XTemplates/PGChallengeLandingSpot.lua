@@ -4,7 +4,7 @@ PlaceObj('XTemplate', {
 	group = "PreGame",
 	id = "PGChallengeLandingSpot",
 	PlaceObj('XTemplateWindow', {
-		'__context', function (parent, context) return LandingSiteObjectCreateAndLoad{challenge_mode = true, landing_preset_group = "Challenges"} end,
+		'__context', function (parent, context) return LandingSiteObjectCreateAndLoad({challenge_mode = true, landing_preset_group = "Challenges"}) end,
 		'__class', "XDialog",
 		'Id', "idLandingSpot",
 		'Padding', box(70, 68, 0, 25),
@@ -394,7 +394,7 @@ PlaceObj('XTemplate', {
 								'HandleMouse', false,
 								'TextStyle', "PGChallengeDescription",
 								'Translate', true,
-								'Text', T(7072, --[[XTemplate PGChallengeLandingSpot Text]] "None"),
+								'Text', T(13690, --[[XTemplate PGChallengeLandingSpot Text]] "<Mystery>"),
 							}),
 							}),
 						}),
@@ -485,7 +485,7 @@ PlaceObj('XTemplate', {
 								PlaceObj('XTemplateForEach', {
 									'comment', "item",
 									'array', function (parent, context) return context:GetProperties() end,
-									'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and item.category == "Resources" end,
+									'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and not item.hidden and item.category == "Resources" end,
 									'item_in_context', "prop_meta",
 									'run_after', function (child, context, item, i, n)
 										child:SetRolloverTitle(item.rollover.title)

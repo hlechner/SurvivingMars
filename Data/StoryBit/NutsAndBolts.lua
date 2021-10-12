@@ -6,9 +6,14 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/11_idiot.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('HasTrait', {
 			'Trait', "Android",
+		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
 		}),
 	},
 	ScriptDone = true,
@@ -20,6 +25,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(256568874065, --[[voice:narrator]] '"We are the Blorg. Your biological and technological distinctiveness will be befriended by our own. Resistance is futile." Clearly, the poor biorobot has gone nuts.'),
 	group = "Sanity Breakdown",
 	id = "NutsAndBolts",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625148095,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(158145740561, --[[StoryBit NutsAndBolts Text]] "We all have bad moments, be it biorobot or human."),
 	}),

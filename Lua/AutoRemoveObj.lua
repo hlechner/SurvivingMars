@@ -8,15 +8,16 @@ GlobalGameTimeThread("AutoRemoveObjs", function()
 		local sleep = const.HourDuration
 		if NightLightsState then
 			Sleep(10000) sleep = sleep - 10000
-			local sizex, sizey = terrain.GetMapSize()
-			local border = mapdata.PassBorder or 0
-			local obj = MapFindNearest(point(border + AsyncRand(sizex - 2 * border), border + AsyncRand(sizey - 2 * border)), "map", "AutoRemoveObj")
+			local realm = GetActiveRealm()
+			local sizex, sizey = GetActiveTerrain():GetMapSize()
+			local border = ActiveMapData.PassBorder or 0
+			local obj = realm:MapFindNearest(point(border + AsyncRand(sizex - 2 * border), border + AsyncRand(sizey - 2 * border)), "map", "AutoRemoveObj")
 			Sleep(10000) sleep = sleep - 10000
 			if IsValid(obj) then
-				SuspendPassEdits("AutoRemoveObjs")
-				MapDelete( obj, 200*guim, "AutoRemoveObj", "rand", 50, AsyncRand())
+				realm:SuspendPassEdits("AutoRemoveObjs")
+				realm:MapDelete( obj, 200*guim, "AutoRemoveObj", "rand", 50, AsyncRand())
 				if IsValid(obj) then obj:delete() end
-				ResumePassEdits("AutoRemoveObjs")
+				realm:ResumePassEdits("AutoRemoveObjs")
 			end
 		end
 		Sleep(sleep)

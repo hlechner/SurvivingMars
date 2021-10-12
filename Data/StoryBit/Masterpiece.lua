@@ -10,12 +10,17 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/15_artist.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickWorker', {
 			'ParentBuildingLabel', "ArtWorkshop",
 			'WorkerConditions', {},
 		}),
 		PlaceObj('SupplyMissionsEnabled', nil),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(583874410580, --[[StoryBit Masterpiece Text]] "The piece impressed their peers so much that they talked the shy creator <DisplayName> into sharing more of their works. What they saw left little doubt in our minds that we have a prodigy on our hands.\n\nAlready making waves on the Earth art scene, offers for the originals are reaching mind-boggling sums.\n\nEffect: <DisplayName> has become a Genius"),
@@ -25,6 +30,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(350183389237, --[[voice:narrator]] "A rather quiet employee at our Art Workshop blew everyone’s mind when they shared an original work."),
 	group = "Buildings",
 	id = "Masterpiece",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143633,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(315370222735, --[[StoryBit Masterpiece Text]] "Share their work with the world. Let it be seen in galleries on Earth as well!"),
 		'OutcomeText', "custom",

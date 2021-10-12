@@ -48,6 +48,10 @@ function InterfaceModeDialog:OnShortcut(shortcut)
 		if shortcut == "-LeftTrigger" or shortcut == "-RightTrigger" then
 			DeleteThread(GamepadCheatsMenuThread)
 		end
+
+		if shortcut == "Ctrl-~" then
+			OpenDialog("GamepadCheatsDlg")
+		end
 	end
 
 	--Trigger in-game gamepad menu
@@ -123,7 +127,7 @@ function InterfaceModeDialog:OnShortcut(shortcut)
 	--Zoom-out to overview
 	elseif ((shortcut == "+RightThumbDown" and not invertLook) or (shortcut == "+RightThumbUp" and invertLook)) and InGameInterfaceMode ~= "overview" and cameraRTS.IsActive() then
 		local minZoom, maxZoom = cameraRTS.GetZoomLimits()
-		if cameraRTS.GetZoom() >= maxZoom then
+		if cameraRTS.GetZoom() >= maxZoom and ActiveMapData.IsAllowedToEnterOverview then
 			if not self:IsThreadRunning("ZoomOutToOverview") then
 				self:CreateThread("ZoomOutToOverview", function(self)
 					Sleep(300)
@@ -164,6 +168,14 @@ function InterfaceModeDialog:OnShortcut(shortcut)
 		if pins_dlg and #pins_dlg > 1 then pins_dlg[2]:SetFocus(true) end
 		return "break"
 		
+	--Map switching
+	elseif shortcut == "DPadDown" and cursor then
+		local hud = GetDialog("HUD")
+		if hud and hud:ResolveId("idMapSwitch") then
+			hud.idMapSwitch:SetFocus()
+		end
+		return "break"
+		
 	--DPad -> Game speed manipulation
 	elseif shortcut == "DPadLeft" then --Slow down
 		ChangeGameSpeedState(-1)
@@ -174,8 +186,6 @@ function InterfaceModeDialog:OnShortcut(shortcut)
 	elseif shortcut == "DPadUp" then
 		UpdateInfobarVisibility("force")
 		GetDialog("Infobar").idPad.idElectricity:SetFocus()
-		return "break"
-	elseif shortcut == "DPadDown" then
 		return "break"
 	elseif shortcut == "LeftThumbClick" then --Object cycling using thumb-stick clicks
 		CycleDomes()
@@ -202,4 +212,8 @@ function InterfaceModeDialog:OnKillFocus()
 	if notifs then notifs:UpdateGamepadHint() end
 	local infobar = GetDialog("Infobar")
 	if infobar then infobar:UpdateGamepadHint() end
+end
+
+function InterfaceModeDialog:AllowExitToOverview()
+	return true
 end

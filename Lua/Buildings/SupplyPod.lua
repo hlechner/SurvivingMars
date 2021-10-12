@@ -3,7 +3,6 @@ DefineClass.SupplyPod = {
 	__parents = { "SupplyRocket" },
 	
 	properties = {
-		{ template = true, id = "cargo_capacity", name = T(757, "Cargo Capacity (kg)"), category = "Supply Pod", editor = "number", default = 100000, min = 0, modifiable = true },
 		{ template = true, id = "initial_cost", name = T(10357, "Initial Cost (M)"), category = "Supply Pod", editor = "number", default = 100, min = 0, modifiable = true },
 		{ id = "allow_export",	editor = "bool", default = false, no_edit = true },
 	},
@@ -36,6 +35,7 @@ function SupplyPod:GetMaxDrones()
 end
 
 function SupplyPod:CreateResourceRequests()
+	UniversalStorageDepot.CreateResourceRequests(self)
 end
 
 function SupplyPod:IsAvailable()
@@ -47,7 +47,7 @@ function SupplyPod:Done()
 		Building.RemoveFromGrids(self)
 	end
 	if self.refund > 0 then
-		self.city:ChangeFunding(self.refund, "refund")
+		UIColony.funds:ChangeFunding(self.refund, "refund")
 	end
 end
 
@@ -66,17 +66,18 @@ function SupplyPod:Unload()
 	local vehicles = {}	
 	-- place cargo on spots
 	local refreshBM = false
+	local map_id = self:GetMapID()
 	for _, item in ipairs(self.cargo) do
 		local classdef = g_Classes[item.class]
 		if item.amount > 0 then
 			if Resources[item.class] then
 				if item.amount > 0 then
 					local pos, angle = self:GetSpotLoc(self:GetSpotBeginIndex("Resource"))
-					PlaceResourceStockpile_Delayed(pos, item.class, item.amount * const.ResourceScale, angle, true)
+					PlaceResourceStockpile_Delayed(pos, map_id, item.class, item.amount * const.ResourceScale, angle, true)
 				end
 			elseif IsKindOf(classdef, "BaseRover") then
 				local pos, angle = self:GetSpotLoc(self:GetSpotBeginIndex("Rover"))
-				local obj = PlaceObject(item.class, {city = self.city})
+				local obj = PlaceObjectIn(item.class, map_id, {city = self.city})
 				obj:SetPos(pos)
 				obj:SetAngle(angle)
 			elseif IsKindOf(classdef, "Drone") then
@@ -88,7 +89,7 @@ function SupplyPod:Unload()
 						break
 					end
 					local pos, angle = self:GetSpotLoc(idx)
-					local obj = PlaceObject(item.class, {city = self.city, is_orphan = true})
+					local obj = PlaceObjectIn(item.class, map_id, {city = self.city, is_orphan = true})
 					obj:SetPos(pos)
 					obj:SetAngle(angle)
 				end
@@ -147,7 +148,7 @@ end
 ----
 
 function DisablePodRefund(label)
-	for _, pod in ipairs(UICity.labels[label] or empty_table) do
+	for _, pod in ipairs(MainCity.labels[label] or empty_table) do
 		if pod:IsAvailable() then
 			pod.refund = 0
 			break
@@ -161,11 +162,11 @@ function OnMsg.ResupplyRocketLaunched(label)
 	end
 end
 
-function CreateRefundablePod(class, label)
-	local price = GetMissionSponsor().pod_price
-	UICity:ChangeFunding(-price)				
-	local pod = PlaceBuilding(class, {city = UICity, refund = price})
-	UICity:AddToLabel(label, pod) -- add manually to avoid reliance on running game time
+function CreateRefundablePod(class, label, pod_price)
+	local price = pod_price or GetMissionSponsor().pod_price
+	UIColony.funds:ChangeFunding(-price)
+	local pod = PlaceBuildingIn(class, MainCity:GetMapID(), {refund = price})
+	MainCity:AddToLabel(label, pod) -- add manually to avoid reliance on running game time
 	pod:SetCommand("OnEarth")
 end
 

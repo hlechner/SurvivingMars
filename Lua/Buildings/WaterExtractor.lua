@@ -101,7 +101,7 @@ function WaterExtractor:OnModifiableValueChanged(prop)
 end
 
 function WaterExtractor:IsIdle()
-	return self.ui_working and not self:CanExploit() and not self.city:IsTechResearched("NanoRefinement")
+	return self.ui_working and not self:CanExploit() and not self.city.colony:IsTechResearched("NanoRefinement")
 end
 
 function WaterExtractor:SetUIWorking(working)

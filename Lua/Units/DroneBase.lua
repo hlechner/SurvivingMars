@@ -1,6 +1,6 @@
 DefineClass.DroneBase =
 {
-	__parents = { "Vehicle", "CityObject", "NightLightObject", "InfopanelObj" },
+	__parents = { "Vehicle", "CityObject", "NightLightObject", "InfopanelObj", "InteractionController", "Shroudable" },
 	flags = { gofPermanent = true, cofComponentSound = true },
 
 	moving = false,
@@ -34,9 +34,38 @@ DefineClass.DroneBase =
 	rotaty_offset = point(0, 0, 12*guim),
 }
 
+function DroneBase:GameInit()
+	self:SetIsNightLightPossible(true)
+end
+
 function DroneBase:Done()
 	self.moving = false
 	self:UpdateMoving()
+end
+
+function DroneBase:AttachedToRealm(map_id)
+	local next_environment = ActiveMaps[map_id].Environment
+	self:TransformToEnvironment(next_environment)
+
+	self:SetIsNightLightPossible(not self:IsMalfunctioned())
+	if self:IsNightLightPossible() then
+		self:NightLightEnable(false)
+	else
+		self:NightLightDisable(false)
+	end
+end
+
+function DroneBase:DetachFromRealm(map_id)
+	self:SetIsNightLightPossible(false)
+	self:DestroyAttaches("ParSystem")
+end
+
+function DroneBase:TransformToEnvironment(environment)
+	local environment_fx_actor = self.environment_fx[environment] or self.environment_fx.base
+	self.fx_actor_base_class = environment_fx_actor
+	
+	local environment_entity = self.environment_entity[environment] or self.environment_entity.base
+	self:ChangeEntity(environment_entity)
 end
 
 function DroneBase:SetCommandUserInteraction(...)
@@ -91,17 +120,12 @@ function DroneBase:GetColdPenalty()
 	return MulDivRound(100, max_heat - heat, max_heat)
 end
 
-function DroneBase:OnInteractionModeChanged(old, new)
-	self.interaction_mode = new
-	ObjModified(self)
-end
-
 function DroneBase:IsDead()
 	return not IsValid(self) or self.command == "Dead"
 end
 
 function DroneBase:CanBeControlled()
-	return not self.control_override and self.command ~= "Malfunction" and self.command ~= "Dead" and not self.disappeared
+	return not self.control_override and self.command ~= "Malfunction" and self.command ~= "Dead" and not self.disappeared and not self:IsShroudedInRubble()
 end
 
 function DroneBase:ToggleControlMode()
@@ -307,12 +331,29 @@ function DroneBase:SetInteractionMode(mode)
 	end
 end
 
+function DroneBase:IsMalfunctioned()
+	return self.command == "Malfunction"
+end
+
+function DroneBase:SetMalfunction()
+	self:SetCommand("Malfunction")
+end
+
+function DroneBase:Malfunction()
+	self:SetIsNightLightPossible(false)
+end
+
+function DroneBase:Repair()
+	self:SetIsNightLightPossible(true)
+end
+
 --ui hyperlinks use this to center on obj
 function DroneBase:GetLogicalPos()
 	return self:GetVisualPos()
 end
 
 function DroneBase:UseTunnel(tunnel)
+	self:Unsiege()
 	self:ExitHolder(tunnel)
 
 	local pos = select(2, tunnel:GetEntrance(self, "tunnel_entrance"))
@@ -333,7 +374,7 @@ function DroneBase:UseTunnel(tunnel)
 	local angle = max_da - self:Random(2*max_da)
 	local dist = self:Random(5*guim, MulDivRound(20*guim, abs(cos(angle)), 4096))
 	local target_pos = RotateRadius(dist, self:GetAngle() + angle, self:GetPos())
-	if terrain.LinePassable(self:GetPos(), target_pos) then
+	if GetTerrain(self):LinePassable(self:GetPos(), target_pos) then
 		self:Goto(target_pos)
 	else
 		self:Goto(self:GetPos()) -- find a destlockable point nearby
@@ -400,4 +441,8 @@ function DroneBase:GotoAndEmbark(rocket)
 
 	self:SetHolder(rocket)
 	self:SetCommand("Disappear", "keep in holder")
+end
+
+function DroneBase:GetCursor()
+	return self:CanBeControlled() and const.DefaultRoverCursor or const.DefaultMouseCursor
 end

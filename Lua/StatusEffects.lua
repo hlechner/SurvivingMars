@@ -104,11 +104,14 @@ function StatusEffect_Shock:HourlyUpdate(unit, start, hours)
 			damage = MulDivRound(damage, 100 + BraidRandom(unique_seed, 200), 100)
 		end	
 		unit:ChangeHealth(-damage, self.class)
+		unit:ChangeSatisfaction(-g_Consts.SatisfactionShockPenalty, self.class)
 	end
 end
 
 function StatusEffect_Shock:DailyUpdate(unit, start, hours)
-	unit:ChangeSanity(-self.sanity_damage_percent * unit.stat_sanity / 100, self.class)
+	local sanity_damage = -self.sanity_damage_percent * unit.stat_sanity / 100
+	unit:ChangeSanity(sanity_damage, self.class)
+	unit:ChangeSatisfaction(-g_Consts.SatisfactionShockPenalty, self.class)
 end
 
 function StatusEffect_Shock:Start(unit, time, force)
@@ -194,6 +197,11 @@ DefineClass.StatusEffect_Freezing = {
 }
 
 ---------------------------
+GlobalVar("g_OverstayingTourists", {})
+GlobalGameTimeThread("OverstayingTouristsNotif", function()
+	HandleNewObjsNotif(g_OverstayingTourists, "OverstayingTourists")
+end)
+
 GlobalVar("g_StarvingColonists", {})
 GlobalGameTimeThread("StarvingColonistsNotif", function()
 	HandleNewObjsNotif(g_StarvingColonists, "StarvingColonists")
@@ -214,20 +222,33 @@ DefineClass.StatusEffect_Starving = {
 
 function StatusEffect_Starving:Start(unit, time)
 	StatusEffect_Shock.Start(self,unit, time)
-	g_StarvingColonists[#g_StarvingColonists + 1] = unit
+	RequestNewObjsNotif(g_StarvingColonists, unit, unit:GetMapID(), true)
 end
 
 function StatusEffect_Starving:Stop(unit, time)
 	StatusEffect_Shock.Stop(self,unit, time)
-	table.remove_entry(g_StarvingColonists, unit)
+	DiscardNewObjsNotif(g_StarvingColonists, unit, unit:GetMapID())
 end
 
-function OnMsg.LoadGame()
+function OnMsg.PostLoadGame()
 	if not g_StarvingColonists then
-		g_StarvingColonists = { }
-		for i,colonist in ipairs(UICity.labels.Colonist or empty_table) do
-			if colonist.status_effects["StatusEffect_Starving"] then
-				g_StarvingColonists[#g_StarvingColonists + 1] = colonist
+		for _, city in ipairs(Cities) do
+			local map_id = city.map_id
+			for i,colonist in ipairs(city.labels.Colonist or empty_table) do
+				if colonist.status_effects["StatusEffect_Starving"] then
+					RequestNewObjsNotif(g_StarvingColonists, colonist, map_id)
+				end
+			end
+		end
+	end
+	
+	if not g_OverstayingTourists then
+		for _, city in ipairs(Cities) do
+			local map_id = city.map_id
+			for i,colonist in ipairs(city.labels.Colonist or empty_table) do
+				if colonist.sols > g_Consts.TouristSolsOnMarsMax then
+					RequestNewObjsNotif(g_OverstayingTourists, colonist, map_id, true)
+				end
 			end
 		end
 	end
@@ -277,12 +298,12 @@ DefineClass.StatusEffect_Earthsick = {
 
 function StatusEffect_Earthsick:Start(unit, time)
 	unit:SetWorkplace(false)
-	g_EarthSickColonists[#g_EarthSickColonists + 1] = unit
+	RequestNewObjsNotif(g_EarthSickColonists, unit, unit:GetMapID(), true)
 end
 
 function StatusEffect_Earthsick:Stop(unit, time)
 	unit:UpdateEmploymentLabels()
-	table.remove_entry(g_EarthSickColonists,unit)
+	DiscardNewObjsNotif(g_EarthSickColonists, unit, unit:GetMapID())
 end
 
 StatusEffectsList = {}

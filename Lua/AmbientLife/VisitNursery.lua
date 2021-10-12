@@ -35,7 +35,7 @@ PrgAmbientLife["VisitNursery"] = function(unit, bld)
 	pos = spot and obj:GetSpotLocPos(spot)
 	if spot then
 		if slotname == "Playtablet" then
-			__placed = PlaceObject("Tablet", nil, const.cofComponentAttach)
+			__placed = PlaceObjectIn("Tablet", unit:GetMapID(), nil, const.cofComponentAttach)
 			NetTempObject(__placed)
 			unit:Attach(__placed, unit:GetRandomSpot("Tablet"))
 		end

@@ -30,6 +30,8 @@ DefineClass.RCRover =
 	},
 	
 	work_radius = const.RCRoverDefaultRadius,
+	service_area_min = const.RCRoverMinRadius,
+	service_area_max = const.RCRoverMaxRadius,
 	
 	--
 	resource_capacity = {},
@@ -86,6 +88,11 @@ DefineClass.RCRover =
 	
 	Getavailable_drone_prefabs = Building.Getavailable_drone_prefabs,
 	exit_drones_thread = false,
+	
+	environment_entity = {
+		base = "DroneTruck",
+		Asteroid = "RoverFlyingCommander",
+	},
 }
 
 function RCRover:Init()
@@ -106,6 +113,29 @@ function RCRover:GameInit()
 	self:StartControlCenterUpdateThread()
 end
 
+function RCRover:AddToLabels()
+	self.city:AddToLabel("RCRoverAndChildren", self)
+	BaseRover.AddToLabels(self)
+end
+
+function RCRover:RemoveFromLabels()
+    self.city:RemoveFromLabel("RCRoverAndChildren", self)
+    BaseRover.RemoveFromLabels(self)
+end
+
+function RCRover:TransferToMap(map_id)
+	BaseRover.TransferToMap(self, map_id)
+	TransferArrayToMap(self.attached_drones, map_id)
+end
+
+function RCRover:DetachFromRealm()
+	DroneControl.RemoveLabelsFromCity(self)
+end
+
+function RCRover:AttachedToRealm()
+	DroneControl.AddLabelsToCity(self)
+end
+
 function RCRover:StartControlCenterUpdateThread()
 	assert(self.cc_update_thread == false)
 	self.cc_update_thread = CreateGameTimeThread(function(self)
@@ -113,8 +143,7 @@ function RCRover:StartControlCenterUpdateThread()
 		while true do
 			--siege mode update thread.
 			if self.working then
-				local city = self.city or UICity
-				RecursiveCall(self, "BuildingUpdate", first_pass and 0 or self.siege_mode_update_delta, city.day, city.hour)
+				RecursiveCall(self, "BuildingUpdate", first_pass and 0 or self.siege_mode_update_delta, UIColony.day, UIColony.hour)
 				first_pass = false
 			end
 			
@@ -308,7 +337,7 @@ function RCRover:DroneExit(drone, skip_visuals)
 	end
 
 	if skip_visuals then
-		drone:SetPos(GetRandomPassableAround(self:GetPos(), 25*guim, 15*guim))
+		drone:SetPos(GetRandomPassableAroundOnMap(self:GetMapID(), self:GetPos(), 25*guim, 15*guim))
 		drone:SetCommand("Idle")
 	else
 		if self.siege_state_name == "Siege" then --if we changed the command, don't make the drone go away
@@ -340,13 +369,14 @@ function RCRover:RotateAwayFromDomes()
 	local p = self:GetSpotLoc(entry_spot_idx)
 	local q, r = WorldToHex(p)
 	
+	local game_map = GetGameMap(self)
+	local object_hex_grid = game_map.object_hex_grid
+	local blds = object_hex_grid:GetObjects(q, r)
 	
-	local blds = HexGridGetObjects(ObjectGrid, q, r)
-	
-	local function IsDomeOrDomeConstr(blds)
+	local function IsDomeOrDomeConstr(terrain, blds)
 		for i = 1, #blds do
 			local obj = blds[i]
-			if obj and (IsKindOf(obj, "Dome") or (IsKindOf(obj, "ConstructionSite") and IsKindOf(obj.building_class_proto, "Dome") and not terrain.IsPassable(p)))
+			if obj and (IsKindOf(obj, "Dome") or (IsKindOf(obj, "ConstructionSite") and IsKindOf(obj.building_class_proto, "Dome") and not terrain:IsPassable(p)))
 				or IsKindOf(obj, "DomeInterior") then
 				return true
 			end
@@ -354,17 +384,17 @@ function RCRover:RotateAwayFromDomes()
 		return false
 	end
 	local c = 0
-	while c < 3 and IsDomeOrDomeConstr(blds) do
+	while c < 3 and IsDomeOrDomeConstr(game_map.terrain, blds) do
 		--there is a dome @ the exit point
 		self:SetAngle(self:GetAngle() + 90 * 60, 400)
 		Sleep(400)
 		p = self:GetSpotLoc(entry_spot_idx)
 		q, r = WorldToHex(p)
-		blds = HexGridGetObjects(ObjectGrid, q, r)
+		blds = object_hex_grid:GetObject(q, r)
 		c = c + 1
 	end
 	
-	return c < 3 or not (IsDomeOrDomeConstr(blds))
+	return c < 3 or not (IsDomeOrDomeConstr(game_map.terrain, blds))
 end
 
 function RCRover:HasIncomingRechargeDrones()
@@ -789,9 +819,9 @@ function RCRover:CanInteractWithObject(obj, interaction_mode)
 end
 
 function RCRover:InteractWithObject(obj, interaction_mode)
-	if self.command=="Dead" then return false end
+	if self.command=="Dead" or self:IsShroudedInRubble() then return false end
 	if interaction_mode ~= "recharge" and obj:IsKindOf("Drone") then
-		if not obj:IsBroken() then 
+		if not obj:IsBroken() or obj:IsShroudedInRubble() then 
 			return 
 		end
 		if obj.repair_drone then --only do this if we are gona exec the cmd immidiately.
@@ -848,6 +878,10 @@ function RCRover:Goto(...)
 	end
 	
 	return BaseRover.Goto(self, ...)
+end
+
+function RCRover:RoverLoadResource(amount, resource, request)
+	self:AddResource(amount, resource, true)
 end
 
 function RCRover:AddResource(amount, resource)
@@ -1030,11 +1064,6 @@ function RCRover:OnPreDisappear()
 	end
 end
 
-function RCRover:GotoAndEmbark(rocket)
-	self:Unsiege()
-	BaseRover.GotoAndEmbark(self, rocket)
-end
-
 ----------------------------------------------------------------------------
 --                        Info panel
 ----------------------------------------------------------------------------
@@ -1202,16 +1231,11 @@ function DebugRoverConnectedTaskRequests(rover)
 		end
 		return false
 	end
-	return MapGet(true, "TaskRequester", query_filter)
+	return GetRealm(rover):MapGet(true, "TaskRequester", query_filter)
 end
 
 function RCRover:GetCommand()
 	return Untranslated(self.command or "")
-end
-
-function RCRover:UseTunnel(tunnel)
-	self:Unsiege()
-	BaseRover.UseTunnel(self, tunnel)
 end
 
 function OnMsg.GatherFXActions(list)

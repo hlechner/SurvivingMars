@@ -1,14 +1,3 @@
-GlobalVar("CityLandscapeTerrace", {})
-
-function GetLandscapeTerraceController()
-	local obj = CityLandscapeTerrace[UICity]
-	if not obj then
-		obj = LandscapeTerraceController:new()
-		CityLandscapeTerrace[UICity] = obj
-	end
-	return obj
-end
-
 DefineClass.LandscapeTerraceBuilding = {
 	__parents = { "LandscapeBuilding" },
 	construction_mode = "landscape_terrace",
@@ -26,13 +15,13 @@ DefineClass.LandscapeTerraceController = {
 
 function LandscapeTerraceController:Mark(test)
 	LandscapeMarkCancel()
-	LandscapeMarkTerrace(self.last_pos, self.last_undo_pos, self.brush_radius, test)
+	LandscapeMarkTerrace(self:GetMapID(), self.last_pos, self.last_undo_pos, self.brush_radius, test)
 	local success = self:ValidateMark(true)
 	local ready = success and self.last_undo_pos and not IsPlacingMultipleConstructions()
 	return success, ready
 end
 
-function LandscapeMarkTerrace(pt1, pt0, radius, test)
+function LandscapeMarkTerrace(map_id, pt1, pt0, radius, test)
 	local landscape = Landscapes[LandscapeMark]
 	if not landscape then
 		return
@@ -41,8 +30,9 @@ function LandscapeMarkTerrace(pt1, pt0, radius, test)
 		test = true
 		pt0 = pt1
 	end
+	local game_map = GameMaps[map_id]
 	local h0 = landscape.height
-	local primes, bbox = Landscape_MarkLine(LandscapeMark, h0, pt0, h0, pt1, radius, LandscapeGrid, ObjectGrid, test)
+	local primes, bbox = Landscape_MarkLine(map_id, LandscapeMark, h0, pt0, h0, pt1, radius, game_map.landscape_grid, game_map.object_hex_grid.grid, test)
 	if not primes then
 		return
 	end

@@ -3,6 +3,87 @@
 class overview...
 --]]
 
+DefineClass.PinnableCollection = {
+	__parents = { "InitDone" },
+	pins = {},
+}
+
+function PinnableCollection:Init()
+	self.pins = {}
+end
+
+function PinnableCollection:OnLoad()
+	for i=1,#self.pins do
+		self.pins[i].is_pinned = true
+	end
+end
+
+function PinnableCollection:UnpinAll(force)
+	for i=#self.pins,1,-1 do
+		local obj = self.pins[i]
+		if force or obj:CanBeUnpinned() then 
+			obj:TogglePin(force)
+		end
+	end
+end
+
+local function AddPinnedObjs(objects_to_add, list, used)
+	local IsKindOf = IsKindOf
+	for i,obj in ipairs(objects_to_add or empty_table) do
+		if IsKindOf(obj, "PinnableObject") and obj:IsPinned() and not used[obj] then
+			list[#list + 1] = obj
+			used[obj] = true
+		end
+	end
+end
+
+function SortPins(map_id)
+	local used, new_order = {}, {}
+	local labels = Cities[map_id].labels or empty_table	
+	local pinned_objects = GameMaps[map_id].pinnables.pins
+	
+	if #pinned_objects > 1 then
+		--supply rockets
+		AddPinnedObjs(labels.SupplyRocket, new_order, used)
+		--rovers
+		AddPinnedObjs(labels.Rover, new_order, used)
+		--domes
+		AddPinnedObjs(labels.Dome, new_order, used)
+		--drones
+		AddPinnedObjs(labels.Drone, new_order, used)
+		--orbital probes (only the first in the label is pinned)
+		local probes = labels.OrbitalProbe or empty_table
+		if IsKindOf(probes[1], "PinnableObject") and probes[1]:IsPinned() then
+			new_order[#new_order + 1] = probes[1]
+			used[probes[1]] = true
+		end
+		--buildings
+		AddPinnedObjs(labels.Building, new_order, used)
+		--colonists
+		AddPinnedObjs(labels.Colonist, new_order, used)
+		--everything else
+		AddPinnedObjs(pinned_objects, new_order, used)
+		
+		GameMaps[map_id].pinnables.pins = new_order
+	end
+end
+
+function UnpinAll(force)
+	for _, game_map in pairs(GameMaps) do
+		game_map.pinnables:UnpinAll(force)
+	end
+end
+
+local Map_Loading = false
+
+function OnMsg.ChangeMap()
+	Map_Loading = true
+end
+
+function OnMsg.ChangeMapDone()
+	Map_Loading = false
+end
+
 DefineClass.PinnableObject = {
 	__parents = { "Object" },
 	
@@ -21,25 +102,39 @@ DefineClass.PinnableObject = {
 	},
 	
 	is_pinned = false,
+	repin = false,
 	show_pin_toggle = true,
 }
 
-local Map_Loading = false
-GlobalVar("g_PinnedObjs", {})
-
-function PinnableObject:GameInit()
-	if self.pin_on_start then 
+function PinnableObject:GameInit()	
+	if self.pin_on_start then
 		if Map_Loading or self:AutoPinAvailable() then 
 			self:TogglePin()
 		end
 	end 
 end
 
+function PinnableObject:DetachFromRealm(map_id)
+	local is_pinned = self:IsPinned()
+	if is_pinned then
+		self:TogglePin(true)
+		self.repin = true
+	end
+end
+
+function PinnableObject:AttachedToRealm(map_id)
+	if self.repin then
+		self.repin = false
+		self:TogglePin(true)
+	end
+end
+
 function PinnableObject:AutoPinAvailable()
 	local options = AccountStorage.Options
 	local pin_it = false
 
-	if #g_PinnedObjs > AccountStorage.Options.AutoPinMaxNum then 
+	local pins = GameMaps[self:GetMapID()].pinnables.pins
+	if #pins > AccountStorage.Options.AutoPinMaxNum then
 		return pin_it
 	end
 	
@@ -93,20 +188,27 @@ function PinnableObject:GetPinSummary()
   end
 end
 
-function PinnableObject:TogglePin(force)
-	local pins_dlg = OpenDialog("PinsDlg", GetInGameInterface())
+function PinnableObject:TogglePin(force, map_id)
+	map_id = map_id or self:GetMapID()
+	local pins_dlg = GetDialog("PinsDlg")
+	local can_update_visual_pins = pins_dlg and pins_dlg.map_id == map_id and map_id == ActiveMapID
+	local pins = GameMaps[map_id].pinnables.pins
 	if self:IsPinned() then
 		if self:CanBeUnpinned() or force then
 			self.is_pinned = false
-			table.remove_entry(g_PinnedObjs, self)
-			if pins_dlg then pins_dlg:Unpin(self) end
+			table.remove_entry(pins, self)
+			if can_update_visual_pins then
+				pins_dlg:Unpin(self)
+			end
 		end
 	else
 		assert(IsValid(self), "Pinning an invalid object")
 		self.is_pinned = true
-		table.insert(g_PinnedObjs, self)
-		if pins_dlg then pins_dlg:Pin(self) end
-		SortPinnedObjs()
+		table.insert_unique(pins, self)
+		if can_update_visual_pins then
+			pins_dlg:Pin(self)
+			SortPinnedObjs()
+		end
 	end
 end
 
@@ -122,25 +224,3 @@ function PinnableObject:OnPinClicked(gamepad)
 	-- return true to disable the standard select/view funcionality of the pin dialog
 end
 
-function OnMsg.LoadGame()
-	for i=1,#g_PinnedObjs do
-		g_PinnedObjs[i].is_pinned = true
-	end
-end
-
-function UnpinAll(force)
-	for i=#g_PinnedObjs,1,-1 do
-		local obj = g_PinnedObjs[i]
-		if force or obj:CanBeUnpinned() then 
-			obj:TogglePin(force)
-		end
-	end
-end
-
-function OnMsg.ChangeMap()
-	Map_Loading = true
-end
-
-function OnMsg.ChangeMapDone()
-	Map_Loading = false
-end

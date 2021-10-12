@@ -1,6 +1,6 @@
 --[[
 - internal structures:
-City.tech_status[tech_id] = {
+Research.tech_status[tech_id] = {
 	researched = nil/number of times researched
    discovered = nil/index of discovery
    points = 0,
@@ -9,8 +9,8 @@ City.tech_status[tech_id] = {
    queued = nil/true,
    repeatable = nil,false/true, -- used to override the default 'repeatable' status
  }
-City.tech_field[field_id] = {tech_id, ...} -- an array of tech_ids
-City.research_queue = {tech_id, ...} -- an array of tech_ids
+Research.tech_field[field_id] = {tech_id, ...} -- an array of tech_ids
+Research.research_queue = {tech_id, ...} -- an array of tech_ids
 --]]
 
 GlobalVar("g_OutsourceDisabled", false)
@@ -36,10 +36,58 @@ function StableShuffle(tbl, rand, max)
 end
 
 function GetAvailablePresets(all_presets)
-	return all_presets
+	local preset_filter = function(_,preset)		
+		return IsDlcAccessible(preset.save_in)
+	end
+	return table.ifilter(all_presets, preset_filter)
 end
 
-function City:InitResearch()
+DefineClass.Research = {
+	__parents = { "PropertyObject" },
+	discover_idx = 0,
+
+	tech_status = false,
+	tech_field = false,
+	research_queue = false,
+	TechBoostPerField = false,
+	TechBoostPerTech = false,
+
+	OutsourceResearchPoints = false,
+	OutsourceResearchOrders = false,
+	paused_sponsor_research_end_time = false,
+	paused_outsource_research_end_time = false,
+
+	wasted_electricity_for_rp = 0,
+	tech_will_be_granted = false,
+}
+
+function Research.CopyMove(self, other)
+	CopyMoveClassFields(other, self,
+	{
+		"discover_idx",
+		"tech_status",
+		"tech_field",
+		"research_queue",
+		"TechBoostPerField",
+		"TechBoostPerTech",
+		"OutsourceResearchPoints",
+		"OutsourceResearchOrders",
+		"paused_sponsor_research_end_time",
+		"paused_outsource_research_end_time",
+		"wasted_electricity_for_rp",
+		"tech_will_be_granted",
+	})
+end
+
+function Research.ForwardCalls(source, target)
+	for _, call in pairs({"GetEstimatedRP", "IsTechDiscovered", "IsTechResearched", "IsTechResearchable"}) do
+		source[call] = function(old_target, ...)
+			return target[call](target, ...)
+		end
+	end
+end
+
+function Research:InitResearch()
 	self.tech_status = {}
 	self.tech_field = {}
 	self.research_queue = {}
@@ -134,28 +182,28 @@ function City:InitResearch()
 	end
 end
 
-function City:TechAvailableCondition(tech)
-	local current_mystery = self.mystery_id
+function Research:TechAvailableCondition(tech)
+	local current_mystery = UIColony.mystery_id
 	return (tech.mystery or current_mystery) == current_mystery and tech:condition()
 end
 
-function City:GameInitResearch()
+function Research:GameInitResearch()
 	for id in pairs(self.tech_status) do
 		local preset = TechDef[id]
 		if preset then
-			preset:EffectsInit(self)
+			preset:EffectsInit(UIColony)
 		end
 	end
 end
 
 ----
 
-function City:IsTechDiscovered(tech_id)
+function Research:IsTechDiscovered(tech_id)
 	local status = self.tech_status[tech_id]
 	return status and status.discovered
 end
 
-function City:IsTechDiscoverable(tech_id)
+function Research:IsTechDiscoverable(tech_id)
 	local status = self.tech_status[tech_id]
 	local field = status and TechFields[status.field]
 	return field and field.discoverable
@@ -164,7 +212,7 @@ end
 --[[
 - returns the id of a tech set to discovered in the field (if any is available)
 --]]
-function City:DiscoverTechInField(field_id)
+function Research:DiscoverTechInField(field_id)
 	local list = self.tech_field[field_id] or ""
 	for i=1,#list do
 		local tech_id = list[i]
@@ -177,7 +225,7 @@ end
 --[[
 - updates the tech status to discovered (set new)
 --]]
-function City:SetTechDiscovered(tech_id)
+function Research:SetTechDiscovered(tech_id)
 	local status = self.tech_status[tech_id]
 	if not status or status.discovered then
 		return
@@ -194,7 +242,7 @@ end
 
 ----
 
-function City:IsNewResearchAvailable(field_id)
+function Research:IsNewResearchAvailable(field_id)
 	local fields = self.tech_field or empty_table
 	if field_id then
 		local status_all = self.tech_status or empty_table
@@ -219,7 +267,7 @@ GlobalVar("g_BreakthroughsResearched", 0)
 --[[
 - updates the tech status to researched (clear new)
 --]]
-function City:SetTechResearched(tech_id, notify)
+function Research:SetTechResearched(tech_id, notify)
 	local current_research = self.research_queue[1]
 	tech_id = tech_id or current_research
 	local status = self.tech_status[tech_id]
@@ -228,6 +276,10 @@ function City:SetTechResearched(tech_id, notify)
 	end
 	self:SetTechDiscovered(tech_id)
 	local tech = TechDef[tech_id]
+	if not tech then
+		return -- Deliberately early out if not found
+	end
+
 	if status.researched then
 		if not self:IsTechRepeatable(tech_id) then
 			return
@@ -243,12 +295,12 @@ function City:SetTechResearched(tech_id, notify)
 				self:DiscoverTechInField(field_id)
 			end
 		end
-		if TechDef[tech_id].group == "Breakthroughs" then
+		if tech.group == "Breakthroughs" then
 			g_BreakthroughsResearched = g_BreakthroughsResearched + 1
 		end
 	end
 	status.points = 0
-	tech:EffectsApply(self)
+	tech:EffectsApply(UIColony)
 	self:DequeueResearch(tech_id)
 	--@@@msg TechResearched,tech_id, city, first_time - fired when a tech has been researched.
 	Msg("TechResearched", tech_id, self, status.researched == 1)
@@ -259,7 +311,7 @@ function City:SetTechResearched(tech_id, notify)
 	return true
 end
 
-function City:IsTechRepeatable(tech_id)
+function Research:IsTechRepeatable(tech_id)
 	local status = self.tech_status[tech_id]
 	if not status then
 		return
@@ -267,22 +319,22 @@ function City:IsTechRepeatable(tech_id)
 		return status.repeatable
 	end
 	local tech = TechDef[tech_id]
-	return tech and tech.repeatable
+	return tech and tech.repeatable or false
 end
 
-function City:IsTechResearched(tech_id)
+function Research:IsTechResearched(tech_id)
 	local status = self.tech_status[tech_id]
-	return status and status.researched
+	return status and status.researched or false
 end
 
-function City:IsTechResearchable(tech_id)
+function Research:IsTechResearchable(tech_id)
 	local status = self.tech_status[tech_id]
 	return status and status.discovered and (not status.researched or self:IsTechRepeatable(tech_id))
 end
 
 ----
 
-function City:ChangeResearchCost(tech_id, points)
+function Research:ChangeResearchCost(tech_id, points)
 	local status = self.tech_status[tech_id]
 	if not status then
 		assert(false, "No such tech")
@@ -291,7 +343,7 @@ function City:ChangeResearchCost(tech_id, points)
 	status.cost = points
 end
 
-function City:ChangeTechRepeatable(tech_id, repeatable)
+function Research:ChangeTechRepeatable(tech_id, repeatable)
 	local status = self.tech_status[tech_id]
 	if not status then
 		assert(false, "No such tech")
@@ -300,7 +352,7 @@ function City:ChangeTechRepeatable(tech_id, repeatable)
 	status.repeatable = repeatable
 end
 
-function City:TechCost(tech_id)
+function Research:TechCost(tech_id)
 	local status = self.tech_status[tech_id]
 	if not status then
 		assert(false, "No such tech")
@@ -328,7 +380,7 @@ function City:TechCost(tech_id)
 	return MulDivRound(cost, 100 - boost, 100)
 end
 
-function City:ResearchQueueCost(tech_id, queue_idx)
+function Research:ResearchQueueCost(tech_id, queue_idx)
 	local status = self.tech_status[tech_id] or {}
 	local researched = status.researched
 	local count = 0
@@ -344,7 +396,7 @@ function City:ResearchQueueCost(tech_id, queue_idx)
 	return cost
 end
 
-function City:BoostTechField(tech_field, boost_percent)
+function Research:BoostTechField(tech_field, boost_percent)
 	local boost = self.TechBoostPerField
 	if not tech_field or tech_field == "" then
 		for field_id in pairs(TechFields) do
@@ -362,7 +414,7 @@ Boost technology research speed by reducing the needed research points of all te
 @param int percent - boost persent change.
 --]]
 function BoostTechField(field, percent)
-	return UICity:BoostTechField(field, percent)
+	return UIColony:BoostTechField(field, percent)
 end
 
 --[[@@@
@@ -372,20 +424,20 @@ Boost specific technology research speed by reducing the needed research points 
 @param int percent - boost persent change.
 --]]
 function BoostTech(tech_id, percent)
-	 UICity.TechBoostPerTech[tech_id] = (UICity.TechBoostPerTech[tech_id] or 0) + percent
+	 UIColony.TechBoostPerTech[tech_id] = (UIColony.TechBoostPerTech[tech_id] or 0) + percent
 end
 
 --[[
 - returns queue index, nil if not in queue
 --]]
-function City:TechQueueIndex(tech_id)
+function Research:TechQueueIndex(tech_id)
 	return table.find(self.research_queue, tech_id)
 end
 
 --[[
 -- adds to the queue
 --]]
-function City:QueueResearch(tech_id, first)
+function Research:QueueResearch(tech_id, first)
 	if not self:IsTechResearchable(tech_id) 
 	or #self.research_queue > const.ResearchQueueSize 
 	or not self:IsTechRepeatable(tech_id) and self:TechQueueIndex(tech_id) then
@@ -406,7 +458,7 @@ end
 --[[
 - removed from the queue
 --]]
-function City:DequeueResearch(tech_id, all)
+function Research:DequeueResearch(tech_id, all)
 	local queue = self.research_queue
 	local success
 	for i = #queue, 1, -1 do
@@ -424,26 +476,53 @@ function City:DequeueResearch(tech_id, all)
 	end
 end
 
-function OnMsg.ResearchQueueChange(city, tech_id)
+--[[
+- move research within the queue
+--]]
+function Research:PrioritizeQueueResearch(tech_id, delta, suppress_event)
+	local queue = self.research_queue
+	local old_index = table.find(queue, tech_id)
+	local target_index = old_index - delta
+	if target_index >= 1 and target_index <= #queue then
+		local temp = queue[target_index]
+		queue[target_index] = queue[old_index]
+		queue[old_index] = temp
+
+		if not suppress_event then
+			local other_tech_id = self.research_queue[old_index]
+			Msg("ResearchQueueSwap", self, tech_id, other_tech_id)
+		end
+		return old_index, target_index
+	end
+end
+
+function OnMsg.ResearchQueueChange(research, tech_id)
 	ObjModified(TechDef[tech_id])
-	ObjModified(city.research_queue)
-	for i, id in ipairs(city.research_queue) do
+	ObjModified(research.research_queue)
+	for i, id in ipairs(research.research_queue) do
 		ObjModified(TechDef[id])
 	end
-	city:CheckAvailableTech()
+	research:CheckAvailableTech()
+end
+
+function OnMsg.ResearchQueueSwap(research, tech_id, other_tech_id)
+	ObjModified(research.research_queue)
+	ObjModified(TechDef[tech_id])
+	ObjModified(TechDef[other_tech_id])
+	research:CheckAvailableTech()
 end
 
 --[[
 - returns a queue with tech ids
 --]]
-function City:GetResearchQueue()
+function Research:GetResearchQueue()
 	return self.research_queue
 end
 
 --[[
 - count the number of tech in a field with a specific state (false/"discovered"/"researched")
 --]]
-function City:TechCount(field_id, state)
+function Research:TechCount(field_id, state)
 	local list = self.tech_field[field_id] or empty_table
 	local count = 0
 	for i=1,#list do
@@ -457,7 +536,7 @@ function City:TechCount(field_id, state)
 	return count, #list
 end
 
-function City:DiscoveredTechCount()
+function Research:DiscoveredTechCount()
 	local count = 0
 	for field_id in pairs(self.tech_field or empty_table) do
 		count = count + self:TechCount(field_id, "discovered")
@@ -465,7 +544,7 @@ function City:DiscoveredTechCount()
 	return count
 end
 
-function City:ResearchedTechCount()
+function Research:ResearchedTechCount()
 	local count = 0
 	for field_id in pairs(self.tech_field or empty_table) do
 		count = count + self:TechCount(field_id, "researched")
@@ -475,7 +554,7 @@ end
 
 GlobalVar("TechLastSeen", 0)
 
-function City:IsTechNew(tech_id)
+function Research:IsTechNew(tech_id)
 	local status = self.tech_status[tech_id]
 	local new_since = status and status.new
 	if new_since == true then
@@ -485,7 +564,7 @@ function City:IsTechNew(tech_id)
 	return (new_since or 0) > TechLastSeen
 end
 
-function City:SetTechNew(tech_id, is_new)
+function Research:SetTechNew(tech_id, is_new)
 	local status = self.tech_status[tech_id]
 	if not status then
 		assert(false, "No such tech")
@@ -495,7 +574,7 @@ function City:SetTechNew(tech_id, is_new)
 	return true
 end
 
-function City:ModifyResearchPoints(research_points, tech_id)
+function Research:ModifyResearchPoints(research_points, tech_id)
 	tech_id = tech_id or self.research_queue[1]
 	if tech_id and not self:IsTechDiscoverable(tech_id) then
 		research_points = MulDivRound(research_points, g_Consts.BreakthroughResearchSpeedMod, 100)
@@ -505,7 +584,7 @@ function City:ModifyResearchPoints(research_points, tech_id)
 	return MulDivRound(research_points, 100 + OmegaTelescopeResearchBoostPercent(self), 100)
 end
 
-function City:UnmodifyResearchPoints(research_points, tech_id)
+function Research:UnmodifyResearchPoints(research_points, tech_id)
 	tech_id = tech_id or self.research_queue[1]
 	research_points = MulDivRound(research_points, 100, 100 + OmegaTelescopeResearchBoostPercent(self))
 	if tech_id and not self:IsTechDiscoverable(tech_id) then
@@ -516,7 +595,7 @@ function City:UnmodifyResearchPoints(research_points, tech_id)
 	return research_points
 end
 
-function City:GetCheapestTech()
+function Research:GetCheapestTech()
 	local field_ids = table.keys(self.tech_field)
 	table.sort(field_ids, function(f1, f2) return TechFields[f1].SortKey < TechFields[f2].SortKey end)
 	local cheapest_cost, cheapest_tech = max_int
@@ -537,7 +616,7 @@ function City:GetCheapestTech()
 	return cheapest_tech
 end
 
-function City:AddResearchPoints(research_points, tech_id)
+function Research:AddResearchPoints(research_points, tech_id)
 	if research_points <= 0 then
 		return
 	end
@@ -573,7 +652,7 @@ function City:AddResearchPoints(research_points, tech_id)
 	return self:AddResearchPoints(research_points)
 end
 
-function City:CheckAvailableTech()
+function Research:CheckAvailableTech()
 	if g_Tutorial and not g_Tutorial.EnableResearchWarning then
 		return
 	end
@@ -596,7 +675,7 @@ end
 --[[
 - returns tech_id, points, max_points
 --]]
-function City:GetResearchInfo(tech_id)
+function Research:GetResearchInfo(tech_id)
 	tech_id = tech_id or self.research_queue[1]
 	local status = tech_id and self.tech_status[tech_id]
 	if not status then
@@ -608,23 +687,24 @@ end
 --[[
 - returns percentage of current research
 --]]
-function City:GetResearchProgress(tech_id)
+function Research:GetResearchProgress(tech_id)
 	local tech_id, points, max_points = self:GetResearchInfo(tech_id)
 	if not tech_id then return 0 end
+	if max_points <= 0 then return 0 end
 	return MulDivRound(100, points, max_points)
 end
 
 ----
 
-function City:GetEstimatedRP_Outsource()
+function Research:GetEstimatedRP_Outsource()
 	local time = const.DayDuration
-	if UICity.paused_outsource_research_end_time then
-		time = Max(time - Max(UICity.paused_outsource_research_end_time - GameTime(), 0), 0)
+	if self.paused_outsource_research_end_time then
+		time = Max(time - Max(self.paused_outsource_research_end_time - GameTime(), 0), 0)
 	end
 	return self:CalcOutsourceRP(time)
 end
 
-function City:CalcOutsourceRP(time)
+function Research:CalcOutsourceRP(time)
 	time = time or const.DayDuration
 	local hours = time / const.HourDuration
 	local list = self.OutsourceResearchPoints
@@ -635,7 +715,7 @@ function City:CalcOutsourceRP(time)
 	return pts
 end
 
-function City:OutsourceResearch(points, time, orders)
+function Research:OutsourceResearch(points, time, orders)
 	points = points or 500
 	time = time or 5*const.DayDuration
 	local list = self.OutsourceResearchPoints
@@ -648,7 +728,7 @@ function City:OutsourceResearch(points, time, orders)
 	ObjModified(self)
 end
 
-function City:GetEstimatedRP()
+function Research:GetEstimatedRP()
 	local estimate = self:GetEstimatedRP_ResearchBuildings()
 		+ self:GetEstimatedRP_Genius()
 		+ self:GetEstimatedRP_Sponsor()
@@ -658,33 +738,37 @@ function City:GetEstimatedRP()
 	return self:ModifyResearchPoints(estimate)
 end
 
-function City:GetEstimatedRP_ResearchBuildings()
+function Research:GetEstimatedRP_ResearchBuildings()
 	local total = 0
-	for _, lab in ipairs(self.labels.ResearchBuildings or empty_table) do
+	for _, city in ipairs(Cities) do
+		for _, lab in ipairs(city.labels.ResearchBuildings or empty_table) do
 		total = total + lab:GetEstimatedDailyProduction()
+	end
 	end
 	return total
 end
 
-function City:GetEstimatedRP_Genius()
+function Research:GetEstimatedRP_Genius()
 	local count = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do		
+	for _, city in ipairs(Cities) do
+		for _, dome in ipairs(city.labels.Dome or empty_table) do
 		for __, col in ipairs(dome.labels.Genius or empty_table) do
 			if col.stat_sanity >= g_Consts.HighStatLevel then
 				count = count + 1
 			end
 		end
 	end
+	end
 	return count * TraitPresets.Genius.param
 end
 
-function City:GetEstimatedRP_Sponsor()
+function Research:GetEstimatedRP_Sponsor()
 	local research = g_Consts.SponsorResearch
 	if IsGameRuleActive("EasyResearch") then
 		research = research + 3000
 	end
-	if UICity.paused_sponsor_research_end_time then
-		local time_remaining = Max(UICity.paused_sponsor_research_end_time - GameTime(), 0)
+	if self.paused_sponsor_research_end_time then
+		local time_remaining = Max(self.paused_sponsor_research_end_time - GameTime(), 0)
 		if time_remaining < const.DayDuration then
 			local hours_remaining = time_remaining / const.HourDuration + 1
 			research = MulDivRound(const.HoursPerDay-hours_remaining, research, const.HoursPerDay)
@@ -696,11 +780,13 @@ function City:GetEstimatedRP_Sponsor()
 	return research
 end
 
-function City:GetEstimatedRP_SuperconductingComputing()
+function Research:GetEstimatedRP_SuperconductingComputing()
 	if g_Consts.ElectricityForResearchPoint ~= 0 then
 		local waste = 0
-		for i = 1, #self.electricity do
-			waste = waste + self.electricity[i].current_waste 
+		for _, city in ipairs(Cities) do
+			for i = 1, #city.electricity do
+				waste = waste + city.electricity[i].current_waste
+			end
 		end
 		local rp, rem = self:ElectricityToResearch(waste, const.HoursPerDay)
 		return rp
@@ -708,18 +794,20 @@ function City:GetEstimatedRP_SuperconductingComputing()
 	return 0
 end
 
-function City:CalcExplorerResearchPoints(dt, log)
+function Research:CalcExplorerResearchPoints(dt, log)
 	local total,rp = 0, 0
 	if self:IsTechResearched("ExplorerAI") then
 		local one_rover_rp = MulDivRound(g_Consts.ExplorerRoverResearchPoints, dt, const.DayDuration)
 		local count = 0
-		for _, rover in ipairs(self.labels.ExplorerRover or empty_table) do
+		for _, city in ipairs(Cities) do
+			for _, rover in ipairs(city.labels.ExplorerRover or empty_table) do
 			if not ExplorerRover.StopResearchCommands[rover.command] then
 				count = count + 1
 				if log then
 					rover:LogRP(one_rover_rp)
 				end
 			end
+		end
 		end
 		rp = count * one_rover_rp
 		total = rp
@@ -731,7 +819,7 @@ function City:CalcExplorerResearchPoints(dt, log)
 	return rp, total - rp
 end
 
-function City:AddExplorerResearchPoints()
+function Research:AddExplorerResearchPoints()
 	local tech_id =  self.research_queue[1]
 	if not tech_id or not self:IsTechResearchable(tech_id) then
 		return 0
@@ -740,11 +828,74 @@ function City:AddExplorerResearchPoints()
 	return self:CalcExplorerResearchPoints(const.HourDuration, "log")
 end
 
-function City:GetEstimatedRP_Explorer()
+function Research:GetEstimatedRP_Explorer()
 	return self:CalcExplorerResearchPoints(const.DayDuration)
 end
 
-function City:CalcSponsorResearchPoints(delta)
+function Research:ElectricityToResearch(amount, hours)
+	if g_Consts.ElectricityForResearchPoint <= 0 then
+		return 0
+	end
+	
+	local full_effect_threshold = 500 * const.ResourceScale
+	local full_effect_amount = Min(full_effect_threshold, amount)
+	local partial_effect_amount = Max(0, amount - full_effect_threshold)
+	
+	hours = hours or 1
+	local rp, rem
+	
+	rp = MulDivRound(full_effect_amount, hours, g_Consts.ElectricityForResearchPoint)
+	if partial_effect_amount > 0 then
+		rp = rp + MulDivRound(partial_effect_amount, hours, 4 * g_Consts.ElectricityForResearchPoint)
+		rem = partial_effect_amount % (4 * g_Consts.ElectricityForResearchPoint)
+	else
+		rem = full_effect_amount % g_Consts.ElectricityForResearchPoint
+	end
+	
+	return rp, rem
+end
+
+function Research:UpdatePauseEndTimeProp(prop)
+	if self[prop] then
+		if GameTime() >= self[prop] then
+			self[prop] = false
+		end
+	end
+end
+
+function Research:HourlyResearch(hour)
+	local rp = 0 
+	-- calculate with accumulation for precision, as RPs aren't scaled up
+	if g_Consts.ElectricityForResearchPoint ~= 0 then
+		for _, city in ipairs(Cities) do
+			for i = 1, #city.electricity do
+				self.wasted_electricity_for_rp = self.wasted_electricity_for_rp + city.electricity[i].current_waste 
+			end
+		end
+		local pts, remainder = self:ElectricityToResearch(self.wasted_electricity_for_rp)
+		rp = rp + pts
+		self.wasted_electricity_for_rp = remainder
+	end
+
+	self:UpdatePauseEndTimeProp("paused_sponsor_research_end_time")
+	if not self.paused_sponsor_research_end_time then
+		rp = rp + self:CalcSponsorResearchPoints(const.HourDuration)
+	end
+	
+	rp = rp + self:AddExplorerResearchPoints()
+
+	self:UpdatePauseEndTimeProp("paused_outsource_research_end_time")
+	local pts = self.OutsourceResearchPoints[1]
+	if pts and not self.paused_outsource_research_end_time then
+		table.remove(self.OutsourceResearchPoints, 1)
+		table.remove(self.OutsourceResearchOrders, 1)
+		rp = rp + pts
+	end
+	
+	self:AddResearchPoints(rp)
+end
+
+function Research:CalcSponsorResearchPoints(delta)
 	local research_per_sol = g_Consts.SponsorResearch
 	if IsGameRuleActive("EasyResearch") then
 		research_per_sol = research_per_sol + 3000
@@ -752,7 +903,7 @@ function City:CalcSponsorResearchPoints(delta)
 	return MulDivRound(delta, research_per_sol, const.DayDuration)
 end
 
-function City:GetUIResearchProject()
+function Research:GetUIResearchProject()
 	local research = self:GetResearchInfo()
 	if research then return TechDef[research].display_name end
 	return T(7350, "<red>No active research</red>")
@@ -770,24 +921,13 @@ end
 
 ----
 
-function OnMsg.NewMapLoaded()
-	if UICity then
-		UICity:LoadMapStoredTechs()
-	end
-end
-function OnMsg.SaveMap()
-	if UICity then
-		UICity:SaveMapStoredTechs()
-	end
-end
-
-function City:LoadMapStoredTechs()	
+function Research:LoadMapStoredTechs()	
 	--Blank (random) maps should not have prediscovered/preresearched techs (mantis:0130773)
-	if mapdata.IsRandomMap then
+	if ActiveMapData.IsRandomMap then
 		return
 	end
 	
-	local tech_state = mapdata.TechState or ""
+	local tech_state = ActiveMapData.TechState or ""
 	for i=1,#tech_state,2 do
 		local tech_id = tech_state[i]
 		local tech_state = tech_state[i+1]
@@ -798,7 +938,7 @@ function City:LoadMapStoredTechs()
 		end
 	end
 end
-function City:SaveMapStoredTechs()	
+function Research:SaveMapStoredTechs()	
 	local tech_state
 	for field_id, list in sorted_pairs(self.tech_field) do
 		for i=1,#list do
@@ -811,13 +951,13 @@ function City:SaveMapStoredTechs()
 			end
 		end
 	end
-	assert(not (mapdata.IsRandomMap and tech_state), "Blank (random) maps should not have prediscovered/preresearched techs") --(mantis:0130773)
-	mapdata.TechState = tech_state
+	assert(not (ActiveMapData.IsRandomMap and tech_state), "Blank (random) maps should not have prediscovered/preresearched techs") --(mantis:0130773)
+	ActiveMapData.TechState = tech_state
 end
 
 ----
 
-function City:UITechField(field_id)
+function Research:UITechField(field_id)
 	local field_def = TechFields[field_id]
 	if not field_def or field_def.show_in_field ~= "" then
 		return empty_table
@@ -875,6 +1015,34 @@ function ResearchDlgOnShortcut(self, shortcut, source)
 	return XDialog.OnShortcut(self, shortcut, source)
 end
 
+function ResearchUIPrioritizeQueue(research_item, delta)
+	local parent = research_item.parent
+	local tech_id = research_item.context.id
+	local old_index, new_index = UIColony:PrioritizeQueueResearch(tech_id, delta, true)
+	if new_index then
+		local other_tech_id = UIColony.research_queue[old_index]
+		parent:SwapItemAt(old_index, new_index)
+		Msg("ResearchQueueSwap", UIColony, tech_id, other_tech_id)
+		PlayFX("DequeueResearch", "start")
+	else
+		PlayFX("UIDisabledButtonPressed", "start")
+	end
+end
+
+local gamepad_prioritize = T(13787, "<LeftTrigger> Prioritize research")
+local gamepad_deprioritize = T(13788, "<RightTrigger> Deprioritize research")
+
+function GetUIResearchQueueGamepadHint(research_queue_index)
+	local hint = "<center>" .. T(3924, "<ButtonX> Remove from research queue")
+	local research_queue_count = #UIColony.research_queue
+	if research_queue_index < research_queue_count then
+		hint = hint .. "<newline><center>" .. gamepad_deprioritize
+	end
+	if research_queue_index > 1 then
+		hint = hint .."<newline><center>" .. gamepad_prioritize
+	end
+	return hint
+end
 
 ----- XTechControl
 
@@ -891,11 +1059,12 @@ DefineClass.XTechControl = {
 }
 
 function XTechControl:Init(parent, tech)
+	local research = UIColony
 	self:SetFocusOrder(point(rawget(self.context, "field_pos") or 1, #parent))
 	local tech_id = tech.id
-	local icon = UICity:IsTechDiscovered(tech_id) and tech.icon
-	local researched = UICity:IsTechResearched(tech_id) and not UICity:IsTechRepeatable(tech_id)
-	local progress = UICity:GetResearchProgress(tech_id)
+	local icon = research:IsTechDiscovered(tech_id) and tech.icon
+	local researched = research:IsTechResearched(tech_id) and not research:IsTechRepeatable(tech_id)
+	local progress = research:GetResearchProgress(tech_id)
 	local content = XWindow:new({
 		Id = "idContent",
 		HAlign = "center",
@@ -908,40 +1077,7 @@ function XTechControl:Init(parent, tech)
 		Image = icon or "UI/Icons/Research/rm_unknown.tga",
 		ImageFit = "smallest",
 	}, content)
-	if researched then
-		XImage:new({
-			Image = "UI/Icons/Research/rm_completed.tga",
-			ImageFit = "smallest",
-		}, content)
-		XImage:new({
-			Image = "UI/Icons/Research/rm_researched_2.tga",
-			ImageFit = "smallest",
-		}, content)
-	elseif progress > 0 then
-		local win = XWindow:new({
-			Id = "idProgressInfo"
-		}, content)
-		XImage:new({
-			Image = "UI/Icons/Research/rm_partially_researched.tga",
-			ImageFit = "smallest",
-		}, win)
-		local percent_text = XText:new({
-			Translate = true,
-			HAlign = "center",
-			VAlign = "center",
-			TextHAlign = "center",
-			TextVAlign = "center",
-			Padding = box(0,0,0,0),
-			HandleMouse = false,
-			TextStyle = "ResearchPartialProgress",
-		}, win)
-		percent_text:SetText(T{12562, "<percent(progress)>", progress = progress})
-	elseif UICity:IsTechDiscovered(tech_id) then
-		XImage:new({
-			Image = "UI/Icons/Research/rm_available.tga",
-			ImageFit = "smallest",
-		}, content)
-	end
+	
 	local queue_win = XWindow:new({
 		Id = "idQueueWin",
 	}, content)
@@ -966,13 +1102,64 @@ function XTechControl:Init(parent, tech)
 		TextStyle = "Action",
 		ScaleModifier = point(1200,1200),
 	}, hex)
+
+	if researched then
+		XImage:new({
+			Image = "UI/Icons/Research/rm_completed.tga",
+			ImageFit = "smallest",
+		}, content)
+		XImage:new({
+			Image = "UI/Icons/Research/rm_researched_2.tga",
+			ImageFit = "smallest",
+		}, content)
+	elseif progress > 0 then
+		local progress_info = XWindow:new({
+			Id = "idProgressInfo"
+		}, content)
+		XImage:new({
+			Image = "UI/Icons/Research/rm_partially_researched.tga",
+			ImageFit = "smallest",
+		}, progress_info)
+		local percent_text = XText:new({
+			Translate = true,
+			HAlign = "center",
+			VAlign = "center",
+			TextHAlign = "center",
+			TextVAlign = "center",
+			Padding = box(0,0,0,0),
+			HandleMouse = false,
+			TextStyle = "ResearchPartialProgress",
+		}, progress_info)
+		percent_text:SetText(T{12562, "<percent(progress)>", progress = progress})
+
+		local active_progress_info = XWindow:new({
+			Id = "idProgressInfoActive"
+		}, content)
+		local active_percent_text = XText:new({
+			Translate = true,
+			HAlign = "center",
+			VAlign = "center",
+			TextHAlign = "center",
+			TextVAlign = "center",
+			Padding = box(0,0,0,0),
+			HandleMouse = false,
+			TextStyle = "ResearchQueuedProgress",
+		}, active_progress_info)
+		active_percent_text:SetText(T{12562, "<percent(progress)>", progress = progress})
+	elseif research:IsTechDiscovered(tech_id) then
+		XImage:new({
+			Image = "UI/Icons/Research/rm_available.tga",
+			ImageFit = "smallest",
+		}, content)
+	end
+	
 	XImage:new({
 		Id = "idRollover",
 		Image = "UI/Icons/Research/rm_shine.tga",
 		Transparency = icon and 0 or 125,
 		ImageFit = "smallest",
 	}, content):SetVisible(false)
-	if UICity:IsTechNew(tech_id) and UICity:IsTechDiscovered(tech_id) then
+	if research:IsTechNew(tech_id) and research:IsTechDiscovered(tech_id) then
 		local glow = XImage:new({
 			Id = "idUnseenGlow",
 			Image = "UI/Icons/Research/rm_shine.tga",
@@ -990,9 +1177,10 @@ function XTechControl:Init(parent, tech)
 end
 
 function XTechControl:OnShortcut(shortcut, source)
+	local research = UIColony
 	local tech_id = self.context.id
 	if shortcut == "MouseL" or shortcut == "ButtonA" then -- add
-		if UICity:QueueResearch(tech_id) then
+		if research:QueueResearch(tech_id) then
 			PlayFX("EnqueueResearch", "start")
 		else
 			PlayFX("UIDisabledButtonPressed", "start")
@@ -1000,7 +1188,7 @@ function XTechControl:OnShortcut(shortcut, source)
 		return "break"
 	end
 	if shortcut == "MouseR" or shortcut == "ButtonX" then -- remove
-		if UICity:DequeueResearch(tech_id) then
+		if research:DequeueResearch(tech_id) then
 			PlayFX("DequeueResearch", "start")
 		else
 			PlayFX("UIDisabledButtonPressed", "start")
@@ -1008,17 +1196,17 @@ function XTechControl:OnShortcut(shortcut, source)
 		return "break"
 	end
 	if shortcut == "Ctrl-MouseL" or shortcut == "RightTrigger-ButtonA" then -- add to queue start
-		if not UICity:IsTechResearchable(tech_id) then
+		if not research:IsTechResearchable(tech_id) then
 			PlayFX("UIDisabledButtonPressed", "start")
 			return "break"
 		end
-		if UICity:TechQueueIndex(tech_id) and not UICity:IsTechRepeatable(tech_id) then
-			UICity:DequeueResearch(tech_id)
+		if research:TechQueueIndex(tech_id) and not research:IsTechRepeatable(tech_id) then
+			research:DequeueResearch(tech_id)
 		end
-		if #UICity.research_queue > const.ResearchQueueSize then
-			UICity:DequeueResearch(UICity.research_queue[#UICity.research_queue])
+		if #research.research_queue > const.ResearchQueueSize then
+			research:DequeueResearch(research.research_queue[#research.research_queue])
 		end
-		if UICity:QueueResearch(tech_id, true) then
+		if research:QueueResearch(tech_id, true) then
 			PlayFX("EnqueueResearch", "start")
 		else
 			PlayFX("UIDisabledButtonPressed", "start")
@@ -1039,12 +1227,19 @@ function XTechControl:OnSetRollover(rollover)
 end
 
 function XTechControl:OnContextUpdate(tech)
-	local index = UICity:TechQueueIndex(tech.id)
+	local index = UIColony:TechQueueIndex(tech.id)
+	self.idQueueWin:SetVisible(index)
+
 	local progress_info = self:ResolveId("idProgressInfo")
 	if progress_info then
 		progress_info:SetVisible(not index)
 	end
-	self.idQueueWin:SetVisible(index)
+
+	local active_progress_info = self:ResolveId("idProgressInfoActive")	
+	if active_progress_info then
+		active_progress_info:SetVisible(index and index ~= 1)
+	end
+
 	if index then
 		self.idQueueIndex:SetText(index)
 	end
@@ -1055,7 +1250,7 @@ function XTechControl:CreateRolloverWindow(gamepad, context, pos)
 		CreateRealTimeThread(function(self)
 			Sleep(400)
 			if RolloverControl == self then
-				UICity:SetTechNew(self.context.id, false)
+				UIColony:SetTechNew(self.context.id, false)
 				self.idUnseenGlow:SetVisible(false)
 			end
 		end, self)
@@ -1064,8 +1259,9 @@ function XTechControl:CreateRolloverWindow(gamepad, context, pos)
 end
 
 function XTechControl:GetRolloverTitle()
+	local research = UIColony
 	local tech_id = self.context.id
-	if UICity:IsTechDiscovered(tech_id) then
+	if research:IsTechDiscovered(tech_id) then
 		return T(3917, "<display_name> (<FieldDisplayName>)")
 	else
 		return T(3918, "Unknown Tech (<FieldDisplayName>)")
@@ -1073,16 +1269,17 @@ function XTechControl:GetRolloverTitle()
 end
 
 function XTechControl:GetRolloverText()
+	local research = UIColony
 	local tech_id = self.context.id
-	local discovered = UICity:IsTechDiscovered(tech_id)
-	local researched = UICity:IsTechResearched(tech_id)
+	local discovered = research:IsTechDiscovered(tech_id)
+	local researched = research:IsTechResearched(tech_id)
 
 	if not discovered and not researched then
 		return T(3919, "<FieldDescription><newline><newline>To unlock, research more technologies in this field or use the Explorer rover to analyze anomalies.")
-	elseif researched and not UICity:IsTechRepeatable(tech_id) then
+	elseif researched and not research:IsTechRepeatable(tech_id) then
 		return T(3920, "<description><newline><newline><em>Researched</em>")
 	end
-	local percent = (UICity.TechBoostPerTech[tech_id] or 0) + (UICity.TechBoostPerField[TechDef[tech_id].group] or 0)
+	local percent = (research.TechBoostPerTech[tech_id] or 0) + (research.TechBoostPerField[TechDef[tech_id].group] or 0)
 	local percent_check = percent > 0
 	return T{10980, "<description><newline><newline>Research cost<right><ResearchPoints(cost)><if(percent_check)><newline><left>Cost reduction<right><percent>%</if>", percent = percent, percent_check = percent_check }
 end
@@ -1092,12 +1289,13 @@ local dequeue = T(7775, "<right_click> Remove from research queue")
 local queue_dequeue = queue .. "<newline><center>" .. dequeue
 local first_inqueue = T(8534, "<em>Ctrl+<left_click></em> Queue on top")
 function XTechControl:GetRolloverHint()
+	local research = UIColony
 	local tech_id = self.context.id
-	if UICity:IsTechResearchable(tech_id) then
-		if not UICity:TechQueueIndex(tech_id) then
+	if research:IsTechResearchable(tech_id) then
+		if not research:TechQueueIndex(tech_id) then
 			return queue
 		end
-		if UICity:IsTechRepeatable(tech_id) then
+		if research:IsTechRepeatable(tech_id) then
 			return queue_dequeue
 		end
 		return dequeue.."<newline><center>"..first_inqueue
@@ -1107,18 +1305,26 @@ end
 
 local gamepad_queue = T(3925, "<left><ButtonA> Queue for research<right><RightTrigger><ButtonA> Queue on top")
 local gamepad_dequeue = T(3924, "<ButtonX> Remove from research queue")
-local gamepad_queue_dequeue = gamepad_queue .. "<newline><center>" .. gamepad_dequeue
 local gamepad_first_inqueue = T(8659, "<RightTrigger><ButtonA> Queue on top")
+local gamepad_queue_dequeue = gamepad_queue .. "<newline><center>" .. gamepad_dequeue
+local gamepad_dequeue_inqueue = gamepad_dequeue .. "<newline><center>" .. gamepad_first_inqueue
+
 function XTechControl:GetRolloverHintGamepad()
+	local research = UIColony
 	local tech_id = self.context.id
-	if UICity:IsTechResearchable(tech_id) then
-		if not UICity:TechQueueIndex(tech_id) then
+	if research:IsTechResearchable(tech_id) then
+		local index = research:TechQueueIndex(tech_id)
+		if not index then
 			return gamepad_queue
 		end
-		if UICity:IsTechRepeatable(tech_id) then
+
+		local hints = gamepad_prioritize
+
+		if research:IsTechRepeatable(tech_id) then
 			return gamepad_queue_dequeue
+		else
+			return gamepad_dequeue_inqueue
 		end
-		return gamepad_dequeue.."<newline><center>"..gamepad_first_inqueue
 	end
 	return ""
 end

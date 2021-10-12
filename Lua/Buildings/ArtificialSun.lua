@@ -39,7 +39,8 @@ function ArtificialSun:GameInit()
 	
 	local sun_radius = (self.effect_range + 10) * const.GridSpacing --large radius extension so it can catch large panels
 	local panel_query_testing_against = self
-	local panels = MapGet(self,sun_radius,"SolarPanelBase",function(o) return TestSunPanelRange(panel_query_testing_against, o) end )
+	local realm = GetRealm(self)
+	local panels = realm:MapGet(self,sun_radius,"SolarPanelBase",function(o) return TestSunPanelRange(panel_query_testing_against, o) end )
 	for i = 1, #panels do
 		panels[i]:SetArtificialSun(self)
 	end		

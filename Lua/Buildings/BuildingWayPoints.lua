@@ -85,20 +85,21 @@ end
 
 local ShowWaypoints
 if config.DebugWaypoints then
-	ShowWaypoints = function(waypoints, open, color_line, color_door)
+	ShowWaypoints = function(map_id, waypoints, open, color_line, color_door)
 		color_line = color_line or RGB(255, 255, 0)
 		color_door = color_door or RGB(255, 0, 0)
 		local line = PlaceObject("Polyline")
+		local terrain = GetTerrainByID(map_id)
 		line:SetEnumFlags(const.efVisible)
 		local points, colors, texts = {}, {}, {}
 		for i=1,#waypoints do
 			local w = waypoints[i]
 			local c = i == open and color_door or color_line
-			local z = terrain.GetSurfaceHeight(w)
+			local z = terrain:GetSurfaceHeight(w)
 			points[i] = w
 			colors[i] = c
 			local t = Text:new()
-			t:SetPos(w:SetZ((w:z() or terrain.GetHeight(w)) + 10*guic))
+			t:SetPos(w:SetZ((w:z() or terrain:GetHeight(w)) + 10*guic))
 			t:SetColor(c)
 			t:SetText(tostring(i))
 			texts[i] = t
@@ -140,7 +141,8 @@ end
 
 function WaypointsObj:BuildWaypointChains()
 	local waypoint_chains
-	local GetHeight = terrain.GetHeight
+	local map_id = self:GetMapID()
+	local terrain = GetTerrainByID(map_id)
 	for _, chain in ipairs(GetEntityWaypointChains(self:GetEntity())) do
 		if not waypoint_chains then
 			waypoint_chains = {}
@@ -155,7 +157,7 @@ function WaypointsObj:BuildWaypointChains()
 		if chain.door then
 			local door = self:GetAttach(chain.door)
 			if not door then
-				door = PlaceObject(chain.door)
+				door = PlaceObjectIn(chain.door, map_id)
 				CopyColorizationMaterial(self, door)
 				self:Attach(door)
 			end
@@ -164,11 +166,11 @@ function WaypointsObj:BuildWaypointChains()
 
 		local pos1 = self:GetSpotPos(chain[1])
 		assert(chain[1] and pos1, string.format("Invalid entrance/waypoints for class %s", self.class) )-- invalid entrance
-		local dz1 = pos1:z() - GetHeight(pos1)
+		local dz1 = pos1:z() - terrain:GetHeight(pos1)
 		-- convert spots to points, add points if there are points under the terrain
 		for i = 2, #chain do
 			local pos2 = self:GetSpotPos(chain[i])
-			local dz2 = pos2:z() - GetHeight(pos2)
+			local dz2 = pos2:z() - terrain:GetHeight(pos2)
 			-- waypoint
 			instance_chain[#instance_chain + 1] = dz1 > 0 and pos1 or pos1:SetZ(pos1:z() - dz1)
 			if dz1 > 0 and dz2 < 0 or dz1 < 0 and dz2 > 0 then
@@ -181,7 +183,7 @@ function WaypointsObj:BuildWaypointChains()
 				end
 				for i = 1, 15 do
 					local pt = pt1:Lerp(pt2, i, 16)
-					local h = GetHeight(pt)
+					local h = terrain:GetHeight(pt)
 					if pt:z() <= h then
 						instance_chain[#instance_chain + 1] = pt:SetZ(h)
 						break
@@ -204,21 +206,27 @@ function WaypointsObj:BuildWaypointChains()
 	end
 end
 
+function WaypointsObj:GetEntranceFallbackUncached()
+	local origin = self:GetPos():SetInvalidZ()
+	local pt, dir = origin, RotateRadius(guim, self:GetAngle())
+	local retries = 100
+	local map_id = self:GetMapID()
+	local terrain = GetTerrainByID(map_id)
+	while retries > 0 and not terrain:IsPassable(pt) do
+		pt = pt + dir
+		retries = retries - 1
+	end
+	if retries == 0 then
+		print("once", "Unit stuck in holder!", self:GetName())
+		pt = origin
+	end
+	return { pt - dir, pt }
+end
+
 function WaypointsObj:GetEntranceFallback()
 	local fallback = self.entrance_fallback
 	if not fallback and self:IsValidPos() then
-		local origin = self:GetPos():SetInvalidZ()
-		local pt, dir = origin, RotateRadius(guim, self:GetAngle())
-		local retries = 100
-		while retries > 0 and not terrain.IsPassable(pt) do
-			pt = pt + dir
-			retries = retries - 1
-		end
-		if retries == 0 then
-			print("once", "Unit stuck in holder!", self.Template)
-			pt = origin
-		end
-		fallback = { pt - dir, pt }
+		fallback = self:GetEntranceFallbackUncached()
 		self.entrance_fallback = fallback
 	end
 	return fallback, fallback[2]
@@ -313,12 +321,13 @@ function WaypointsObj:NearestWaypoints2D(target, chain_type, spot_name, chain_id
 end
 
 function WaypointsObj:NearestPassableWaypoints2D(target, chain_type, spot_name, chain_idx, pfClass)
-	local function eval(chain, fDist, target, chain_idx, pfClass)
+	local terrain = GetTerrain(self)
+	local function eval(chain, fDist, target, chain_idx, pfClass, terrain)
 		local pt = chain_idx and chain[chain_idx] or chain[#chain]
-		return terrain.IsPassable(pt, pfClass) and fDist(target, pt)
+		return terrain:IsPassable(pt, pfClass) and fDist(target, pt)
 	end
 	local fDist = IsValid(target) and target.GetVisualDist2D or target.Dist2D
-	return FindNearestWaypoints(self.waypoint_chains, chain_type, spot_name, eval, fDist, target, chain_idx, pfClass)
+	return FindNearestWaypoints(self.waypoint_chains, chain_type, spot_name, eval, fDist, target, chain_idx, pfClass, terrain)
 end
 
 function WaypointsObj:FindWaypointsInRange(spot_name, first_range, first_target, last_range, last_target)
@@ -361,9 +370,10 @@ end
 function WaypointsObj:NearestPassableSpot(spot_type, unit)
 	local first, last = self:GetSpotRange(spot_type)
 	local best, best_dist
+	local terrain = GetTerrain(self)
 	for spot = first, last do
 		local pt = self:GetSpotLocPos(spot)
-		if terrain.IsPassable(pt, unit.pfclass) then
+		if terrain:IsPassable(pt, unit.pfclass) then
 			local dist = unit:GetDist(pt)
 			if not best_dist or dist < best_dist then
 				best, best_dist = spot, dist
@@ -376,9 +386,10 @@ end
 function WaypointsObj:RandomPassableSpot(spot_type, unit)
 	local first, last = self:GetSpotRange(spot_type)
 	local count = 0
+	local terrain = GetTerrain(self)
 	for spot = first, last do
 		local pt = self:GetSpotLocPos(spot)
-		if terrain.IsPassable(pt, unit.pfclass) then
+		if terrain:IsPassable(pt, unit.pfclass) then
 			count = count + 1
 		end
 	end
@@ -411,7 +422,7 @@ function FollowWaypointPath(unit, path, first, last, wait_door_open)
 	local door = path.door
 	local open = door and (first <= last and path.openInside or path.openOutside)
 	unit.visit_door_opened = false
-	local debug_line = ShowWaypoints and ShowWaypoints(path, open)
+	local debug_line = ShowWaypoints and ShowWaypoints(unit:GetMapID(), path, open)
 	if debug_line then
 		unit:PushDestructor(function(unit) HideWaypoints(debug_line) end)
 	end
@@ -496,9 +507,10 @@ function WaypointsObj:OnExitUnit(unit)
 end
 
 function AttachDoors(obj, entity)
+	local map_id = obj:GetMapID()
 	for _, chain in ipairs(GetEntityWaypointChains(entity)) do
 		if chain.door and not obj:GetAttach(chain.door) then
-			local door = PlaceObject(chain.door)
+			local door = PlaceObjectIn(chain.door, map_id)
 			CopyColorizationMaterial(obj, door)
 			obj:Attach(door)
 		end

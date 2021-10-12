@@ -23,10 +23,13 @@ const.ColonistSpecialization =
 	["botanist"] = {
 		display_name = T(3865, "Botanist"), display_name_plural = T(3866, "Botanists"), display_icon = "UI/Icons/Colonists/Malebotanist.tga",
 		description = T(3867, "A trained botanist, dreaming of a green Mars."), },
+	["Tourist"] = {
+		display_name = T(12754, "Tourist"), display_name_plural = T(10404, "Tourists"), display_icon = "UI/Icons/Colonists/Malenone.tga", },
 }
 
 ColonistSpecializationList = table.keys2(const.ColonistSpecialization, true)
 table.remove_entry(ColonistSpecializationList, "none")
+table.remove_entry(ColonistSpecializationList, "Tourist")
 
 local ColonistSpecialization = const.ColonistSpecialization
 function GetSpecialization(specialist)
@@ -46,6 +49,17 @@ function GetColonistSpecializationCombo(empty, auto)
 		end
 		return items
 	end
+end
+
+function GetSortedColonistSpecializationTable()
+	-- Tourist is the only entry that is capitalized, 
+	-- This prevents us from sort the table and inserting none at the front
+	local t = table.keys2(const.ColonistSpecialization, true)
+	table.remove_entry(t, "none")
+	table.remove_entry(t, "Tourist")
+	table.insert(t, 1, "none")
+	table.insert(t, 5, "Tourist")
+	return t
 end
 
 ColonistClasses = {

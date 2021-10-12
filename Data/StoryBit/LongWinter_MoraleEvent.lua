@@ -107,7 +107,7 @@ PlaceObj('StoryBit', {
 				'ModifyId', "LongWinter",
 			}),
 			PlaceObj('ModifyLabel', {
-				'Label', "Casino Complex",
+				'Label', "CasinoComplex",
 				'Prop', "sanity_change",
 				'Amount', "<extra_sanity>",
 				'ModifyId', "LongWinter",

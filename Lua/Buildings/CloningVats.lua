@@ -15,10 +15,10 @@ function CloningVats:BuildingUpdate(dt, ...)
 			local colonist_table = GenerateColonistData(self.city, "Child", "martianborn")
 			colonist_table.dome = self.parent_dome
 			colonist_table.traits["Clone"] = true
-			if UICity.mystery and UICity.mystery:IsKindOf("DreamMystery") then
+			if UIColony.mystery and UIColony.mystery:IsKindOf("DreamMystery") then
 				colonist_table.traits["Dreamer"] = true
 			end
-			local colonist = Colonist:new(colonist_table)
+			local colonist = Colonist:new(colonist_table, self:GetMapID())
 			colonist:SetOutside(false)
 			self:OnEnterUnit(colonist)
 			Msg("ColonistBorn", colonist, "cloned")

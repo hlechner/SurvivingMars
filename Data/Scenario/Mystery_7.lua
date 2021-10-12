@@ -17,7 +17,7 @@ PlaceObj('Scenario', {
 		}),
 		PlaceObj('SA_WaitExpression', {
 			'comment', "trigger condition",
-			'expression', "#(UICity.labels.Colonist or empty_table) >= 150",
+			'expression', "#(MainCity.labels.Colonist or empty_table) >= 150",
 			'duration', 5000,
 		}),
 		PlaceObj('SA_WaitMarsTime', {
@@ -349,7 +349,7 @@ PlaceObj('Scenario', {
 			'sequence', "RareMetal Trade Rocket",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'local rockets = table.copy(UICity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" then\n    rocket:LeaveForever()\n  end\nend',
+			'expression', 'local rockets = table.copy(MainCity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" then\n    rocket:LeaveForever()\n  end\nend',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(8211, --[[Scenario Mystery 7 title]] "The Last War: The Grand Push"),
@@ -539,7 +539,7 @@ PlaceObj('Scenario', {
 			'sequence', "Check Deaths",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'local rockets = table.copy(UICity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" or id == "RareMetals" or id == "Metals" or id == "Electronics" or id == "Food" or id == "MachineParts" then\n    rocket:LeaveForever()\n  end\nend',
+			'expression', 'local rockets = table.copy(MainCity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" or id == "RareMetals" or id == "Metals" or id == "Electronics" or id == "Food" or id == "MachineParts" then\n    rocket:LeaveForever()\n  end\nend',
 		}),
 		PlaceObj('SA_Comment', {
 			'comment', "Effects",
@@ -1193,7 +1193,7 @@ PlaceObj('Scenario', {
 			'sequence', "25 Tension Flavor",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'local rockets = table.copy(UICity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" or id == "RareMetals" or id == "Metals" or id == "Electronics" or id == "Food" or id == "MachineParts" then\n    rocket:LeaveForever()\n  end\nend',
+			'expression', 'local rockets = table.copy(MainCity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" or id == "RareMetals" or id == "Metals" or id == "Electronics" or id == "Food" or id == "MachineParts" then\n    rocket:LeaveForever()\n  end\nend',
 		}),
 		PlaceObj('SA_Comment', {
 			'comment', "Effects",
@@ -1322,7 +1322,7 @@ PlaceObj('Scenario', {
 			'sequence', "25 Tension Flavor",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'local rockets = table.copy(UICity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" or id == "RareMetals" or id == "Metals" or id == "Electronics" or id == "Food" or id == "MachineParts" then\n    rocket:LeaveForever()\n  end\nend',
+			'expression', 'local rockets = table.copy(MainCity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "RareMetalTradeRocket" or id == "RareMetals" or id == "Metals" or id == "Electronics" or id == "Food" or id == "MachineParts" then\n    rocket:LeaveForever()\n  end\nend',
 		}),
 		PlaceObj('SA_WaitTime', {
 			'duration', 5000,

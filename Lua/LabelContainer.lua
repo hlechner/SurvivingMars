@@ -9,6 +9,11 @@ function LabelContainer:Init()
 	self.label_modifiers = {}
 end
 
+function LabelContainer.Copy(self, other)
+	self.labels = table.raw_copy(other.labels, 2)
+	self.label_modifiers = table.raw_copy(other.label_modifiers, 2)
+end
+
 function LabelContainer:InitEmptyLabel(label)
 	self.labels[label] = self.labels[label] or {}
 end
@@ -80,6 +85,18 @@ function LabelContainer:IsInAnyLabel(labels, obj)
 	return false
 end
 
+function LabelContainer:ForEachLabelObject(label, func, ...)
+	if type(func) == "string" then
+		for _, obj in ipairs(self.labels[label] or empty_table) do
+			obj[func](obj, ...)
+		end
+	else
+		for _, obj in ipairs(self.labels[label] or empty_table) do
+			func(obj, ...)
+		end
+	end
+end
+
 local function UpdateModWithoutCheck(obj, ...) 
 	return obj:UpdateModifier(...) 
 end
@@ -92,18 +109,20 @@ end
 
 function LabelContainer:SetLabelModifier(label, id, modifier, check_if_prop_exists)
 	local f = check_if_prop_exists and UpdateModWithCheck or UpdateModWithoutCheck
-	
+
 	self.label_modifiers[label] = self.label_modifiers[label] or {}
 	local modifiers = self.label_modifiers[label]
 	local old_mod = modifiers[id]
-	if old_mod then
-		for _, obj in ipairs(self.labels[label] or empty_table) do
+
+	local labels = self.labels[label]
+	if old_mod and labels then
+		for _, obj in ipairs(labels) do
 			f(obj, "remove", old_mod, - old_mod.amount, - old_mod.percent)
 		end
 	end
 	modifiers[id] = modifier or nil
-	if modifier then
-		for _, obj in ipairs(self.labels[label] or empty_table) do
+	if modifier and labels then
+		for _, obj in ipairs(labels) do
 			f(obj, "add", modifier, modifier.amount, modifier.percent)
 		end
 	end

@@ -162,6 +162,19 @@ function SavegameFixups.RepairMaintenanceState()
 				end)
 end
 
+function RequiresMaintenance:IsMaintenancePrevented()
+	return false
+end
+
+function RequiresMaintenance:TryRequestMaintenance()
+	if self.accumulated_maintenance_points >= self.maintenance_threshold_current then
+		self.last_maintenance_points_full_ts = self.last_maintenance_points_full_ts or GameTime()
+		if not self.maintenance_phase and not self:IsMaintenancePrevented() then
+			self:RequestMaintenance()
+		end
+	end
+end
+
 function RequiresMaintenance:AccumulateMaintenancePoints(new_points)
 	new_points = new_points or 0
 	local prev_accum = self.accumulated_maintenance_points
@@ -177,12 +190,7 @@ function RequiresMaintenance:AccumulateMaintenancePoints(new_points)
 			end
 		end
 	end
-	if self.accumulated_maintenance_points >= self.maintenance_threshold_current then
-		self.last_maintenance_points_full_ts = self.last_maintenance_points_full_ts or GameTime()
-		if not self.maintenance_phase then --if we havn't requested..
-			self:RequestMaintenance()
-		end
-	end
+	self:TryRequestMaintenance()
 end
 
 function RequiresMaintenance:StartDemandPhase()
@@ -247,7 +255,7 @@ function RequiresMaintenance:SetNeedsMaintenanceState()
 	if not self:DoesRequireMaintenance() then return end
 	if not (self:IsMalfunctioned() or self.is_need_maintenance) then
 		self.is_need_maintenance = true	
-		table.insert_unique(g_MaintenanceNeededBuildings, self)
+		RequestNewObjsNotif(g_MaintenanceNeededBuildings, self, self:GetMapID())
 		
 		self:AttachSign(true, "SignMalfunction")
 		self:AccumulateMaintenancePoints(self.maintenance_threshold_current)
@@ -283,8 +291,8 @@ function RequiresMaintenance:Repair()
 		self.is_malfunctioned = false
 		self.is_need_maintenance = false
 				
-		table.remove_entry(g_MaintenanceNeededBuildings, self)
-		
+		DiscardNewObjsNotif(g_MaintenanceNeededBuildings, self, self:GetMapID())
+
 		self:AttachSign(false, "SignMalfunction")
 		self:UpdateWorking() --canwork blockers on our part have been cleared
 		self:UpdateConsumption()
@@ -413,6 +421,7 @@ function RequiresMaintenance:SetExceptionalCircumstancesMaintenance(resource, am
 	self.exceptional_circumstances_maintenance = true
 	self:SetModifier("maintenance_resource_amount", "exceptional_circumstances_maintenance",amount, -100 )
 	self.maintenance_resource_type = resource
+	self:InitMaintenanceRequests()
 	self:AccumulateMaintenancePoints(self.maintenance_threshold_current)
 	
 	if self.maintenance_resource_request then

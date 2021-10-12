@@ -114,22 +114,28 @@ PlaceObj('XTemplate', {
 				'RelativeFocusOrder', "next-in-line",
 				'OnContextUpdate', function (self, context, ...)
 					local dome = ResolvePropObj(context)
-					local accept = dome.allow_birth
-					if accept then
+					local birth_policy = dome.birth_policy
+					if birth_policy == BirthPolicy.Enabled then
 						self.idButtonIcon:SetImage("UI/Icons/Sections/birth_on.tga")
-					else
+					elseif birth_policy == BirthPolicy.Forbidden then
 						self.idButtonIcon:SetImage("UI/Icons/Sections/birth_off.tga")
+					else
+						self.idButtonIcon:SetImage("UI/Icons/Sections/birth_limit.tga")
 					end
 					-- rollover
 					local texts = {}
-					if accept then	
+					if birth_policy == BirthPolicy.Enabled then	
 						texts[#texts+1] = T(8729, "Set the birth policy for this Dome. Colonists at high comfort will have children if births are allowed.<newline><newline>Current status: <em>Births are allowed</em>")
-						self:SetRolloverHint(T(8730, "<left_click> Forbid births in this Dome<newline><em>Ctrl + <left_click></em> Forbid births in all Domes"))
-						self:SetRolloverHintGamepad(T(8731, "<ButtonA> Forbid births in this Dome<newline><ButtonX> Forbid births in all Domes"))
-					else
+						self:SetRolloverHint(T(8730, "<left_click> Forbid births in this Dome when it is full<newline><em>Ctrl + <left_click></em> Forbid births in all Domes when they are full"))
+						self:SetRolloverHintGamepad(T(8731, "<ButtonA> Forbid births in this Dome when it is full<newline><ButtonX> Forbid births in all Domes when they are full"))
+					elseif birth_policy == BirthPolicy.Forbidden then
 						texts[#texts+1] = T(8732, "Set the birth policy for this Dome. Colonists at high comfort will have children if births are allowed.<newline><newline>Current status: <em>Births are forbidden</em>")
 						self:SetRolloverHint(T(8733, "<left_click> Allow births in this Dome<newline><em>Ctrl + <left_click></em> Allow births in all Domes"))
 						self:SetRolloverHintGamepad(T(8734, "<ButtonA> Allow births in this Dome <newline><ButtonX> Allow births in all Domes"))
+					else
+						texts[#texts+1] = T(13763, "Set the birth policy for this Dome. Colonists at high comfort will have children if births are allowed.<newline><newline><BirthDomeStatusText>")
+						self:SetRolloverHint(T(13764, "<left_click> Forbid births in this Dome<newline><em>Ctrl + <left_click></em> Forbid births in all Domes"))
+						self:SetRolloverHintGamepad(T(13765, "<ButtonA> Forbid births in this Dome<newline><ButtonX> Forbid births in all Domes"))
 					end
 					texts[#texts + 1]  = dome:GetBirthText()	
 					self:SetRolloverText(table.concat(texts, "<newline><left>"))
@@ -137,12 +143,12 @@ PlaceObj('XTemplate', {
 				'FXMouseIn', "MenuItemHover",
 				'FocusedBackground', RGBA(0, 0, 0, 0),
 				'OnPress', function (self, gamepad)
-					self.context:ToggleAcceptBirth(not gamepad and IsMassUIModifierPressed())
+					self.context:CycleBirthPolicy(not gamepad and IsMassUIModifierPressed())
 				end,
 				'AltPress', true,
 				'OnAltPress', function (self, gamepad)
 					if gamepad then
-						self.context:ToggleAcceptBirth(true)
+						self.context:CycleBirthPolicy(true)
 					end
 				end,
 				'RolloverBackground', RGBA(0, 0, 0, 0),
@@ -171,6 +177,7 @@ PlaceObj('XTemplate', {
 					}),
 				}),
 			PlaceObj('XTemplateWindow', {
+				'__condition', function (parent, context) return context:UIHasDomePolicies() end,
 				'__class', "XTextButton",
 				'RolloverTemplate', "Rollover",
 				'RolloverAnchor', "right",
@@ -243,6 +250,7 @@ PlaceObj('XTemplate', {
 					}),
 				}),
 			PlaceObj('XTemplateWindow', {
+				'__condition', function (parent, context) return context:UIHasDomePolicies() end,
 				'__class', "XTextButton",
 				'RolloverTemplate', "Rollover",
 				'RolloverAnchor', "right",

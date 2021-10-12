@@ -2,7 +2,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	-- 0. Initialization
 	g_Tutorial.BuildMenuWhitelist = {}
 	g_Tutorial.RoverGatherResourceWorkTime = g_Consts.RCTransportGatherResourceWorkTime / 2
-	UICity:ChangeFunding(5000*1000*1000)
+	UIColony.funds:ChangeFunding(5000*1000*1000)
 	local markers = g_Tutorial.MapMarkers
 	
 	local old = IsDepositObstructed
@@ -11,23 +11,24 @@ g_TutorialScenarios.Tutorial3 = function()
 	GetSector("D1"):Scan("scanned")
 	IsDepositObstructed = old	
 	
-	local hub = UICity.labels.DroneHub and UICity.labels.DroneHub[1]
-	local mine = UICity.labels.RegolithExtractor and UICity.labels.RegolithExtractor[1]
+	local hub = MainCity.labels.DroneHub and MainCity.labels.DroneHub[1]
+	local mine = MainCity.labels.RegolithExtractor and MainCity.labels.RegolithExtractor[1]
 	local arrow, obj_arrow
 	
-	for _, panel in ipairs(UICity.labels.SolarPanel or empty_table) do
+	for _, panel in ipairs(MainCity.labels.SolarPanel or empty_table) do
 		DestroyBuildingImmediate(panel, false, "dont_notify")
 	end
 	
 	-- store cables to be deleted in a far away step
-	local cables_to_delete = MapGet("map","ElectricityGridElement", function(o) return o.electricity.grid == mine.electricity.grid end )
+	local realm = GetRealmByID(MainMapID)
+	local cables_to_delete = realm:MapGet("map","ElectricityGridElement", function(o) return o.electricity.grid == mine.electricity.grid end )
 	-- 1. Intro Popup
 	WaitTutorialPopup("Tutorial3_Popup1_Intro")
-	ViewObjectMars(UICity.labels.DroneHub[1])
+	ViewObjectMars(MainCity.labels.DroneHub[1])
 	Sleep(4000)
 	
 	-- 2. Salvage Concrete Extractor
-	ViewObjectMars(UICity.labels.RegolithExtractor[1])
+	ViewObjectMars(MainCity.labels.RegolithExtractor[1])
 	WaitTutorialPopup("Tutorial3_Popup2_SalvageBuilding")
 	TutorialNextHint("Tutorial_3_SalvageBuildings")
 	
@@ -105,7 +106,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	TutorialNextHint("Tutorial_3_NightShifts")
 	local blds = { "MoistureVaporator", "FuelFactory" }
 	for _, bld_class in ipairs(blds) do
-		local bld = UICity.labels[bld_class] and UICity.labels[bld_class][1]
+		local bld = MainCity.labels[bld_class] and MainCity.labels[bld_class][1]
 		ViewObjectMars(bld)
 		obj_arrow = ShowTutorialArrow(bld, "ArrowTutorialBase")
 
@@ -131,7 +132,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	TutorialNextHint("Tutorial_3_Maintenance")
 	
 	if not IsValid(panel) or panel.destroyed then
-		for _, obj in ipairs(UICity.labels.SolarPanelBig) do
+		for _, obj in ipairs(MainCity.labels.SolarPanelBig) do
 			if obj.working then
 				panel = obj
 				break
@@ -179,13 +180,13 @@ g_TutorialScenarios.Tutorial3 = function()
 	local a1 = ShowTutorialArrow("MetalDeposit")
 	a1:ChangeEntity("ArrowTutorial_02")
 	local a2 
-	if #UICity.labels.StorageMetals > 0 then
-		a2 = ShowTutorialArrow(UICity.labels.StorageMetals[1])
+	if #MainCity.labels.StorageMetals > 0 then
+		a2 = ShowTutorialArrow(MainCity.labels.StorageMetals[1])
 		a2:ChangeEntity("ArrowTutorial_03")
 	end
 	
 	while true do
-		local depots = UICity.labels.StorageMetals or empty_table
+		local depots = MainCity.labels.StorageMetals or empty_table
 		local amount = 0
 		for _, depot in ipairs(depots) do
 			if IsBuildingInRange(depot, hub, hub.work_radius) then
@@ -208,7 +209,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	end
 	
 	-- 9. Advanced Resources	
-	PlaceBuilding("SupplyRocket", {city = UICity, custom_travel_time_earth = 6*const.HourDuration, custom_travel_time_mars = 6*const.HourDuration})
+	PlaceBuildingIn("SupplyRocket", MainMapID, {custom_travel_time_earth = 6*const.HourDuration, custom_travel_time_mars = 6*const.HourDuration})
 	WaitOneMsGameTime()
 	
 	WaitTutorialPopup("Tutorial3_Popup9_AdvancedResources")
@@ -241,8 +242,8 @@ g_TutorialScenarios.Tutorial3 = function()
 			if not Dialogs.Resupply then 
 				return false 
 			end
-			if UICity.funding < 2000*1000*1000 then
-				UICity:ChangeFunding(2000*1000*1000)
+			if UIColony.funds.funding < 2000*1000*1000 then
+				UIColony.funds:ChangeFunding(2000*1000*1000)
 				ObjModified(Dialogs.Resupply.context)
 			end
 			if Dialogs.Resupply.Mode == "categories" then
@@ -272,7 +273,7 @@ g_TutorialScenarios.Tutorial3 = function()
 		end,
 	}, terminal.desktop)	
 
-	while UICity.labels.AllRockets[1].command ~= "FlyToMars" do
+	while MainCity.labels.AllRockets[1].command ~= "FlyToMars" do
 		local loaded = true
 		for _, res in ipairs(resources) do
 			loaded = loaded and cargo_loaded(res)
@@ -300,7 +301,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	WaitTutorialPopup("Tutorial3_Popup10_ClearingBuildings")
 	TutorialNextHint("Tutorial_3_ClearingBuildings")
 	ViewObjectMars(mine)
-	UICity:SetTechResearched("DecommissionProtocol")
+	UIColony:SetTechResearched("DecommissionProtocol")
 	
 	-- guide player to select building & use clear action
 	arrow = TutorialUIArrow:new({
@@ -325,7 +326,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	WaitTutorialPopup("Tutorial3_Popup11_DeletingCables")
 	TutorialNextHint("Tutorial_3_DeletingCables")
 
-	obj_arrow = PlaceObject("ArrowTutorial")
+	obj_arrow = PlaceObjectIn("ArrowTutorial")
 	obj_arrow:SetPos(markers.PowerCable:GetPos())
 
 	g_Tutorial.BuildMenuWhitelist.Salvage = true
@@ -341,9 +342,9 @@ g_TutorialScenarios.Tutorial3 = function()
 	DoneObject(obj_arrow)
 	
 	Sleep(1500)
-	if UICity.labels.AllRockets[1].command ~= "Refuel" then
+	if MainCity.labels.AllRockets[1].command ~= "Refuel" then
 		TutorialNextHint("Tutorial_3_WaitRocket")
-		while UICity.labels.AllRockets[1].command == "FlyToMars" do
+		while MainCity.labels.AllRockets[1].command == "FlyToMars" do
 			Sleep(100)
 		end
 		-- create an arrow to the rocket's pin
@@ -360,14 +361,12 @@ g_TutorialScenarios.Tutorial3 = function()
 			end,
 		}, terminal.desktop)
 		-- wait until the landing has started
-		while UICity.labels.AllRockets[1].command == "WaitInOrbit" do
+		while MainCity.labels.AllRockets[1].command == "WaitInOrbit" do
 			Sleep(100)
 		end
 		arrow:delete()
 		
-		while UICity.labels.AllRockets[1].command ~= "Refuel" do
-			Sleep(200)
-		end
+		WaitMsg("RocketLanded")
 	end
 	
 	-- 12. Battery
@@ -380,7 +379,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	-- wait the battery to be connected
 	while true do
 		local connected = false
-		for _, obj in ipairs(UICity.labels.Battery_WaterFuelCell or empty_table) do
+		for _, obj in ipairs(MainCity.labels.Battery_WaterFuelCell or empty_table) do
 			if not obj:ShouldShowNotConnectedToPowerGridSign() then
 				connected = true			
 			end
@@ -428,8 +427,8 @@ g_TutorialScenarios.Tutorial3 = function()
 	-- wait the tower to be connected to an extractor
 	while true do
 		local connected = false
-		for _, tank in ipairs(UICity.labels.WaterTank or empty_table) do
-			for _, bld in ipairs(UICity.labels.WaterExtractor or empty_table) do
+		for _, tank in ipairs(MainCity.labels.WaterTank or empty_table) do
+			for _, bld in ipairs(MainCity.labels.WaterExtractor or empty_table) do
 				if tank.water.grid == bld.water.grid then
 					connected = true
 					break
@@ -448,7 +447,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	WaitTutorialPopup("Tutorial3_Popup15_Dome")
 	TutorialNextHint("Tutorial_3_Dome")
 	
-	PlaceBuilding("SupplyRocket", {city = UICity, custom_travel_time_earth = 6*const.HourDuration, custom_travel_time_mars = 6*const.HourDuration})
+	PlaceBuildingIn("SupplyRocket", MainMapID, {custom_travel_time_earth = 6*const.HourDuration, custom_travel_time_mars = 6*const.HourDuration})
 	
 	g_Tutorial.BuildMenuWhitelist.DomeBasic = true
 	
@@ -472,7 +471,7 @@ g_TutorialScenarios.Tutorial3 = function()
 	
 	while true do
 		local working = false
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+		for _, dome in ipairs(MainCity.labels.Dome or empty_table) do
 			working = working or dome.working
 		end
 		if working then break end

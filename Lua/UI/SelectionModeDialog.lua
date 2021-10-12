@@ -22,7 +22,7 @@ function SelectionModeDialog:OnShortcut(shortcut, source, ...)
 	if bindings and (shortcut == bindings[0] or shortcut == bindings[1] or shortcut == bindings[2])
 		and editor.Active == 0 and not CameraTransitionThread then
 		local _, maxZoom = cameraRTS.GetZoomLimits()
-		if cameraRTS.GetZoom() >= maxZoom then
+		if cameraRTS.GetZoom() >= maxZoom and ActiveMapData.IsAllowedToEnterOverview then
 			self.parent:SetMode("overview")
 			return "break"
 		end
@@ -43,7 +43,7 @@ function SelectionMouseObj()
 		--objects that don't have collision surfaces or were not detected for some other reason
 		if not precise then
 			local tc = GetTerrainCursor()
-			if terrain.IsPointInBounds(tc) then
+			if GetActiveTerrain():IsPointInBounds(tc) then
 				local q, r = WorldToHex(tc)
 				local objs = { }
 				--@@@msg GatherSelectedObjectsOnHexGrid,q, r, objects- use this message to queue custom objects for selection using a hex grid position.
@@ -55,7 +55,7 @@ function SelectionMouseObj()
 						break
 					end
 				end
-				precise = precise or SelectionPropagate(HexGridGetObject(ObjectGrid, q, r))
+				precise = precise or SelectionPropagate(GetActiveObjectHexGrid():GetObject(q, r))
 			end
 		end
 		
@@ -196,6 +196,9 @@ function SelectionModeDialog:CancelMultiselection()
 end
 
 function SelectionModeDialog:OnMouseButtonDoubleClick(pt, button)
+	local result = UnitDirectionModeDialog.OnMouseButtonDoubleClick(self, pt, button)
+	if result == "break" then return result end
+	
 	if button == "L" then
 		local obj = SelectionMouseObj()
 		if obj and SelectedObj == obj and IsKindOf(obj, "SupplyGridSwitch") and obj.is_switch then
@@ -214,7 +217,7 @@ function SelectionModeDialog:OnMouseButtonDoubleClick(pt, button)
 		SelectObj(obj)
 		return "break"
 	elseif button == "R" then
-		local result = UnitDirectionModeDialog.OnMouseButtonDown(self, pt, button)
+		result = UnitDirectionModeDialog.OnMouseButtonDown(self, pt, button)
 		if result == "break" then return "break" end
 		
 		if g_RightClickOpensBuildMenu then

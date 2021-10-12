@@ -1,9 +1,5 @@
-function SupplyRocket:WaitingRefurbish()
-	WaitWakeup()
-end
-
 DefineClass.RocketExpedition = {
-	__parents = { "SupplyRocket" },
+	__parents = { "SupplyRocket", "CargoTransporter" },
 	properties = {
 		{id = "TradeAmount", name = T(504954621520, "Export Amount"), editor = "number", default = const.MaxTradeAmount*const.ResourceScale, min=const.MinTradeAmount*const.ResourceScale, max=const.MaxTradeAmount*const.ResourceScale, scale=const.ResourceScale, step=5*const.ResourceScale},
 		{id = "ExpeditionTime", name = T(11221, "Expedition Time (hrs)"), editor = "number", default = 6 * const.HourDuration, min = 0, scale = const.HourDuration },
@@ -69,7 +65,7 @@ end
 
 function RocketExpedition:OnDemolish()
 	ClearDestroyedExpeditionRocketSpot(self)
-	SupplyRocket.OnDemolish(self)
+	RocketBase.OnDemolish(self)
 end
 
 function RocketExpedition:GetIPDescription()
@@ -80,7 +76,7 @@ function RocketExpedition:GetIPDescription()
 end
 
 function RocketExpedition:CreateGetters()
-local resources = table.copy(self.storable_resources)
+	local resources = table.copy(self.storable_resources)
 	resources [#resources + 1 ] =  "Fuel"
 	resources [#resources + 1 ] =  "Seeds"
 	for _, res in ipairs(resources) do
@@ -133,7 +129,7 @@ function RocketExpedition:BeginExpedition(rocket, spot)
 	elseif	 spot.spot_type=="project" then
 		local funding = spot.funding 
 		if funding and funding>0 then
-			rocket.city:ChangeFunding(-funding, "special project")
+			UIColony.funds:ChangeFunding(-funding, "special project")
 		end
 		self:__InternalExpeditionBegin(rocket, {
 			export = spot:GetRocketExpeditionResources(),
@@ -322,6 +318,12 @@ function RocketExpedition:RefurbishRocket(orig_rocket, target_rocket, connect_cc
 			assert(false, "unexpected resource: " .. res)
 		end
 	end
+	
+	target_rocket.cargo = orig_rocket.cargo
+
+	-- transfer passengers to get an award for sending tourists if they are among them
+	target_rocket.departures = orig_rocket.departures
+	target_rocket.boarded = orig_rocket.boarded
 		
 	orig_rocket:ClearAllResources() -- so it doesn't leave them in stockpiles when deleted	
 	
@@ -375,19 +377,19 @@ end
 
 function RocketExpedition:UIStatusLanded(template)
 	local pin_rollover = self.pin_rollover
-	SupplyRocket.UIStatusLanded(self, template)
+	RocketBase.UIStatusLanded(self, template)
 	self.pin_rollover = pin_rollover
 end
 
 function RocketExpedition:UIStatusRefueling(template)
 	local pin_rollover = self.pin_rollover
-	SupplyRocket.UIStatusRefueling(self, template)
+	RocketBase.UIStatusRefueling(self, template)
 	self.pin_rollover = pin_rollover
 end
 
 function RocketExpedition:UIStatusMaintenance(template)
 	local pin_rollover = self.pin_rollover
-	SupplyRocket.UIStatusMaintenance(self, template)
+	RocketBase.UIStatusMaintenance(self, template)
 	self.pin_rollover = pin_rollover
 end
 
@@ -405,13 +407,13 @@ end
 
 function RocketExpedition:UIStatusLaunchSuspended(template)
 	local pin_rollover = self.pin_rollover
-	SupplyRocket.UIStatusLaunchSuspended(self, template)
+	RocketBase.UIStatusLaunchSuspended(self, template)
 	self.pin_rollover = pin_rollover
 end
 
 function RocketExpedition:UIStatusCountdown(template)
 	local pin_rollover = self.pin_rollover
-	SupplyRocket.UIStatusCountdown(self, template)
+	RocketBase.UIStatusCountdown(self, template)
 	self.pin_rollover = pin_rollover
 end
 
@@ -485,165 +487,29 @@ function RocketExpedition:ExpeditionRefuelAndLoad() -- handle fuel and resources
 	self:SetCommand(self.expedition.route_id and "Takeoff" or "ExpeditionPrepare")
 end
 
-function RocketExpedition:ExpeditionLoadRover(class)
-	local rover
-	while not self.expedition.rover do
-		local list = MapGet("map", class, function(o, class) return o.class == class end, class) or empty_table
-		local dist
-		for _, unit in ipairs(list) do
-			if unit:CanBeControlled() and unit.command == "Idle" then
-				local d = self:GetDist2D(unit)
-				if not dist or d < dist then
-					rover, dist = unit, d
-				end
-			end
-		end
-		
-		if rover then
-			self.rover_summon_fail = nil
-			ObjModified(self)
-			
-			if rover == SelectedObj then
-				SelectObj()
-			end			
-			self.expedition.rover = rover
-			rover:SetHolder(self)
-			rover:SetCommand("Disappear", "keep in holder")
-		else
-			self.rover_summon_fail = true
-			ObjModified(self)
-			Sleep(1000)
-		end			
+local function CreateManifestForExpedition(expedition)
+	local manifest = CargoTransporter.CreateEmptyManifest()
+	
+	if expedition.rover_type then
+		manifest.rovers[expedition.rover_type] = 1
 	end
-	ObjModified(self)
+	
+	manifest.drones = expedition.num_drones or 0
+	
+	if expedition.num_crew then
+		local crew_specialization = expedition.crew_specialization or "Colonist"
+		manifest.passengers[crew_specialization] = expedition.num_crew
+	end
+	
+	return manifest
 end
 
-function RocketExpedition:ExpeditionPickDroneFrom(controller, picked)
-	local drone
-	for _, d in ipairs(controller.drones or empty_table) do
-		if d:CanBeControlled() and not table.find(picked, d) then
-			if not drone or drone.command ~= "Idle" and d.command == "Idle" then -- prefer idling drones
-				drone = d
-			end
-		end
-	end
-	return drone
-end
-
-function RocketExpedition:ExpeditionLoadDrones(num_drones)
-	while true do
-		-- wait to have enough drones
-		local drones = {}
-		
-		-- prefer own drones first
-		while #drones < num_drones and #(self.drones or empty_table) > 0 do
-			local drone = self:ExpeditionPickDroneFrom(self, drones)
-			if not drone then
-				break
-			end
-			table.insert(drones, drone)
-		end
-		
-		-- pick from other drone controllers
-		local list = table.copy(UICity.labels.DroneControl or empty_table)
-		local idx = 1
-		while #drones < num_drones and #list > 0 do
-			local drone = self:ExpeditionPickDroneFrom(list[idx], drones)
-			if drone then
-				table.insert(drones, drone)
-				idx = idx + 1
-			else
-				table.remove(list, idx)
-			end			
-			if idx > #list then
-				idx = 1
-			end
-		end
-		
-		self.drone_summon_fail = #drones < num_drones
-		ObjModified(self)
-		if #drones >= num_drones then
-			for _, drone in ipairs(drones) do
-				if drone == SelectedObj then
-					SelectObj()
-				end
-				drone:SetCommandCenter(false, "do not orphan!")
-				drone:SetHolder(self)
-				drone:SetCommand("Disappear", "keep in holder")						
-			end
-			self.expedition.drones = drones
-			break
-		else
-			Sleep(1000)
-		end
-	end
-end
-
-function RocketExpedition:ExpeditionGatherCrew(num_crew, label)
-	label = label or "Colonist"
-	while true do	
-		local adult_filter = function(i, col) return not col.traits.Child end
-		local list = self.city.labels[label] and table.ifilter(self.city.labels[label], adult_filter) or empty_table
-		
-		
-		self.colonist_summon_fail = #list < num_crew
-		ObjModified(self)
-		
-		if #list >= num_crew then
-			self.expedition.crew = {}
-			while #self.expedition.crew < num_crew do
-				local unit = table.rand(list, InteractionRand("PickCrew"))
-				table.remove_value(list, unit)
-				table.insert(self.expedition.crew, unit)
-				if unit == SelectedObj then
-					SelectObj()
-				end
-				unit:SetHolder(self)
-				unit:SetCommand("Disappear", "keep in holder")			
-			end			
-			break
-		else
-			Sleep(1000)
-		end		
-	end
-end
-
-function RocketExpedition:ExpeditionPrepare()	-- gather mechs and crew
-	assert(self.expedition)
-	self:PushDestructor(function(self)
-		while #self.boarding > 0 do
-			Sleep(1000)
-		end
-		
-		self.departures = nil
-		self.boarding = nil
-	end, self)
-	
-	self.boarding = {}
-	self.departures = {}
-	-- load vehicles
-	
-	-- pick the nearest rover of the specified type (if any)
-	if self.expedition.rover_type then
-		self:ExpeditionLoadRover(self.expedition.rover_type)
-	end
-	
-	-- pick the required number of drones uniformly from hubs in range
-	if (self.expedition.num_drones or 0) > 0 then
-		self:ExpeditionLoadDrones(self.expedition.num_drones)
-	end	
-	
-	-- wait to have enough potential crew, set command, wait them to board
-	if self.expedition.num_crew then
-		self:ExpeditionGatherCrew(self.expedition.num_crew, self.expedition.crew_specialization)
-	end
-	
-	-- recheck launch issues
-	while true do
-		local issue = self:GetLaunchIssue("skip flight ban")
-		if not issue then break end
-		Sleep(1000)
-	end
+function RocketExpedition:ExpeditionPrepare()
+	local manifest = CreateManifestForExpedition(self.expedition)
+	local rovers, drones, crew = CargoTransporter.Load(self, manifest)
+	self.expedition.rovers = rovers
+	self.expedition.drones = drones
+	self.expedition.crew = crew
 			
 	-- proceed to launch
 	self:SetCommand("Takeoff")
@@ -675,13 +541,17 @@ function RocketExpedition:Takeoff()
 	if not self.auto_export then
 		self:ClearEnumFlags(const.efSelectable)
 	end
+
+	if not self.expedition.canceled then
+		self:ApplyTouristRewards()
+	end
 	
 	self.bonus_sleep_time = false
 	self.total_pause_time = false
 	
 	self:AbandonAllDrones()
 	self:ResetFuelDemandRequests()
-
+	
 	self:SetIsNightLightPossible(false)
 	--@@@msg RocketLaunched,rocket - fired when a rocket takes off from Mars
 	Msg("RocketLaunched", self)
@@ -715,7 +585,7 @@ function RocketExpedition:Takeoff()
 	else
 		self.reserved_site = true
 		if not IsValid(self.site_particle) then
-			self.site_particle = PlaceParticles("Rocket_Pos")
+			self.site_particle = PlaceParticlesIn("Rocket_Pos", self:GetMapID())
 			self.site_particle:SetPos(pt)
 			self.site_particle:SetScale(200)
 		end
@@ -869,7 +739,7 @@ function RocketExpedition:ExpeditionExecute()
 		self:ExpeditionSleep(self.ReturnTime + bonus_time, true) -- + pause (in loop)
 		self:SetCommand("WaitInOrbit")
 	end
-	
+
 	-- get rewards, dump resources, etc.
 	if self.expedition.route_id then
 		local route = self.expedition.route
@@ -879,10 +749,10 @@ function RocketExpedition:ExpeditionExecute()
 		for r, _ in pairs(self.expedition.export) do
 			local amount = MulDivRound(self.TradeAmount, qty, const.ResourceScale)
 			if res == "Research" then
-				self.city:AddResearchPoints(amount)
+				self.city.colony:AddResearchPoints(amount)
 			elseif ai then
 				if res == "funding" then
-					self.city:ChangeFunding(amount, "trade")
+					UIColony.funds:ChangeFunding(amount, "trade")
 					ai.resources.funding = ai.resources.funding - DivRound(amount, const.Scale.mil)
 				elseif table.find(self.storable_resources, res) then
 					self:AddResource(amount, res)
@@ -1022,18 +892,17 @@ function RocketExpedition:Unload(cancel_expedition)
 		Sleep(100)
 	end
 	if self.expedition then
-		if self.expedition.rover then
+		for _, rover in ipairs(self.expedition.rovers or empty_table) do
 			-- play disembark anim for rover & leave it alone
-			local rover = self.expedition.rover
-
 			local out = self:GetSpotPos(self:GetSpotBeginIndex("Roverout"))
 			local angle = self:GetAngle()
 			local def_out_1 = out + SetLen((out - self:GetPos()):SetZ(0), 25*guim)
 
 			self.placement = self.placement or {}
-			local out_1 = GetPassablePointNearby(def_out_1, rover.pfclass)
+			local realm = GetRealm(self)
+			local out_1 = realm:GetPassablePointNearby(def_out_1, rover.pfclass)
 			out_1 = self:PlaceAdjacent(rover, out_1 or def_out_1)
-			out = GetPassablePointNearby(out, rover.pfclass) or out
+			out = realm:GetPassablePointNearby(out, rover.pfclass) or out
 			rover:Appear()
 			Sleep(1)
 			if not IsValid(self) then return end
@@ -1052,7 +921,7 @@ function RocketExpedition:Unload(cancel_expedition)
 			rover:SetHolder(false)
 			rover:SetCommand("Idle")
 		end
-		self.expedition.rover = nil
+		self.expedition.rovers = {}
 	
 		if #(self.expedition.drones or "") > 0 and not self.waypoint_chains then
 			WaypointsObj.BuildWaypointChains(self)
@@ -1097,27 +966,9 @@ function RocketExpedition:Unload(cancel_expedition)
 		end
 		self.expedition.drones = nil
 	
-		local domes, safety_dome = GetDomesInWalkableDistance(self.city, self:GetPos())
 		local crew = self.expedition.crew or empty_table
-		for i = #crew, 1, -1 do
-			-- disembark colonists & leave them to their affairs
-			local unit = crew[i]
-			unit:Appear(self)
-			unit:SetCommand("ReturnFromExpedition", self, ChooseDome(unit.traits, domes, safety_dome))
-			-- sleep to avoid all colonists disembarking at once
-			Sleep(1000 + Random(0, 500))
-		end
-		
-		-- wait for colonists to finish disembarking
-		while #(self.expedition.crew or empty_table) > 0 do
-			for i = #crew, 1, -1 do
-				local unit = crew[i]
-				if unit.command~="ReturnFromExpedition" then
-					table.remove_value(self.expedition.crew, unit)
-				end
-			end
-			Sleep(1000)
-		end
+		self:Disembark(crew)
+		self:WaitToFinishDisembarking(crew)
 		self.expedition.crew = nil
 	end
 	if not cancel_expedition then
@@ -1132,7 +983,7 @@ function RocketExpedition:Unload(cancel_expedition)
 		end
 	end
 		
-	local rocket = PlaceBuilding(GetRocketClass(), {city = self.city})
+	local rocket = PlaceBuildingIn(GetRocketClass(), self:GetMapID())
 	Sleep(1) -- allow GameInit because RefurbishRocket is called in our command thread (immediately)
 	self:RefurbishRocket(self, rocket, true)
 	rocket:SetCommand("Refuel", "initialized")
@@ -1168,7 +1019,7 @@ function RocketExpedition:OnPinClicked(gamepad)
 	if self.command == "ExpeditionExecute" then
 		return true
 	end
-	return SupplyRocket.OnPinClicked(self, gamepad)
+	return RocketBase.OnPinClicked(self, gamepad)
 end
 
 function RocketExpedition:ToggleAllowExport(broadcast)
@@ -1288,7 +1139,7 @@ function RocketExpedition:GetUIWarning()
 		return
 	end
 	
-	if g_DustStorm then
+	if HasDustStorm(self:GetMapID()) then
 		return T(12045, "Mission suspended due to Dust Storm.")
 	elseif self.rover_summon_fail then
 		return T(11471, "No free rover")

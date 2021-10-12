@@ -34,14 +34,13 @@ PlaceObj('XTemplate', {
 			'Margins', box(40, 0, 0, 0),
 			'Dock', "left",
 			'VAlign', "center",
+			'FoldWhenHidden', true,
 			'TextStyle', "PGResource",
 			'Translate', true,
 		}),
 		PlaceObj('XTemplateFunc', {
 			'name', "OnPropUpdate(self, context, prop_meta, value)",
 			'func', function (self, context, prop_meta, value)
-				local obj = ResolvePropObj(context)
-				local image = obj:GetThreatResourceImage(prop_meta)
 				local text = ""
 				local hide_image = false
 				if NoThreats(prop_meta.id) then
@@ -57,6 +56,9 @@ PlaceObj('XTemplate', {
 					self.idTextValue:SetText(text)
 					self.idTextValue:SetVisible(true)
 				else
+					local obj = ResolvePropObj(context)
+					local spot = obj:GetProperty("selected_spot") or obj:GetProperty("target_spot")
+					local image = obj:GetThreatResourceImage(prop_meta, spot and GameState.gameplay)
 					self.idImage:SetImage(image)
 					self.idImage:SetVisible(true)
 					self.idTextValue:SetVisible(false)

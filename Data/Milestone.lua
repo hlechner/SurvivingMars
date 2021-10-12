@@ -38,9 +38,13 @@ end,
 
 PlaceObj('Milestone', {
 	Complete = function (self)
-if MapCount("map", "SubsurfaceDeposit", function(o) return o.revealed and o.resource == "Water" end ) > 0 then return true end
-WaitMsg("WaterDepositRevealed")
-return true
+if GetRealmByID(MainMapID):MapCount("map", "SubsurfaceDeposit", function(o) return o.revealed and o.resource == "Water" end ) > 0 then return true end
+	while true do
+		local ok, deposit = WaitMsg("WaterDepositRevealed")
+		if deposit:GetMapID() == MainMapID then
+			return true
+		end
+	end
 end,
 	SortKey = 3000,
 	base_score = 100,

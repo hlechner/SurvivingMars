@@ -9,7 +9,7 @@ PlaceObj('XTemplate', {
 	}, {
 		PlaceObj('XTemplateTemplate', {
 			'comment', "salvage",
-			'__condition', function (parent, context) return UICity.mystery.can_destroy_diggers end,
+			'__condition', function (parent, context) return UIColony.mystery.can_destroy_diggers end,
 			'__template', "InfopanelButton",
 			'OnContextUpdate', function (self, context, ...)
 				if context.is_being_destroyed then

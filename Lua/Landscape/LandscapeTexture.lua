@@ -1,14 +1,3 @@
-GlobalVar("CityLandscapeTexture", {})
-
-function GetLandscapeTextureController()
-	local obj = CityLandscapeTexture[UICity]
-	if not obj then
-		obj = LandscapeTextureController:new()
-		CityLandscapeTexture[UICity] = obj
-	end
-	return obj
-end
-
 DefineClass.LandscapeTextureBuilding = {
 	__parents = { "LandscapeBuilding" },
 	properties = {
@@ -39,7 +28,7 @@ DefineClass.LandscapeTextureController = {
 
 function LandscapeTextureController:Mark(test)
 	LandscapeMarkCancel()
-	local marked = LandscapeMarkTexture(self.last_pos, self.last_undo_pos, self.brush_radius, test)
+	local marked = LandscapeMarkTexture(self:GetMapID(), self.last_pos, self.last_undo_pos, self.brush_radius, test)
 	local success = self:ValidateMark(true)
 	local ready = success and self.last_undo_pos and not IsPlacingMultipleConstructions()
 	return success, ready
@@ -82,10 +71,10 @@ end
 
 function LandscapeTextureController:IsMarkSuitable(pt)
 	pt = pt or self.last_pos
-	return IsInMapPlayableArea(pt)
+	return IsInMapPlayableArea(self:GetMapID(), pt)
 end
 
-function LandscapeMarkTexture(pt1, pt0, radius, test)
+function LandscapeMarkTexture(map_id, pt1, pt0, radius, test)
 	local landscape = Landscapes[LandscapeMark]
 	if not landscape then
 		return
@@ -94,13 +83,15 @@ function LandscapeMarkTexture(pt1, pt0, radius, test)
 		test = true
 		pt0 = pt1
 	end
+	local game_map = GameMaps[map_id]
 	local primes, bbox = Landscape_MarkLine{
+		map_id = map_id,
 		mark = LandscapeMark, 
 		pos0 = pt0, 
 		pos1 = pt1, 
 		radius = radius, 
-		landscape_grid = LandscapeGrid,
-		object_grid = ObjectGrid,
+		landscape_grid = game_map.landscape_grid,
+		object_hex_grid = game_map.object_hex_grid.grid,
 		test = test,
 	}
 	if not primes then

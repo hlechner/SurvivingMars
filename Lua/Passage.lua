@@ -1,11 +1,11 @@
 local TunnelMask = 32768
 
-function HexGetPassageGridElement(q, r)
-	return HexGridGetObject(ObjectGrid, q, r, "PassageGridElement")
+function HexGetPassageGridElement(object_hex_grid, q, r)
+	return object_hex_grid:GetObject(q, r, "PassageGridElement")
 end
 
-function HexGetPassageRamp(q, r)
-	return HexGridGetObject(ObjectGrid, q, r, "PassageRamp") or HexGridGetObject(ObjectGrid, q, r, "ConstructionSite", nil, function(o) return IsKindOf(o.building_class_proto, "PassageRamp") end)
+function HexGetPassageRamp(object_hex_grid, q, r)
+	return object_hex_grid:GetObject(q, r, "PassageRamp") or object_hex_grid:GetObject(q, r, "ConstructionSite", nil, function(o) return IsKindOf(o.building_class_proto, "PassageRamp") end)
 end
 
 local passage_entities = {
@@ -187,21 +187,22 @@ function IsPassageElementATurn(element)
 	return false
 end
 
-function IsSolidPassageElement(self)
-	return self.dome or self.adjacent_dome or HexGetPassageRamp(self.q, self.r)
+function IsSolidPassageElement(element, map_id)
+	local game_map = GetGameMapByID(map_id or MainMapID)
+	return element.dome or element.adjacent_dome or HexGetPassageRamp(game_map.object_hex_grid, element.q, element.r)
 end
 
-function GetPassageEntityAndPalette(self, skin)
+function GetPassageEntityAndPalette(element, skin, map_id)
 	--should be safe to call with cell data rather then obj
-	local t = not OpenAirBuildings and passage_entities or passage_entities_open
+	local t = not GetOpenAirBuildings(map_id) and passage_entities or passage_entities_open
 	skin = skin or "default"
 	skin = t[skin] and skin or 
 			passage_skin_aliasing[skin] and t[passage_skin_aliasing[skin]] and passage_skin_aliasing[skin] or
 			"GenericPassageSkinName1"
-	local k1 = IsSolidPassageElement(self) and "inside_dome" or "outside_dome"
+	local k1 = IsSolidPassageElement(element, map_id) and "inside_dome" or "outside_dome"
 	local k2 = "entrance"
-	if #self.connections >= 2 then
-		local is_str = IsPassageElementATurn(self)
+	if #element.connections >= 2 then
+		local is_str = IsPassageElementATurn(element)
 		k2 = is_str and "straight" or "turn"
 	end
 	
@@ -238,9 +239,9 @@ function GetPassageAngle(self)
 	return CalcOrientation(p, point(HexToWorld(self.q, self.r)))
 end
 
-function TestDomeBuildabilityForPassage(q, r, check_edge, check_road)
+function TestDomeBuildabilityForPassage(object_hex_grid, q, r, check_edge, check_road)
 	--check if on the edge
-	local dome = HexGridGetObject(ObjectGrid, q, r, "Dome")
+	local dome = object_hex_grid:GetObject(q, r, "Dome")
 	if check_edge then
 		if dome then
 			return false, "dome"
@@ -248,7 +249,7 @@ function TestDomeBuildabilityForPassage(q, r, check_edge, check_road)
 	end
 	
 	if not dome then
-		dome = HexGridGetObject(ObjectGrid, q, r, "DomeInterior")
+		dome = object_hex_grid:GetObject(q, r, "DomeInterior")
 		if dome then
 			dome = dome.dome
 			assert(dome) --dome interior with no dome.
@@ -335,7 +336,7 @@ DefineClass.PassageGridElement = {
 }
 
 function PassageGridElement:CanFracture()
-	return not IsSolidPassageElement(self) and #self.passage_obj.elements_under_construction <= 0
+	return not IsSolidPassageElement(self, self:GetMapID()) and #self.passage_obj.elements_under_construction <= 0
 end
 
 function PassageGridElement:RequestFractureRepairResources()
@@ -516,7 +517,8 @@ function PassageGridElement:Done()
 	end
 	
 	if not self.is_construction_site or not self.is_construction_complete then
-		local ramp = HexGetPassageRamp(self.q, self.r)
+		local object_hex_grid = GetObjectHexGrid(self)
+		local ramp = HexGetPassageRamp(object_hex_grid, self.q, self.r)
 		if ramp then
 			ramp:ReturnResources()
 			DoneObject(ramp)
@@ -560,14 +562,15 @@ function PassageGridElement:GameInit()
 end
 
 function PassageGridElement:UpdateVisuals()
-	local e, cm1, cm2, cm3, cm4 = GetPassageEntityAndPalette(self, self.passage_obj.skin_id)
+	local e, cm1, cm2, cm3, cm4 = GetPassageEntityAndPalette(self, self.passage_obj.skin_id, self:GetMapID())
 	if e and e ~= self:GetEntity() then
 		self:DestroyAttaches()
 		self:ChangeEntity(e)
 		AutoAttachObjects(self)
 		
 		--non transparent pieces under ramps should not have curtain auto att
-		if e == "PassageCovered" and HexGetPassageRamp(self.q, self.r) then
+		local object_hex_grid = GetObjectHexGrid(self)
+		if e == "PassageCovered" and HexGetPassageRamp(object_hex_grid, self.q, self.r) then
 			self:DestroyAttaches("PassageCurtain")
 		end
 	end
@@ -703,7 +706,7 @@ function Passage:AddFracture(element, meteor_pos)
 	self.fractures = self.fractures or {}
 	
 	local p, dir, norm, attach_offset = element:GetFracturePos(meteor_pos)
-	local f = PlaceObject("PassageFracture", {element = element, dir = dir, normal = norm}, const.cofComponentAttach)
+	local f = PlaceObjectIn("PassageFracture", self:GetMapID(), {element = element, dir = dir, normal = norm}, const.cofComponentAttach)
 	element:RequestFractureRepairResources()
 	element:Attach(f)
 	f:SetAttachOffset(attach_offset)
@@ -714,7 +717,7 @@ function Passage:AddFracture(element, meteor_pos)
 		self:VisualizeOxygenLeak(true)
 	end
 	
-	table.insert_unique(g_DomesWithFractures, self)
+	RequestNewObjsNotif(g_DomesWithFractures, self, self:GetMapID())
 end
 
 function Passage:SetSupply(resource, amount)
@@ -746,7 +749,7 @@ function Passage:RepairFracture(element)
 	local f_c = #self.fractures
 	self.air:SetConsumption(f_c * const.ResourceScale, true)
 	if f_c <= 0 then
-		table.remove_entry(g_DomesWithFractures, self)
+		DiscardNewObjsNotif(g_DomesWithFractures, self, self:GetMapID())
 	end
 end
 
@@ -771,9 +774,10 @@ end
 function Passage:FindSupplyTunnelNodes()
 	if self.supply_tunnel_nodes ~= false then return false end
 	local find_dome_edge = function(self, is, ie, s)
+		local object_hex_grid = GetObjectHexGrid(self)
 		for i = is, ie, s do
 			local e = self.elements[i]
-			if HexGetDomeExterior(e.q, e.r) then
+			if HexGetDomeExterior(object_hex_grid, e.q, e.r) then
 				return i - s
 			end
 		end
@@ -810,6 +814,8 @@ function Passage:BuildShapeData()
 	local o_q, o_r = WorldToHex(self)
 	local first = true
 	
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+
 	for i = 1, #self.supply_tunnel_nodes do
 		local e = self.elements[self.supply_tunnel_nodes[i]]
 		local q, r = e.q, e.r
@@ -821,21 +827,21 @@ function Passage:BuildShapeData()
 		table.insert(sc, shift(1, dir + 8) + 128) --potential (+8), connector (+128)
 		
 		--hack dome tile, introduce water potential towards us
-		local conn = HexGridGet(SupplyGridConnections.water, other)
+		local conn = HexGridGet(supply_connection_grid.water, other)
 		dir = HexGetDirection(other.q, other.r, q, r)
 		local mask = shift(1, dir + 8)
-		HexGridSet(SupplyGridConnections.water, other, bor(conn, mask))
+		HexGridSet(supply_connection_grid.water, other, bor(conn, mask))
 		self.hacked_potentials = self.hacked_potentials or {}
 		table.insert(self.hacked_potentials, {other.q, other.r, mask})
 	end
 end
 
-
-local function ApplyRemoveSupppyTunnelMaskHelper(pos, op)
-	local conn = HexGridGet(SupplyGridConnections.electricity, pos)
-	HexGridSet(SupplyGridConnections.electricity, pos, op(conn, TunnelMask))
-	conn = HexGridGet(SupplyGridConnections.water, pos)
-	HexGridSet(SupplyGridConnections.water, pos, op(conn, TunnelMask))
+function Passage:ApplyRemoveSupplyTunnelMask(pos, op)
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid.electricity, pos)
+	HexGridSet(supply_connection_grid.electricity, pos, op(conn, TunnelMask))
+	conn = HexGridGet(supply_connection_grid.water, pos)
+	HexGridSet(supply_connection_grid.water, pos, op(conn, TunnelMask))
 end
 
 function Passage:AddSupplyTunnel()
@@ -851,8 +857,8 @@ function Passage:AddSupplyTunnel()
 	rawset(e2, "electricity", self.electricity)
 	rawset(e2, "water", self.water)
 	
-	ApplyRemoveSupppyTunnelMaskHelper(p1, bor)
-	ApplyRemoveSupppyTunnelMaskHelper(p2, bor)
+	self:ApplyRemoveSupplyTunnelMask(p1, bor)
+	self:ApplyRemoveSupplyTunnelMask(p2, bor)
 	
 	SetTunnelAdjacency(p1, p2)
 	SetTunnelAdjacency(p2, p1)
@@ -866,9 +872,9 @@ function Passage:RemoveSupplyTunnel()
 	local f = function(conn, mask) return band(conn, bnot(mask)) end
 	local q, r = WorldToHex(self:GetPos())
 	local p1 = point(q + self.shape_points[1]:x(), r + self.shape_points[1]:y())
-	ApplyRemoveSupppyTunnelMaskHelper(p1, f)
+	self:ApplyRemoveSupplyTunnelMask(p1, f)
 	local p2 = point(q + self.shape_points[2]:x(), r + self.shape_points[2]:y())
-	ApplyRemoveSupppyTunnelMaskHelper(p2, f)
+	self:ApplyRemoveSupplyTunnelMask(p2, f)
 	
 	SetTunnelAdjacency(p1, nil)
 	SetTunnelAdjacency(p2, nil)
@@ -889,7 +895,7 @@ end
 function Passage:OnSetDemolishing(val)
 	if self.demolishing then
 		local att_rot_thing = function(o)
-			local lamp = PlaceObject("RotatyThing")
+			local lamp = PlaceObjectIn("RotatyThing", self:GetMapID())
 			o:Attach(lamp)
 			lamp:SetAttachOffset(MulDivRound(axis_z, 10 * guim, 4096))
 		end
@@ -918,7 +924,8 @@ function Passage:OnDemolish()
 		WaitWakeup(9999999999)
 	end
 	
-	SuspendPassEdits("Passage:OnDemolish")
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("Passage:OnDemolish")
 	for i = #self.elements, 1, -1 do
 		local e = self.elements[i]
 		if e.construction_cost_at_completion then
@@ -926,7 +933,7 @@ function Passage:OnDemolish()
 		end
 		DoneObject(self.elements[i])
 	end
-	ResumePassEdits("Passage:OnDemolish")
+	realm:ResumePassEdits("Passage:OnDemolish")
 end
 
 function Passage:GetUIWarning()
@@ -1134,11 +1141,12 @@ function Passage:Done()
 end
 
 function Passage:CleanHackedPotentials()
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
 	for i = 1, #(self.hacked_potentials or "") do
 		local t = self.hacked_potentials[i]
 		local q, r, m = t[1], t[2], t[3]
-		local conn = HexGridGet(SupplyGridConnections.water, q, r)
-		HexGridSet(SupplyGridConnections.water, q, r, band(conn, bnot(m)))
+		local conn = HexGridGet(supply_connection_grid.water, q, r)
+		HexGridSet(supply_connection_grid.water, q, r, band(conn, bnot(m)))
 	end
 	self.hacked_potentials = false
 end
@@ -1190,13 +1198,14 @@ function Passage:RebuildIndexes()
 	local counter = 1
 	first.node_idx = counter
 	fill_sn(self, sn, current)
-	
+	local object_hex_grid = GetObjectHexGrid(self)
+
 	while true do
 		local t = current.connections[1]
-		local idx = HexGetPassageGridElement(t.q, t.r) == last and 2 or 1
+		local idx = HexGetPassageGridElement(object_hex_grid, t.q, t.r) == last and 2 or 1
 		last = current
 		current = current.connections[idx]
-		current = HexGetPassageGridElement(current.q, current.r)
+		current = HexGetPassageGridElement(object_hex_grid, current.q, current.r)
 		table.insert(new_elements, current)
 		counter = counter + 1
 		current.node_idx = counter
@@ -1233,7 +1242,7 @@ function Passage:TryConnectDomes()
 		if IsGameRuleActive("FreeConstruction") then
 			local lead_element = self.elements[1]
 			lead_element.construction_cost_at_completion = {}
-			lead_element.construction_cost_at_completion["Concrete"] = #self.elements * self.city:GetConstructionCost(lead_element, "Concrete")
+			lead_element.construction_cost_at_completion["Concrete"] = #self.elements * UIColony.construction_cost:GetConstructionCost(lead_element, "Concrete")
 		end
 	end	
 	
@@ -1249,8 +1258,9 @@ function Passage:TryConnectDomes()
 	d2:KillAttachesCollidingWithPassages()
 end
 
-local function FixPt(pt)
-	return not terrain.IsPassable(pt) and GetPassablePointNearby(pt) or pt
+local function FixPt(terrain, map_id, pt)
+	local realm = GetRealmByID(map_id)
+	return not terrain:IsPassable(pt) and realm:GetPassablePointNearby(pt) or pt
 end
 
 function Passage:AddPFTunnel()
@@ -1277,14 +1287,16 @@ function Passage:AddPFTunnel()
 		return
 	end
 	
-	local t1_start = FixPt(e1_wpc[1][2])
-	local t2_start = FixPt(elast_wpc[1][2])
-	local t1_exit = FixPt(elast_wpc[2][1])
-	local t2_exit = FixPt(e1_wpc[2][1])
-	assert(terrain.IsPassable(t1_start)
-			and terrain.IsPassable(t2_start)
-			and terrain.IsPassable(t1_exit)
-			and terrain.IsPassable(t2_exit))
+	local map_id = self:GetMapID()
+	local terrain = GetTerrainByID(map_id)
+	local t1_start = FixPt(terrain, map_id, e1_wpc[1][2])
+	local t2_start = FixPt(terrain, map_id, elast_wpc[1][2])
+	local t1_exit = FixPt(terrain, map_id, elast_wpc[2][1])
+	local t2_exit = FixPt(terrain, map_id, e1_wpc[2][1])
+	assert(terrain:IsPassable(t1_start)
+			and terrain:IsPassable(t2_start)
+			and terrain:IsPassable(t1_exit)
+			and terrain:IsPassable(t2_exit))
 	--register passage exits and entrances
 	local pe2 = elast_d.passage_entrances[e1_d] or {}
 	elast_d.passage_entrances[e1_d] = pe2
@@ -1301,7 +1313,7 @@ function Passage:AddPFTunnel()
 	table.insert_unique(pe1, t2_exit)
 	
 	local distance = 1 * guim -- passages are considered very short
-	local weight = distance * pathfind[1].terrain / terrain.RoadTileSize()
+	local weight = distance * pathfind[1].terrain / const.TerrainRoadTileSize
 	
 	pf.AddTunnel(self.elements[1], t1_start, t1_exit, weight, 2, 0)
 	self.elements[1].is_pf_tunnel = elast_d
@@ -1371,9 +1383,9 @@ function Passage:GetSkins()
 	local skins, palettes = {}, {}
 	
 	if #self.elements_under_construction <= 0 then
-		local t = not OpenAirBuildings and passage_entities or passage_entities_open
+		local t = not GetOpenAirBuildings(self:GetMapID()) and passage_entities or passage_entities_open
 		for skin, skin_data in pairs(t) do
-			if IsDlcAvailable(skin_data.dlc) then
+			if IsDlcAccessible(skin_data.dlc) then
 				table.insert(skins, skin)
 				table.insert(palettes, skin.palette or default_passage_palette)
 			end
@@ -1397,8 +1409,10 @@ function Passage:ChangeSkin(skin, palette)
 	self:UpdateVisualsForAllElements(0)
 end
 
-function OnMsg.OpenAirBuildings()
-	MapForEach("map", "Passage", Passage.UpdateVisualsForAllElements, 10000, 20000)
+function OnMsg.OpenAirBuildings(open, map_id)
+	map_id = map_id or MainMapID
+	local realm = GetRealmByID(map_id)
+	realm:MapForEach("map", "Passage", Passage.UpdateVisualsForAllElements, 10000, 20000)
 end
 
 function Passage:ApplyToGrids()
@@ -1419,14 +1433,14 @@ end
 
 --[[function Passage:CalcRefundAmount(amount)
 	if IsGameRuleActive("FreeConstruction") then
-		return #self.elements * self.city.GetConstructionCost("PassageGridElement", "Concrete")
+		return #self.elements * UIColony.construction_cost:GetConstructionCost("PassageGridElement", "Concrete")
 	end
 	return Building.CalcRefundAmount(amount)
 end
 
 function Passage:GetRefundResources()
 	if IsGameRuleActive("FreeConstruction") then
-		return #self.elements * self.city.GetConstructionCost("PassageGridElement", "Concrete")
+		return #self.elements * UIColony.construction_cost:GetConstructionCost("PassageGridElement", "Concrete")
 	end
 	return Building.GetRefundResources(amount)
 end]]
@@ -1464,7 +1478,8 @@ DefineClass.PassageRamp = {
 }
 
 function PassageRamp:GetPassageGridElement()
-	local p = HexGetPassageGridElement(WorldToHex(self))
+	local object_hex_grid = GetObjectHexGrid(self)
+	local p = HexGetPassageGridElement(object_hex_grid, WorldToHex(self))
 	assert(p) --something went wrong during construction and ramp is not on top of passage
 	return p
 end
@@ -1490,7 +1505,7 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 		if input_constr_grp then
 			construction_group = input_constr_grp
 		else
-			construction_group = CreateConstructionGroup("PassageGridElement", point(HexToWorld(start_q, start_r)), 3, not elements_require_construction)
+			construction_group = CreateConstructionGroup("PassageGridElement", point(HexToWorld(start_q, start_r)), city:GetMapID(), 3, not elements_require_construction)
 		end
 	end
 	
@@ -1549,22 +1564,29 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 		
 		return ret
 	end
+
+	local game_map = GetGameMap(city)
+	local object_hex_grid = game_map.object_hex_grid
+	local terrain = game_map.terrain
+	local buildable = game_map.buildable
+	local realm = game_map.realm
+
 	for i = 0, steps do
 		local q = start_q + i * dq
 		local r = start_r + i * dr
-		local bld = HexGetBuildingNoDome(q, r)
+		local bld = HexGetBuildingNoDome(object_hex_grid, q, r)
 		local entrance = GetEntranceHex(entrance_hexes, q, r)
-		local cable = HexGetCable(q, r)
-		local pipe = HexGetPipe(q, r)
-		local dome = GetDomeAtHex(q, r)
+		local cable = HexGetCable(object_hex_grid, q, r)
+		local pipe = HexGetPipe(object_hex_grid, q, r)
+		local dome = GetDomeAtHex(object_hex_grid, q, r)
 		local world_pos = point(HexToWorld(q, r))
-		local is_buildable = IsBuildableZone(world_pos)
-		local surf_deps = is_buildable and HexGetUnits(nil, nil, world_pos, 0, nil, surf_deps_filter, "SurfaceDeposit") or empty_table
+		local is_buildable = buildable:IsBuildableZone(world_pos)
+		local surf_deps = is_buildable and HexGetUnits(realm, nil, nil, world_pos, 0, nil, surf_deps_filter, "SurfaceDeposit") or empty_table
 		local anomalies = is_buildable and 
-			HexGetUnits(nil, nil, world_pos, 0, nil, surf_deps_filter, "SubsurfaceAnomaly") or empty_table
-		local rocks = is_buildable and HexGetUnits(nil, nil, world_pos, 0, false, nil, "WasteRockObstructor") or empty_table
+			HexGetUnits(realm, nil, nil, world_pos, 0, nil, surf_deps_filter, "SubsurfaceAnomaly") or empty_table
+		local rocks = is_buildable and HexGetUnits(realm, nil, nil, world_pos, 0, false, nil, "WasteRockObstructor") or empty_table
 		table.iappend(all_rocks, rocks)
-		local stockpiles = is_buildable and HexGetUnits(nil, nil, world_pos, 0, false, stockpile_filter, "ResourceStockpileBase") or empty_table
+		local stockpiles = is_buildable and HexGetUnits(realm, nil, nil, world_pos, 0, false, stockpile_filter, "ResourceStockpileBase") or empty_table
 		
 		if i == 0 and last_placed_data_cell ~= nil then
 			data[i] = last_placed_data_cell
@@ -1574,7 +1596,7 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 		end
 		
 		if has_group_with_no_hub then
-			if DoesAnyDroneControlServiceAtPoint(world_pos) then
+			if DoesAnyDroneControlServiceAtPoint(game_map.map_id, world_pos) then
 				has_group_with_no_hub = false
 			end
 		end
@@ -1592,7 +1614,7 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 		--special geoscape dome hack test
 		if dome and IsKindOf(dome, "GeoscapeDome") then
 			local pos = point(HexToWorld(q, r))
-			local th = terrain.GetHeight(pos)
+			local th = terrain:GetHeight(pos)
 			local dz = dome:GetPos():z()
 			if th > dz and (th - dz) >= 10 then
 				data[i].status = SupplyGridElementHexStatus.blocked
@@ -1636,7 +1658,7 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 		end
 		
 		if not data[i].block_reason and dome then
-			local result, reason = TestDomeBuildabilityForPassage(q, r)
+			local result, reason = TestDomeBuildabilityForPassage(object_hex_grid, q, r)
 			if not result then
 				--cant build here
 				data[i].status = SupplyGridElementHexStatus.blocked
@@ -1669,7 +1691,7 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 	if not input_data then
 		skin_id = data[0].dome:GetCurrentSkinStrIdForPassage()
 	end
-	local passage_obj = input_data and input_data.passage_obj or PlaceObject("Passage", {skin_id = skin_id})
+	local passage_obj = input_data and input_data.passage_obj or PlaceObjectIn("Passage", game_map.map_id, {skin_id = skin_id})
 	
 	local proc_placed_element = function(data_idx, cell_data, cg)
 		local el = cell_data.element
@@ -1685,7 +1707,7 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 	end
 	
 	
-	local place_passage_cs = function(data_idx, cg, pillar, chain)
+	local place_passage_cs = function(terrain, data_idx, cg)
 		local params = {}
 		local cell_data = data[data_idx]
 		
@@ -1710,7 +1732,7 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 
 		local pos = point(HexToWorld(q, r))
 		if not first_obj_z then
-			pos = FixConstructPos(pos)
+			pos = FixConstructPos(terrain, pos)
 			first_obj_z = pos:z()
 		else
 			pos = pos:SetZ(first_obj_z)
@@ -1733,9 +1755,9 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 		local q = cell_data.q
 		local r = cell_data.r
 		passage_obj.last_node_idx = passage_obj.last_node_idx + 1
-		local el = PassageGridElement:new{ city = city, q = q, r = r, dome = cell_data.dome, adjacent_dome = cell_data.adjacent_dome, connections = cell_data.connections, passage_obj = passage_obj, node_idx = passage_obj.last_node_idx }
+		local el = PassageGridElement:new({ city = city, q = q, r = r, dome = cell_data.dome, adjacent_dome = cell_data.adjacent_dome, connections = cell_data.connections, passage_obj = passage_obj, node_idx = passage_obj.last_node_idx }, city:GetMapID())
 		local x, y = HexToWorld(q, r)
-		local z = first_obj_z or terrain.GetHeight(x, y)
+		local z = first_obj_z or terrain:GetHeight(x, y)
 		first_obj_z = first_obj_z or z 
 		el:SetPos(x, y, z)
 		el:SetAngle(angle)
@@ -1769,12 +1791,12 @@ function PlacePassageLine(city, start_q, start_r, dir, steps, test, elements_req
 					
 					--new group
 					if elements_require_construction or #data[i].rocks > 0 or #data[i].stockpiles > 0 then
-						construction_group = CreateConstructionGroup("PassageGridElement", point(HexToWorld(q, r)), 3, not elements_require_construction)
+						construction_group = CreateConstructionGroup("PassageGridElement", point(HexToWorld(q, r)), city:GetMapID(), 3, not elements_require_construction)
 					end
 				end
 				
 				if construction_group then
-					last_placed_obj = place_passage_cs(i, construction_group)
+					last_placed_obj = place_passage_cs(terrain, i, construction_group)
 					placed = last_placed_obj
 				end
 			end

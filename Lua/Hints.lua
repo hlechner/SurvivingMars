@@ -11,7 +11,6 @@ end
 -- the id must match a BaseHint child class and a data instance in the OnScreenNotification property preset table
 -- safe to call multiple times, but 
 function HintTrigger(id, force)
-	assert(#Cities == 1)
 	assert(HintsEnabled or force) -- please check for this outside
 	assert(g_Classes[id])
 	
@@ -186,7 +185,7 @@ function PeriodicHintChecks()
 		
 		--SuggestConcreteExtractor trigger condition
 		local concrete_extractor = g_ActiveHints["HintSuggestConcreteExtractor"]
-		if not concrete_extractor and UICity.day >= 3 then
+		if not concrete_extractor and UIColony.day >= 3 then
 			local terrain_deposits = UICity.labels.TerrainDeposit or empty_table
 			local has_deposit
 			for i=1,#terrain_deposits do
@@ -218,21 +217,21 @@ hint_print = CreatePrint{
 }
 
 -- start of map setup
-function OnMsg.NewMapLoaded()
-	if CurrentMap == "PreGame" then return end
+function OnMsg.PostNewGame()
+	if ActiveMapID == "PreGame" then return end
 	
 	LastDisabledHint = false
 	CreateGameTimeThread( function()
 		Sleep(1)
-		if not mapdata.GameLogic or 
-			mapdata.DisableHints or
+		if not ActiveMapData.GameLogic or 
+			ActiveMapData.DisableHints or
 			editor.Active == 1 
 		then
 			SetHintNotificationsEnabled(false)
 			return
 		end
 		
-		HintsEnabled = (CurrentMap ~= "Mod") and (not not AccountStorage.Options.HintsEnabled) and not g_Tutorial
+		HintsEnabled = (ActiveMapID ~= "Mod") and (not not AccountStorage.Options.HintsEnabled) and not g_Tutorial
 		if HintsEnabled then
 			Sleep(1000)
 			HintTrigger("HintGameStart")
@@ -335,6 +334,10 @@ function OnMsg.SelectedObjChange(obj, prev)
 			if obj.depth_layer == 1 and GetSponsorLocks(g_CurrentMissionParams.idMissionSponsor)["RCDriller"] ~= false then
 				ContextAwareHintShow("HintUndergroundPreciousMetals", true)
 			end
+		elseif IsKindOf(obj, "SubsurfaceDepositPreciousMinerals") then
+			if obj.depth_layer == 1 and GetSponsorLocks(g_CurrentMissionParams.idMissionSponsor)["RCDriller"] ~= false then
+				ContextAwareHintShow("HintUndergroundPreciousMinerals", true)
+			end
 		elseif IsKindOf(obj, "TerrainDepositConcrete") then
 			if UICity.labels.SupplyRocket and table.find(UICity.labels.SupplyRocket, "landed", true) then
 				HintTrigger("HintSuggestConcreteExtractor")
@@ -370,7 +373,7 @@ function OnMsg.SelectedObjChange(obj, prev)
 			else
 				for i = 1, 3 do
 					local id = obj:GetUpgradeID(i) or ""
-					if id ~= "" and UICity:IsUpgradeUnlocked(id) then
+					if id ~= "" and UIColony:IsUpgradeUnlocked(id) then
 						ContextAwareHintShow("HintBuildingUpgrade", true)
 						break
 					end
@@ -434,6 +437,13 @@ DefineClass.HintUndergroundPreciousMetals = {
 	__parents = { "BaseHint" },
 	
 	auto_disable = 120, --HintUndergroundPreciousMetals auto disabled
+	context_aware = true,
+}
+
+DefineClass.HintUndergroundPreciousMinerals = {
+	__parents = { "BaseHint" },
+	
+	auto_disable = 120, --HintUndergroundPreciousMinerals auto disabled
 	context_aware = true,
 }
 
@@ -725,6 +735,12 @@ DefineClass.HintEarthsick = {
 	auto_disable = 120, --HintEarthsick auto disabled
 }
 
+DefineClass.HintOverstayingTourists = {
+	__parents = { "BaseHint" },
+	
+	auto_disable = 120, --HintOverstayingTourists auto disabled
+}
+
 DefineClass.HintRenegade = {
 	__parents = { "BaseHint" },
 	
@@ -749,4 +765,25 @@ DefineClass.HintBuildingUpgrade = {
 	__parents = { "BaseHint" },
 	
 	context_aware = true,
+}
+
+function OnMsg.RocketLanded(rocket)
+	if HintsEnabled then
+		for _, item in ipairs(rocket.cargo or empty_table) do
+			if item.class == "Passengers" then
+				for _, data in ipairs(item.applicants_data) do
+					if data.traits.Tourist then
+						HintTrigger("HintTourists")
+						break
+					end
+				end
+			end
+		end
+	end
+end
+
+DefineClass.HintTourists = {
+	__parents = { "BaseHint" },
+	
+	auto_disable = 120, --HintTourists auto disabled
 }

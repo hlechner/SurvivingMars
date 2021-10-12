@@ -9,6 +9,8 @@ DefineClass("RCSensor")
 DefineClass("RCSolar")
 DefineClass("RCTerraformer")
 
+DefineClass("CaveInRubble")
+
 DefineClass("TradePad")
 DefineClass("ForeignTradeRocket")
 
@@ -19,8 +21,8 @@ DefineClass("Pet")
 KillVegetationInHex = empty_func
 
 if FirstLoad then
-	OpenAirBuildings = false
-	BreathableAtmosphere = false
+	OpenAirBuildings = false -- Deprecated in favor of GetOpenAirBuildings(...)
+	BreathableAtmosphere = false -- Deprecated in favor of GetAtmosphereBreathable(...)
 	ColdWavesDisabled = false
 	DustStormsDisabled = false
 	MeteorStormsDisabled = false
@@ -29,6 +31,14 @@ end
 AreColdWavesEnabled = function() return not ColdWavesDisabled end
 AreDustStormsEnabled = function() return not DustStormsDisabled end
 AreMeteorStormsEnabled = function() return not MeteorStormsDisabled end
+
+function GetAtmosphereBreathable(map_id)
+	return false
+end
+
+function GetOpenAirBuildings(map_id)
+	return false
+end
 
 IsObjlist = function(obj)
 	return type(obj) == "table"

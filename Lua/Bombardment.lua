@@ -35,8 +35,8 @@ end
 
 local function GenerateDir(dir, angle)
 	local min, max = 45 * 60, 90 * 60
-	dir = dir or point(UICity:Random(-4096, 4096), UICity:Random(-4096, 4096))
-	angle = angle and Clamp(angle + UICity:Random(-10 * 60, 10 * 60), min, max) or UICity:Random(min, max)
+	dir = dir or point(SessionRandom:Random(-4096, 4096), SessionRandom:Random(-4096, 4096))
+	angle = angle and Clamp(angle + SessionRandom:Random(-10 * 60, 10 * 60), min, max) or SessionRandom:Random(min, max)
 	local s, c = sin(angle), cos(angle)
 	if c == 0 then
 		dir = point(0, 0, 4096)
@@ -51,12 +51,17 @@ GlobalVar("g_IncomingMissiles", {}, weak_keys_meta)
 local travel_dist = 1000*guim
 
 function WaitBombard(obj, radius, count, delay_min, delay_max)
-	local pos = IsValid(obj) and obj:GetPos() or IsPoint(obj) and obj or GetRandomPassable()
+	local city = MainCity
+	local pos = IsValid(obj) and obj:GetPos() or IsPoint(obj) and obj or GetRandomPassable(city)
 	if not pos then
 		assert(false, "Failed to find bombard pos!")
 		return false
 	end
-	PlayFX("Bombard", "start")
+	PlayFX({
+		actionFXClass = "Bombard",
+		actionFXMoment = "start",
+		action_map_id = MainMapID,
+	})
 	radius = radius or 0
 	delay_min = delay_min or 0
 	delay_max = delay_max or 0
@@ -64,18 +69,18 @@ function WaitBombard(obj, radius, count, delay_min, delay_max)
 	local spawned = {}
 	local hits = 0
 	local dir, angle = GenerateDir()
-	AddOnScreenNotification("Bombardment", nil, {}, {pos})
+	AddOnScreenNotification("Bombardment", nil, {}, {pos}, city.map_id)
 	local max_travel_time = 0
 	while count > 0 do
 		count = count - 1
-		local dest_pos = GetRandomPassableAround(pos, radius) or GetRandomPassable()
+		local dest_pos = GetRandomPassableAroundOnMap(city.map_id, pos, radius) or GetRandomPassable(city)
 		if not dest_pos then
 			break
 		end
-		dest_pos = dest_pos:SetZ(terrain.GetHeight(dest_pos))
+		dest_pos = dest_pos:SetZ(GetTerrainByID(city.map_id):GetHeight(dest_pos))
 		local spawn_dir = GenerateDir(dir, angle)
 		local spawn_pos = dest_pos + SetLen(dir, travel_dist)
-		local missile = PlaceObject("BombardMissile", {start = spawn_pos, dest = dest_pos})
+		local missile = PlaceObjectIn("BombardMissile", city.map_id, {start = spawn_pos, dest = dest_pos})
 		missile:SetPos(spawn_pos)
 		local dome, dome_pt, dome_normal = missile:HitsDome()
 		if dome_pt then
@@ -105,13 +110,11 @@ function WaitBombard(obj, radius, count, delay_min, delay_max)
 				missile:Explode()
 			end
 			g_IncomingMissiles[missile] = nil
-			if IsValid(missile) then
-				DoneObject(missile)
-			end
 			Msg("BombardMissileHit")
 			if not interrupted and not dome_pt then
-				MapDelete(dest_pos, 20*guim, missile.explode_decal_name)
-				local explode_decal = PlaceObject(missile.explode_decal_name)
+				local realm = GetRealm(missile)
+				realm:MapDelete(dest_pos, 20*guim, missile.explode_decal_name)
+				local explode_decal = PlaceObjectIn(missile.explode_decal_name, missile:GetMapID())
 				explode_decal:SetPos(dest_pos)
 				explode_decal:SetAngle(AsyncRand(360*60))
 				explode_decal:SetScale(50 + AsyncRand(50))
@@ -123,8 +126,11 @@ function WaitBombard(obj, radius, count, delay_min, delay_max)
 				end
 				DoneObject(explode_decal)
 			end
+			if IsValid(missile) then
+				DoneObject(missile)
+			end
 		end)
-		Sleep(UICity:Random(delay_min, delay_max))
+		Sleep(SessionRandom:Random(delay_min, delay_max))
 	end
 	while true do
 		local rockets = 0
@@ -138,8 +144,12 @@ function WaitBombard(obj, radius, count, delay_min, delay_max)
 		end
 		WaitMsg("BombardMissileHit", 10000)
 	end
-	PlayFX("Bombard", "end")
-	RemoveOnScreenNotification("Bombardment")
+	PlayFX({
+		actionFXClass = "Bombard",
+		actionFXMoment = "end",
+		action_map_id = MainMapID,
+	})
+	RemoveOnScreenNotification("Bombardment", city.map_id)
 end
 
 function StartBombard(obj, radius, count, delay_min, delay_max)

@@ -362,7 +362,7 @@ PlaceObj('XTemplate', {
 							}),
 						PlaceObj('XTemplateWindow', {
 							'comment', "make androids",
-							'__condition', function (parent, context) return UICity:IsTechResearched("ThePositronicBrain") end,
+							'__condition', function (parent, context) return UIColony:IsTechResearched("ThePositronicBrain") end,
 							'__class', "XTextButton",
 							'RolloverTemplate', "Rollover",
 							'RolloverAnchor', "right",

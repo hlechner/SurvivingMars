@@ -1,5 +1,5 @@
 DefineClass.DomeOutskirtBld = {
-	__parents = { "Object" },
+	__parents = { "CityObject" },
 	dome_label = false,
 }
 
@@ -16,14 +16,19 @@ function DomeOutskirtBld:AddToDomeLabels(dome)
 	if not label then
 		return
 	end
+
 	dome = dome or IsObjInDome(self)
+	local city = dome and dome.city or self.city
+	assert(city == self.city)
+
 	if dome then
 		dome:AddToLabel(label, self)
 		return
 	end
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
-		if IsBuildingInDomeRange(self, dome) then
-			dome:AddToLabel(label, self)
+
+	for _, workforce in ipairs(city.labels.Workforce or empty_table) do
+		if workforce:IsBuildingInWorkRange(self) then
+			workforce:AddToLabel(label, self)
 		end
 	end
 end
@@ -33,14 +38,25 @@ function DomeOutskirtBld:RemoveFromDomeLabels(dome)
 	if not label then
 		return
 	end
+
 	dome = dome or IsObjInDome(self)
+	local city = dome and dome.city or self.city
+	assert(city == self.city)
+
 	if dome then
 		dome:RemoveFromLabel(label, self)
 		return
 	end
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
-		if IsBuildingInDomeRange(self, dome) then
-			dome:RemoveFromLabel(label, self)
+
+	for _, workforce in ipairs(city.labels.Workforce or empty_table) do
+		if workforce:IsBuildingInWorkRange(self) then
+			workforce:RemoveFromLabel(label, self)
 		end
 	end
+end
+
+function SavegameFixups.FixOutsideDomeBldCity()	
+	MapsForEach("map", "DomeOutskirtBld", function(bld)
+		bld.city = GetCity(bld)
+	end)
 end

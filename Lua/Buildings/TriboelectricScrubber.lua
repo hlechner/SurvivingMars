@@ -58,7 +58,8 @@ function TriboelectricScrubber:Done()
 end
 
 function TriboelectricScrubber:ForEachDirtyInRange(exec, ...)
-	MapForEach(self, "hex", self.UIRange, "Building", "DustGridElement", "DroneBase", exec, ...)
+	local realm = GetRealm(self)
+	realm:MapForEach(self, "hex", self.UIRange, "Building", "DustGridElement", "DroneBase", exec, ...)
 end
 
 function TriboelectricScrubber:OnPostChangeRange()
@@ -115,11 +116,13 @@ function TriboelectricScrubber:CleanBuildings()
 			if dirty ~= self then				
 				if dirty:IsKindOf("DustGridElement") then
 					dirty:AddDust(-self.dust_clean)
-				elseif not dirty.parent_dome then --outside of dome
+				elseif not dirty.parent_dome and dirty.accumulate_maintenance_points then --outside of dome
 					dirty:AccumulateMaintenancePoints(-self.dust_clean)
 				end
 			end
-		elseif dirty:IsKindOf("DroneBase") then
+		end
+		
+		if dirty:IsKindOf("DroneBase") then
 			dirty:AddDust(-self.dust_clean)
 		end
 	end, self)

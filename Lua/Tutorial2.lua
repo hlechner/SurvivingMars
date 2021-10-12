@@ -1,6 +1,6 @@
 local function NumberOfUnassignedDrones()
 	local result = 0
-	local drones_label = UICity.labels.Drone
+	local drones_label = MainCity.labels.Drone
 	for i,drone in ipairs(drones_label) do
 		if not drone.command_center then
 			result = result + 1
@@ -51,7 +51,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	g_Tutorial.BuildMenuWhitelist = {} --block all buildings
 	--find objects
 	local refueling_rocket
-	for i,rocket in ipairs(UICity.labels.SupplyRocket or "") do
+	for i,rocket in ipairs(MainCity.labels.SupplyRocket or "") do
 		if rocket:GetPos() ~= InvalidPos then
 			refueling_rocket = rocket
 			break
@@ -60,9 +60,9 @@ g_TutorialScenarios.Tutorial2 = function()
 	for i,drone in ipairs(refueling_rocket.drones) do
 		DisableMaintenance(drone)
 	end
-	local transport = UICity.labels.RCTransport[1]
+	local transport = MainCity.labels.RCTransport[1]
 	DisableMaintenance(transport)
-	local drone_hub = UICity.labels.DroneHub[1]
+	local drone_hub = MainCity.labels.DroneHub[1]
 	DisableMaintenance(drone_hub)
 	--initial sectors
 	local old = IsDepositObstructed
@@ -109,7 +109,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	WaitTutorialPopup("Tutorial2_Popup3_RCTransport")
 	TutorialNextHint("Tutorial_2_LoadFuel")
 	--wait until 30 fuel is loaded
-	local fuel_depot = UICity.labels.StorageFuel[1]
+	local fuel_depot = MainCity.labels.StorageFuel[1]
 	ShowTutorialArrow(fuel_depot, "ArrowTutorialBase")
 	--WaitInfopanelAction("RCTransport", "LoadResource", function(arrow)
 	--	return transport.command == "TransferResources" or
@@ -183,7 +183,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	g_Tutorial.DisableReassignButtons = true
 	if not AreAllDronesAssigned() then
 		--get all drones
-		local drones_label = UICity.labels.Drone
+		local drones_label = MainCity.labels.Drone
 		--place an arrow at one of the orphaned drones
 		for i,drone in ipairs(drones_label) do
 			if not drone.command_center then
@@ -246,7 +246,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	--wait for player to select the transport
 	WaitObjectSelected(transport)
 	--find the universal depot
-	local universal_depot = table.find_value(UICity.labels.UniversalStorageDepot, "template_name", "UniversalStorageDepot")
+	local universal_depot = table.find_value(MainCity.labels.UniversalStorageDepot, "template_name", "UniversalStorageDepot")
 	--show start/end positions for transport route
 	local arrow
 	arrow = ShowTutorialArrow(universal_depot, "ArrowTutorialBase", "ArrowTutorial_02")
@@ -275,7 +275,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	WaitTutorialPopup("Tutorial2_Popup6_RCRover")
 	TutorialNextHint("Tutorial_2_MoveRCRover")
 	--wait for the rover to move to the marker
-	local rc_rover = UICity.labels.RCRover[1]
+	local rc_rover = MainCity.labels.RCRover[1]
 	DisableMaintenance(rc_rover)
 	WaitObjectSelected(rc_rover)
 	local expand_pos = GetMarkerPosition("TransportRoute"):AddX(20*guim)
@@ -318,7 +318,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	TutorialNextHint("Tutorial_2_SensorTowerPlaced")
 	local new_sensor_tower
 	while true do
-		local label = UICity.labels.SensorTower
+		local label = MainCity.labels.SensorTower
 		new_sensor_tower = label and label[1]
 		if new_sensor_tower then
 			break
@@ -350,7 +350,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	--add probe & wait for sector scanned
 	g_Tutorial.EnableOrbitalProbes = true
 	ShowTutorialArrow(sector_E3.area:Center())
-	PlaceObject("OrbitalProbe", { city = UICity })
+	PlaceObjectIn("OrbitalProbe", MainMapID)
 	local probes_pin_arrow = TutorialUIArrow:new({
 		AnchorType = "center-top",
 		FindTarget = function(self)
@@ -372,13 +372,13 @@ g_TutorialScenarios.Tutorial2 = function()
 	g_Tutorial.EnableExploration = true
 	local target_sector = sector_E3.status == "unexplored" and sector_E3 or sector_E4
 	local sector_center = target_sector.area:Center()
-	sector_center = sector_center:SetZ(terrain.GetHeight(sector_center))
+	sector_center = sector_center:SetZ(GetActiveTerrain():GetHeight(sector_center))
 	g_Tutorial.sector_name = Untranslated(target_sector.display_name)
 	--show next hint
 	TutorialNextHint("Tutorial_2_QueueScanning")
 	--place arrow and anomaly in the middle of the target sector
 	ShowTutorialArrow(sector_center)
-	local anomaly_marker = PlaceObject("SubsurfaceAnomalyMarker")
+	local anomaly_marker = PlaceObjectIn("SubsurfaceAnomalyMarker", MainMapID)
 	anomaly_marker:SetPos(sector_center:AddY(-45*guim))
 	table.insert(target_sector.markers.subsurface, anomaly_marker)
 	--wait for sector to be scanned
@@ -397,7 +397,7 @@ g_TutorialScenarios.Tutorial2 = function()
 	WaitTutorialPopup("Tutorial2_Popup11_AnalyzeAnomaly")
 	TutorialNextHint("Tutorial_2_AnalyzeAnomaly")
 	--wait for anomly to get analyzed
-	local explorer = UICity.labels.ExplorerRover[1]
+	local explorer = MainCity.labels.ExplorerRover[1]
 	WaitObjectSelected(explorer)
 	--recharge it to 100% instantly
 	ShowTutorialArrow(anomaly, "ArrowTutorialBase")
@@ -419,14 +419,15 @@ g_TutorialScenarios.Tutorial2 = function()
 	WaitTutorialPopup("Tutorial2_Popup12_OpenResearch")
 	TutorialNextHint("Tutorial_2_OpenResearch")
 	--unlock only techs in the first column (setup for step 13)
-	for id,status in pairs(UICity.tech_status) do
+	local research = UIColony
+	for id,status in pairs(research.tech_status) do
 		status.discovered = nil
 	end
-	UICity.discover_idx = 0
+	research.discover_idx = 0
 	local first_techs = { }
 	for i,field in ipairs(Presets.TechFieldPreset.Default) do
 		if field.discoverable then
-			local tech = UICity:DiscoverTechInField(field.id)
+			local tech = research:DiscoverTechInField(field.id)
 			table.insert(first_techs, tech)
 		end
 	end

@@ -154,7 +154,7 @@ function HasConsumption:CreateVisualStockpile()
 		stockpile_type = "WasteRockStockpile"
 		stock.has_platform = true
 	end
-	stock = PlaceObject(stockpile_type, stock)
+	stock = PlaceObjectIn(stockpile_type, self:GetMapID(), stock)
 	
 	local attach_to = (self.is_upgrade and self.building or self)
 	local idx = attach_to:GetSpotBeginIndex(self.consumption_resource_stockpile_spot_name)
@@ -190,7 +190,7 @@ function HasConsumption:ConsumptionOnDestroyed()
 			self.consumption_resource_stockpile = false
 			
 			if self.consumption_stored_resources > 0 then
-				PlaceResourceStockpile_Delayed(p, self.consumption_resource_type, self.consumption_stored_resources, a - 90 * 60, true)
+				PlaceResourceStockpile_Delayed(p, self:GetMapID(), self.consumption_resource_type, self.consumption_stored_resources, a - 90 * 60, true)
 			end
 			
 			self.consumption_resource_request:AddAmount(self.consumption_stored_resources)
@@ -207,7 +207,8 @@ function HasConsumption:ConsumptionDroneUnload(drone, req, resource, amount)
 		local was_work_possible = self:CanConsume()
 		
 		self.consumption_stored_resources = self.consumption_stored_resources + amount
-		assert(self.consumption_stored_resources >= 0 and self.consumption_stored_resources <= self.consumption_max_storage)
+		assert(self.consumption_stored_resources >= 0)
+		assert(self.consumption_stored_resources <= self.consumption_max_storage)
 		self:UpdateVisualStockpile()
 		self:UpdateRequestConnectivity()
 		
@@ -224,6 +225,10 @@ end
 
 function HasConsumption:DoesHaveConsumption()
 	return self.consumption_resource_type ~= "no_consumption"
+end
+
+function HasConsumption:UIShowConsumption()
+	return self:DoesHaveConsumption()
 end
 
 function HasConsumption:DoesHaveUpgradeConsumption()

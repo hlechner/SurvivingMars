@@ -1,7 +1,7 @@
 -- ========== THIS IS AN AUTOMATICALLY GENERATED FILE! ==========
 
 PlaceObj('XTemplate', {
-	group = "CCC",
+	group = "Infopanel Sections",
 	id = "PowerGridsOverview",
 	PlaceObj('XTemplateTemplate', {
 		'__context', function (parent, context) return context or {} end,

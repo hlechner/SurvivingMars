@@ -220,6 +220,18 @@ DefineClass.SignHalted = {
 	priority = 12,
 }
 
+DefineClass.SignBrokenElectricityCable = {
+	__parents = { "BuildingSign" },
+	entity = "SignCableLeaks",
+	priority = 11,
+}
+
+DefineClass.SignBrokenPipeConnection = {
+	__parents = { "BuildingSign" },
+	entity = "SignPipeLeaks",
+	priority = 11,
+}
+
 ----
 
 GlobalVar("g_SignsVisible", true)
@@ -234,16 +246,17 @@ function ToggleSigns()
 end
 
 function SetSignsVisible(visible)
+	local realm = GetActiveRealm()
 	if visible and not g_SignsVisible then
-		MapSetEnumFlags( const.efVisible,"map","BuildingSign", "UnitSign", "ArrowTutorialBase", "SelectionArrow")
+		realm:MapSetEnumFlags( const.efVisible,"map","BuildingSign", "UnitSign", "ArrowTutorialBase", "SelectionArrow")
 		if not g_ResourceIconsTurnedOff then
-			MapSetEnumFlags( const.efVisible,"map","TerrainDeposit","SubsurfaceDeposit")
+			realm:MapSetEnumFlags( const.efVisible,"map","TerrainDeposit","SubsurfaceDeposit")
 			g_ResourceIconsVisible = true
 		end
 		g_SignsVisible = true
 	end
 	if not visible and g_SignsVisible then
-		MapClearEnumFlags( const.efVisible,"map","BuildingSign", "UnitSign", "ArrowTutorialBase","TerrainDeposit","SubsurfaceDeposit", "SelectionArrow")
+		realm:MapClearEnumFlags( const.efVisible,"map","BuildingSign", "UnitSign", "ArrowTutorialBase","TerrainDeposit","SubsurfaceDeposit", "SelectionArrow")
 		g_ResourceIconsVisible = false
 		g_SignsVisible = false
 	end

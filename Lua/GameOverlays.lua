@@ -23,21 +23,25 @@ local OverlayColors = {
 	},
 }
 
-GlobalVar("OverlaySupplyPallettes", function()
-	if HexMapWidth == 0 or HexMapHeight == 0 then return false end
-	return {
+GlobalVar("OverlaySupplyPallettes", false)
+
+function OnMsg.NewGame()
+	OverlaySupplyPallettes = {
 		electricity = false,
 		water = false,
 		custom = false,
 	}
-end)
+end
 
 function GetGridOverlayIndex(grid)
 	return grid.overlay_id
 end
 
 function Lua_BuildOverlaySupplyGrid()
-	BuildOverlaySupplyGrid(OverlaySupplyGrid, SupplyGridConnections.electricity, SupplyGridConnections.water)
+	local game_map = ActiveGameMap
+	local supply_connection_grid = game_map.supply_connection_grid
+	local supply_overlay_grid = game_map.supply_overlay_grid
+	BuildOverlaySupplyGrid(supply_overlay_grid, supply_connection_grid.electricity, supply_connection_grid.water)
 end
 
 function RebuildOverlaySupplyPalettes()
@@ -70,7 +74,8 @@ end
 function GetOverlaySupplyGridValAtTerrainCursor()
 	local p = GetTerrainCursor()
 	local q, r = WorldToHex(p:x(), p:y())
-	return OverlaySupplyGrid:get(q+r/2, r)
+	local supply_overlay_grid = ActiveGameMap.supply_overlay_grid
+	return supply_overlay_grid:get(q+r/2, r)
 end
 
 show_overlay = false
@@ -82,7 +87,8 @@ function GetOverlayPalette()
 end
 
 function GetOverlayGrid()
-	return (show_overlay == "water" or show_overlay == "custom_supply" or show_overlay == "electricity") and OverlaySupplyGrid
+	local supply_overlay_grid = ActiveGameMap.supply_overlay_grid
+	return (show_overlay == "water" or show_overlay == "custom_supply" or show_overlay == "electricity") and supply_overlay_grid
 end
 
 function GetOverlayTransform()
@@ -120,7 +126,8 @@ end
 
 function ShowWaterOverlay()
 	show_overlay = "water"
-	RefreshSupplyGridOverlay(OverlaySupplyGrid)
+	local supply_overlay_grid = ActiveGameMap.supply_overlay_grid
+	RefreshSupplyGridOverlay(supply_overlay_grid)
 end
 
 function HideOverlay()
@@ -132,35 +139,51 @@ HideAllSupplyOverlays = HideOverlay
 
 function ShowElectricityOverlay()
 	show_overlay = "electricity"
-	RefreshSupplyGridOverlay(OverlaySupplyGrid)
+	local supply_overlay_grid = ActiveGameMap.supply_overlay_grid
+	RefreshSupplyGridOverlay(supply_overlay_grid)
 end
 
-function ToggleElectricityOverlay()
-	if show_overlay == "electricity" then
-		HideOverlay()
-	else
-		ShowElectricityOverlay()
+function CycleElectricityOverlay()
+	local realm = GetRealmByID(ActiveMapID)
+	local electricity_grids = GetCommandCenterPowerGrids()
+	CycleGrids(electricity_grids)
+	ShowElectricityOverlay()
+end
+
+local last_sel_obj = false
+local last_seen_grid = 0
+function CycleGrids(grids)
+	local idx = last_seen_grid + 1
+	if idx > #grids then
+		idx = 1
+	end
+	last_seen_grid = idx
+	
+	local grid = grids[idx]
+	if grid then
+		local root = CommandCenterChooseGridBuilding(grid)
+		ViewAndSelectObject(root)
+		last_sel_obj = root
 	end
 end
 
-function ToggleWaterOverlay()
-	if show_overlay == "water" then
-		HideOverlay()
-	else
-		ShowWaterOverlay()
-	end
+function CycleWaterOverlay()
+	local lifesupport_grids = GetCommandCenterLifeSupportGrids()
+	local water_grids = table.map(lifesupport_grids, "water")
+	CycleGrids(water_grids)
+	ShowWaterOverlay()
 end
 
 function OnMsg.OverlaySupplyGridChanged()
-	RefreshSupplyGridOverlay(OverlaySupplyGrid)
+	local supply_overlay_grid = ActiveGameMap.supply_overlay_grid
+	RefreshSupplyGridOverlay(supply_overlay_grid)
 end
 
-function OnMsg.NewMap()
+function OnMsg.SwitchMap()
 	RebuildOverlaySupplyPalettes()
 	HideAllSupplyOverlays()
 end
 
-local last_sel_obj = false
 local function ClearLastSelObj()
 	last_sel_obj = false
 end
@@ -212,5 +235,6 @@ function ShowOverlayForSupplyGrid(supply_type, overlay_id, color)
 	end
 	
 	show_overlay = "custom_supply"
-	RefreshSupplyGridOverlay(OverlaySupplyGrid)
+	local supply_overlay_grid = ActiveGameMap.supply_overlay_grid
+	RefreshSupplyGridOverlay(supply_overlay_grid)
 end

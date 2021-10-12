@@ -12,6 +12,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/26_colonist.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -32,6 +33,7 @@ PlaceObj('StoryBit', {
 			},
 		}),
 		PlaceObj('SupplyMissionsEnabled', nil),
+		PlaceObj('IsMapEnvironment', nil),
 	},
 	ScriptDone = true,
 	Text = T(727840641132, --[[StoryBit WaterChip Text]] "The chip controls the water recycling for <DisplayName> dome. Without it water consumption there will increase by <baseincrease>%.\n\nWe were supposed to get replacement water chips but it seems they were wrongly delivered somewhere in Southern California on Earth.\n\nThe water chip is quite complex and it will take us <sols(base_time_to_fix)> Sols to manufacture it here on Mars. Alternatively, we can import a new one from Earth."),
@@ -41,6 +43,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(958368945245, --[[voice:narrator]] "The terminal softly beeps, indicating that the water chip for one of our Domes has failed."),
 	group = "Buildings",
 	id = "WaterChip",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143968,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamPercent', {
 		'Name', "baseincrease",
 		'Value', 400,

@@ -51,6 +51,27 @@ function TrainingBuilding:GetUnitsInShifts()
 	return self.visitors or empty_table
 end
 
+function TrainingBuilding:GetHighestUnitsTrainingPoints()
+	local highest_training = 0
+	for shift, list in ipairs(self.visitors) do
+		for _, unit in ipairs(list) do
+			local unit_training_points = unit.training_points and unit.training_points[self.training_type] or 0
+			if unit_training_points > highest_training then
+				highest_training = unit_training_points
+				if highest_training == self.evaluation_points then
+					break
+				end
+			end
+		end
+	end
+	return highest_training
+end
+
+function TrainingBuilding:GetHighestUnitsTrainingProgress()
+	local highest_progress = self:GetHighestUnitsTrainingPoints()
+	return MulDivRound(100, highest_progress, self.evaluation_points)
+end
+
 function TrainingBuilding:OnDestroyed()
 	self:KickAllVisitors()
 	RebuildInfopanel()
@@ -298,7 +319,7 @@ end
 
 function TrainingBuilding:OnChangeWorkshift(old, new)
 	if old then
-		local dark_penalty = IsDarkHour(self.city.hour - 4) and -g_Consts.WorkDarkHoursSanityDecrease
+		local dark_penalty = IsDarkHour(UIColony.hour - 4) and -g_Consts.WorkDarkHoursSanityDecrease
 		for _, visitor in ipairs(self.visitors[old]) do
 			if dark_penalty then
 				visitor:ChangeSanity(dark_penalty, "work in dark hours")
@@ -318,12 +339,13 @@ end
 
 function TrainingBuilding:BuildingUpdate(time, day, hour)
 	local visitors = self.visitors[self.current_shift] or empty_table
-	local martianborn_adaptability = self.city:IsTechResearched("MartianbornAdaptability") and TechDef.MartianbornAdaptability.param1
+	local martianborn_adaptability = self.city.colony:IsTechResearched("MartianbornAdaptability") and TechDef.MartianbornAdaptability.param1
 	
 	for j= #visitors, 1, -1 do -- 'someone can 'graduate' and leave the list'
 		local unit = visitors[j]
 		self:GainPoints(unit, time, martianborn_adaptability)
-		if self.evaluation_points>0 and (unit.training_points and unit.training_points[self.training_type] or 0)>= self.evaluation_points then	
+		local training_points = (unit.training_points and unit.training_points[self.training_type] or 0)
+		if self.evaluation_points > 0 and training_points >= self.evaluation_points then	
 			self:OnTrainingCompleted(unit)
 			self.life_time_trained = self.life_time_trained + 1
 		end
@@ -369,9 +391,9 @@ end
 
 function InitInsideTrainingAndWorkplaceBld(self, dome)
 	local label = self.dome_label
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
-		if IsBuildingInDomeRange(self, dome) then
-			dome:RemoveFromLabel(label, self)
+	for _, workforce in ipairs(self.city.labels.Workforce or empty_table) do
+		if workforce:IsBuildingInWorkRange(self) then
+			workforce:RemoveFromLabel(label, self)
 		end
 	end
 	Building.InitInside(self, dome)

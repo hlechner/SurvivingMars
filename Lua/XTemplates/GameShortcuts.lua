@@ -711,11 +711,11 @@ PlaceObj('XTemplate', {
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
-				if UICity then
+				if UIColony then
 					if GetTimeFactor() ~= const.DefaultTimeFactor then
-						UICity:SetGameSpeed(1)
+						UIColony:SetGameSpeed(1)
 					else
-						UICity:SetGameSpeed(CheatsEnabled() and 10 or 5)
+						UIColony:SetGameSpeed(CheatsEnabled() and 10 or 5)
 					end
 				end
 			end,
@@ -771,7 +771,7 @@ PlaceObj('XTemplate', {
 			'ActionShortcut', "M",
 			'ActionBindable', true,
 			'OnAction', function (self, host, source)
-				if not g_PhotoMode then
+				if not g_PhotoMode and ActiveMapData and ActiveMapData.IsAllowedToEnterOverview then
 					local igi = GetInGameInterface()
 					local dlg = GetHUD()
 					if igi and igi:GetVisible() and dlg and dlg:GetVisible() and dlg.window_state ~= "destroying" then
@@ -1487,7 +1487,7 @@ PlaceObj('XTemplate', {
 					'RolloverText', "Reveal all Deposits (all)",
 					'ActionId', "MapExplorationScan",
 					'ActionTranslate', false,
-					'ActionName', "Scan",
+					'ActionName', "Scan Map",
 					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 					'OnAction', function (self, host, source)
 						if not CheatsEnabled() then return end
@@ -1500,7 +1500,7 @@ PlaceObj('XTemplate', {
 					'RolloverText', "Reveal all deposits level 1 and above",
 					'ActionId', "MapExplorationDeepScan",
 					'ActionTranslate', false,
-					'ActionName', "Deep Scan",
+					'ActionName', "Deep Scan Map",
 					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 					'OnAction', function (self, host, source)
 						if not CheatsEnabled() then return end
@@ -1554,8 +1554,51 @@ PlaceObj('XTemplate', {
 					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 					'OnAction', function (self, host, source)
 						if not CheatsEnabled() then return end
-										CheatBatchSpawnPlanetaryAnomalies()
+							CheatBatchSpawnPlanetaryAnomalies()
 					end,
+					'replace_matching_id', true,
+				}),
+				PlaceObj('XTemplateAction', {
+					'comment', "Scan Revealed Anomalies",
+					'RolloverText', "Scan all revealed anomalies.",
+					'ActionId', "G_ScanAllAnomalies",
+					'ActionTranslate', false,
+					'ActionName', "Scan Revealed Anomalies",
+					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
+					'OnAction', function (self, host, source)
+						if not CheatsEnabled() then return end
+							ScanAllAnomalies()
+					end,
+					'replace_matching_id', true,
+				}),
+				PlaceObj('XTemplateAction', {
+					'comment', "Reveal Underground Darkness Toggle",
+					'RolloverText', "Reveal Underground Darkness Toggle",
+					'ActionId', "RevealUndergroundDarknessToggle",
+					'ActionTranslate', false,
+					'ActionName', "Reveal Underground Darkness Toggle",
+					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
+					'OnAction', function (self, host, source)
+						if CheatsEnabled() and UIColony then
+							UIColony:RevealUndergroundDarkness(UIColony.underground_map_revealed)
+						end
+					end,
+					'__condition', function (parent, context) return IsDlcAccessible("picard") end,
+					'replace_matching_id', true,
+				}),
+				PlaceObj('XTemplateAction', {
+					'comment', "Unlock Underground",
+					'RolloverText', "Unlock Underground",
+					'ActionId', "UnlockUnderground",
+					'ActionTranslate', false,
+					'ActionName', "Unlock Underground",
+					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
+					'OnAction', function (self, host, source)
+						if CheatsEnabled() and UIColony then
+							UIColony:UnlockUnderground()
+						end
+					end,
+					'__condition', function (parent, context) return IsDlcAccessible("picard") end,
 					'replace_matching_id', true,
 				}),
 				}),
@@ -2304,6 +2347,35 @@ PlaceObj('XTemplate', {
 						}),
 					}),
 				PlaceObj('XTemplateAction', {
+					'ActionId', "Cheats.Trigger Disaster Underground Marsquakes",
+					'ActionSortKey', "10",
+					'ActionName', T(13683, --[[XTemplate GameShortcuts ActionName]] "Underground Marsquakes"),
+					'ActionIcon', "CommonAssets/UI/Menu/folder.tga",
+					'OnActionEffect', "popup",
+					'__condition', function (parent, context) return IsDlcAccessible("picard") end,
+					'replace_matching_id', true,
+				}, {
+					PlaceObj('XTemplateForEach', {
+						'comment', "underground marsquake",
+						'array', function (parent, context) return DataInstanceCombo("MapSettings_UndergroundMarsquake")() end,
+						'run_after', function (child, context, item, i, n)
+							child.ActionId = "TriggerDisaster" .. item .. "UndergroundMarsquake"
+							child.ActionName = "UndergroundMarsquake " .. item
+							child.ActionSortKey = tostring(i)
+							child.OnAction = function()
+								if not CheatsEnabled() then return end
+									local pos = GetCursorWorldPos()
+									CheatTriggerUndergroundMarsquake(pos)
+							end
+						end,
+					}, {
+						PlaceObj('XTemplateAction', {
+							'ActionTranslate', false,
+							'ActionIcon', "CommonAssets/UI/Menu/default.tga",
+						}),
+						}),
+					}),
+				PlaceObj('XTemplateAction', {
 					'comment', "Stop Disaster",
 					'RolloverText', "Stop Disaster",
 					'ActionId', "TriggerDisasterStop",
@@ -2368,13 +2440,26 @@ PlaceObj('XTemplate', {
 				PlaceObj('XTemplateAction', {
 					'comment', "Unlock all breakthroughs on this map",
 					'RolloverText', "Unlock all breakthroughs on this map",
+					'ActionId', "UnlockBreakthroughs",
+					'ActionTranslate', false,
+					'ActionName', "Unlock map Breakthroughs",
+					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
+					'OnAction', function (self, host, source)
+						if not CheatsEnabled() then return end
+						CheatUnlockBreakthroughs()
+					end,
+					'replace_matching_id', true,
+				}),
+				PlaceObj('XTemplateAction', {
+					'comment', "Unlock all breakthroughs",
+					'RolloverText', "Unlock all breakthroughs",
 					'ActionId', "UnlockAllBreakthroughs",
 					'ActionTranslate', false,
 					'ActionName', "Unlock all Breakthroughs",
 					'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 					'OnAction', function (self, host, source)
 						if not CheatsEnabled() then return end
-						CheatUnlockBreakthroughs()
+						CheatUnlockAllBreakthroughs()
 					end,
 					'replace_matching_id', true,
 				}),
@@ -2732,7 +2817,7 @@ PlaceObj('XTemplate', {
 				'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 				'OnAction', function (self, host, source)
 					if not CheatsEnabled() then return end
-					UnpinAll("force")
+						UnpinAll("force")
 				end,
 				'replace_matching_id', true,
 			}),
@@ -2745,7 +2830,7 @@ PlaceObj('XTemplate', {
 				'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 				'OnAction', function (self, host, source)
 					if not CheatsEnabled() then return end
-					dbg_ToggleRocketInstantTravel()
+						dbg_ToggleRocketInstantTravel()
 				end,
 				'replace_matching_id', true,
 			}),
@@ -2758,7 +2843,7 @@ PlaceObj('XTemplate', {
 				'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 				'OnAction', function (self, host, source)
 					if not CheatsEnabled() then return end
-									MultiCheat()
+						MultiCheat()
 				end,
 				'replace_matching_id', true,
 			}),
@@ -2868,7 +2953,7 @@ PlaceObj('XTemplate', {
 				'ActionIcon', "CommonAssets/UI/Menu/default.tga",
 				'ActionShortcut', "Shift-C",
 				'OnAction', function (self, host, source)
-					if not mapdata.GameLogic then return end
+					if not ActiveMapData.GameLogic then return end
 					if cameraFly.IsActive() then
 						SetMouseDeltaMode(false)
 						cameraRTS.Activate(1)

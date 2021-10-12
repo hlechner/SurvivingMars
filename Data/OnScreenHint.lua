@@ -434,7 +434,7 @@ PlaceObj('OnScreenHint', {
 	SortKey = 4500,
 	group = "Default",
 	id = "HintSuggestHydroponicFarm",
-	text = T(5575, --[[OnScreenHint HintSuggestHydroponicFarm text]] "Local Food production will be crucial to the survival of your Colonists. Consider constructing a <em>Hydroponic Farm</em>.\nKeep in mind that the initial Food production may not be sufficient for the Colony, so you may have to rely on <em>Ressuply Rockets carrying Food</em> from Earth."),
+	text = T(5575, --[[OnScreenHint HintSuggestHydroponicFarm text]] "Local Food production will be crucial to the survival of your Colonists. Consider constructing a <em>Hydroponic Farm</em>.\nKeep in mind that the initial Food production may not be sufficient for the Colony, so you may have to rely on <em>Resupply Rockets carrying Food</em> from Earth."),
 	title = T(5574, --[[OnScreenHint HintSuggestHydroponicFarm title]] "Suggested Building: Hydroponic Farm"),
 })
 
@@ -471,11 +471,27 @@ PlaceObj('OnScreenHint', {
 })
 
 PlaceObj('OnScreenHint', {
+	SortKey = 4900,
+	group = "Default",
+	id = "HintOverstayingTourists",
+	text = T(274312509981, --[[OnScreenHint HintOverstayingTourists text]] "Tourists staying longer than 10 sols on Mars are <em>Overstaying</em> and desperately want to go home. They will lose <em>Satisfaction</em> each sol.\n\nMake sure to land a <em>Rocket</em> near their <em>Dome</em> so they can get back to Earth safely."),
+	title = T(702491556984, --[[OnScreenHint HintOverstayingTourists title]] "Overstaying Mars Tourists"),
+})
+
+PlaceObj('OnScreenHint', {
 	SortKey = 5000,
 	group = "Default",
 	id = "HintRenegade",
 	text = T(7032, --[[OnScreenHint HintRenegade text]] "If the Morale in a Dome is too low, <em>Renegades</em> will appear. Renegades have reduced work Performance and will cause trouble. <em>Security Stations</em> can suppress them for a while, but to solve the problem you have to take steps to increase Morale."),
 	title = T(7031, --[[OnScreenHint HintRenegade title]] "Renegades"),
+})
+
+PlaceObj('OnScreenHint', {
+	SortKey = 5100,
+	group = "Default",
+	id = "HintTourists",
+	text = T(214653462190, --[[OnScreenHint HintTourists text]] "Tourists come to Mars in search of a stellar holiday experience. Raise their <em>Satisfaction</em> with hotels, safaris and keeping their other stats high.\n\nAfter 5 sols, Tourists will look for nearby <em>Rockets</em> to go home. Upon returning to Earth, they give their holiday a 1 - 5 star rating that determines your rewards."),
+	title = T(308935727119, --[[OnScreenHint HintTourists title]] "Tourists"),
 })
 
 PlaceObj('OnScreenHint', {

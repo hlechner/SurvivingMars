@@ -20,7 +20,7 @@ PlaceObj('XTemplate', {
 			}),
 			PlaceObj('XTemplateWindow', {
 				'comment', "logo",
-				'__condition', function (parent, context) return not IsDlcAvailable("armstrong") end,
+				'__condition', function (parent, context) return not IsDlcAvailable("armstrong") and not IsDlcAvailable("picard") end,
 				'__class', "XImage",
 				'Margins', box(115, 20, 0, 0),
 				'Dock', "top",
@@ -30,13 +30,23 @@ PlaceObj('XTemplate', {
 			}),
 			PlaceObj('XTemplateWindow', {
 				'comment', "logo armstrong",
-				'__condition', function (parent, context) return IsDlcAvailable("armstrong") end,
+				'__condition', function (parent, context) return IsDlcAvailable("armstrong") and not IsDlcAvailable("picard") end,
 				'__class', "XImage",
 				'Margins', box(115, 20, 0, 0),
 				'Dock', "top",
 				'HAlign', "left",
 				'VAlign', "top",
 				'Image', "UI/CommonNew/mm_surviving_mars_green_planet_logo.tga",
+			}),
+			PlaceObj('XTemplateWindow', {
+				'comment', "logo armstrong",
+				'__condition', function (parent, context) return IsDlcAvailable("picard") end,
+				'__class', "XImage",
+				'Margins', box(115, 20, 0, 0),
+				'Dock', "top",
+				'HAlign', "left",
+				'VAlign', "top",
+				'Image', "UI/CommonNew/mm_surviving_mars_picard_logo.tga",
 			}),
 			PlaceObj('XTemplateWindow', {
 				'comment', "menu bar",
@@ -158,7 +168,7 @@ PlaceObj('XTemplate', {
 						'ActionIcon', "UI/CommonNew/mm_new_game.tga",
 						'ActionToolbar', "mainmenu",
 						'OnAction', function (self, host, source)
-							StartNewGame(host, "Mission")
+							StartNewGame(host, "Mission", "regular", GetDefaultGameRules())
 						end,
 					}),
 					PlaceObj('XTemplateAction', {
@@ -179,7 +189,7 @@ PlaceObj('XTemplate', {
 						'ActionIcon', "UI/CommonNew/mm_challenges.tga",
 						'ActionToolbar', "mainmenu",
 						'OnAction', function (self, host, source)
-							StartNewGame(host, "Challenge")
+							StartNewGame(host, "Challenge", "challenge", GetDefaultGameRules())
 						end,
 					}),
 					PlaceObj('XTemplateAction', {
@@ -190,16 +200,7 @@ PlaceObj('XTemplate', {
 						'ActionIcon', "UI/CommonNew/mm_creative_mode.tga",
 						'ActionToolbar', "mainmenu",
 						'OnAction', function (self, host, source)
-							StartNewGame(host, "Mission", {
-								EasyResearch = true,
-								FastRockets = true,
-								FastScan = true,
-								FreeConstruction = true,
-								EasyMaintenance = true,
-								IronColonists = true,
-								MoreApplicants = true,
-								RichCoffers = true,
-							})
+							StartNewGame(host, "Mission", "creative", GetDefaultGameRules(true))
 						end,
 					}),
 					PlaceObj('XTemplateAction', {
@@ -209,7 +210,7 @@ PlaceObj('XTemplate', {
 						'ActionToolbar', "bottommenu",
 						'ActionState', function (self, host)
 							if Platform.windows_store and not WindowsStoreAllowUserCreatedContent then
-								self.RolloverDisabledText = T(1000931, "Mods are disabled because no Xbox Live user with privilege to see and upload community creations is logged in.")
+								self.RolloverDisabledText = T(1000932, "Mods are disabled because no Xbox Live user with privilege to see and upload community creations is logged in.")
 								self.RolloverDisabledTitle = T(6884, "Warning")
 								return "disabled"
 							end
@@ -230,7 +231,7 @@ PlaceObj('XTemplate', {
 						'ActionToolbar', "bottommenu",
 						'ActionState', function (self, host)
 							if Platform.windows_store and not WindowsStoreAllowUserCreatedContent then
-								self.RolloverDisabledText = T(1000931, "Mods are disabled because no Xbox Live user with privilege to see and upload community creations is logged in.")
+								self.RolloverDisabledText = T(1000932, "Mods are disabled because no Xbox Live user with privilege to see and upload community creations is logged in.")
 								self.RolloverDisabledTitle = T(6884, "Warning")
 								return "disabled"
 							end
@@ -271,7 +272,7 @@ PlaceObj('XTemplate', {
 								or (Platform.ps4 and not OrbisNetworkFeatures())
 								or Platform.windows_store and not WindowsStoreAllowUserCreatedContent then
 								if Platform.windows_store then
-									self.RolloverDisabledText = T(1000931, "Mods are disabled because no Xbox Live user with privilege to see and upload community creations is logged in.")
+									self.RolloverDisabledText = T(1000932, "Mods are disabled because no Xbox Live user with privilege to see and upload community creations is logged in.")
 									self.RolloverDisabledTitle = T(6884, "Warning")
 								end
 								return "disabled"

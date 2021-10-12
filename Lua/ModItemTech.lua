@@ -13,7 +13,7 @@ end
 
 function ModItemTechPreset:TestModItem(ged)
 	if not UICity then return end
-	UICity:SetTechResearched(self.id)
+	UIColony:SetTechResearched(self.id)
 end
 
 function OnMsg.ClassesBuilt()

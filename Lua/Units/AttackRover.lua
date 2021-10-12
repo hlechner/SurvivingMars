@@ -65,7 +65,7 @@ function AttackRover:Init()
 end
 
 function AttackRover:GameInit()
-	local city = self.city or UICity
+	local city = self.city or MainCity
 	city:RemoveFromLabel("Rover", self)
 	city:AddToLabel("HostileAttackRovers", self)
 	
@@ -81,10 +81,10 @@ function AttackRover:Done()
 end
 
 local UnbuildableZ = buildUnbuildableZ()
-local function IsPlayablePoint(pt)
+local function IsPlayablePoint(terrain, buildable_grid, city, pt)
 	local x, y = pt:xy()
-	local q, r = WorldToHex(x, y)
-	return pt:InBox2D(g_MapArea) and GetBuildableZ(q, r) ~= UnbuildableZ and terrain.IsPassable(pt)
+	local q, r = WorldToHex(x, y) 
+	return pt:InBox2D(city.MapArea) and buildable_grid:GetZ(q, r) ~= UnbuildableZ and terrain:IsPassable(pt)
 end
 
 function AttackRover:IsReloading()
@@ -116,7 +116,7 @@ end
 
 function AttackRover:Spawn()
 	-- pick a random buildable spot within the playable area
-	local city = self.city or UICity
+	local city = self.city or MainCity
 
 	local spawn_pos = self.spawn_pos
 
@@ -131,23 +131,29 @@ function AttackRover:Spawn()
 			dir = SetLen(dir:SetZ(MulDivRound(dir:Len2D(), s, c)), flight_dist)
 		end
 		
-		-- pick position		
+		local game_map = GetGameMap(self)
+		local buildable_grid = game_map.buildable
+		local object_hex_grid = game_map.object_hex_grid
+		local terrain = game_map.terrain
+		local realm = game_map.realm
+
+		-- pick position
 		while not spawn_pos do
 			local sector_x = city:Random(1, 10)
 			local sector_y = city:Random(1, 10)
-			local sector = g_MapSectors[sector_x][sector_y]
+			local sector = city.MapSectors[sector_x][sector_y]
 			
 			--local maxx, maxy = sector.area:
-			local minx, miny = sector.area:minxyz()		
+			local minx, miny = sector.area:minxyz()
 			local maxx, maxy = sector.area:maxxyz()
 			
 			local x = city:Random(minx, maxx)
 			local y = city:Random(miny, maxy)
 			local pt = point(x, y)
 					
-			if IsPlayablePoint(pt) and not GetDomeAtHex(WorldToHex(pt)) then
-				pt = pt:SetStepZ()
-				if not DomeCollisionCheck(pt, pt + dir) then
+			if IsPlayablePoint(terrain, buildable_grid, city, pt) and not GetDomeAtHex(object_hex_grid, WorldToHex(pt)) then
+				pt = realm:SnapToStep(pt)
+				if not DomeCollisionCheck(city, pt, pt + dir) then
 					spawn_pos = pt
 					break
 				end
@@ -156,11 +162,12 @@ function AttackRover:Spawn()
 		
 		-- launch a meteor 
 		local pos = spawn_pos + dir
-		local rover = PlaceObject("FakeAttackRover")
+		local rover = PlaceObjectIn("FakeAttackRover", self:GetMapID())
 		CopyColorizationMaterial(self, rover)
 		rover:SetPos(pos)
 		PlayFX("Meteor", "start", rover, nil, nil, dir)
-		spawn_pos = terrain.GetIntersection(pos, spawn_pos)
+		local terrain = GetTerrain(self)
+		spawn_pos = terrain:GetIntersection(pos, spawn_pos)
 		
 		flight_dist = spawn_pos:Dist(pos)
 		local flight_speed = self.spawn_flight_speed
@@ -183,7 +190,7 @@ function AttackRover:Spawn()
 		
 		PlayFX("Meteor", "end", rover, nil, nil, dir)
 		
-		local land_decal = PlaceObject(self.land_decal_name)
+		local land_decal = PlaceObjectIn(self.land_decal_name, self:GetMapID())
 		land_decal:SetPos(spawn_pos)
 		land_decal:SetAngle(AsyncRand(360*60))
 		land_decal:SetScale(15)
@@ -211,22 +218,27 @@ function AttackRover:Spawn()
 		Sleep(1000)
 	end)
 	
-	self:PopAndCallDestructor()		
+	self:PopAndCallDestructor()
 	self:SetCommand("Roam")
 end
 
 function AttackRover:RoamTick()
 	-- pick a random playable pos within roam_target_radius, but outside of a dome
-	local city = self.city or UICity
+	local city = self.city or MainCity
 	local pos = self:GetPos()
 	local roam_target
 	
+	local game_map = GetGameMap(self)
+	local buildable_grid = game_map.buildable
+	local object_hex_grid = game_map.object_hex_grid
+	local terrain = game_map.terrain
+
 	for i = 1, 50 do
 		local dist = city:Random(self.roam_target_radius)
 		local angle = city:Random(360*60)
 		
 		local pt = RotateRadius(dist, angle, pos)
-		if IsPlayablePoint(pt) and not GetDomeAtHex(WorldToHex(pt)) then
+		if IsPlayablePoint(terrain, buildable_grid, city, pt) and not GetDomeAtHex(object_hex_grid, WorldToHex(pt)) then
 			roam_target = pt
 			break
 		end
@@ -253,7 +265,7 @@ function AttackRover:Reload()
 end
 
 function AttackRover:PickTarget()
-	local city = self.city or UICity
+	local city = self.city or MainCity
 	local target, target_dist
 	
 	if self.reclaimed then
@@ -382,13 +394,13 @@ function AttackRover:RocketDamage(shooter)
 end
 
 function AttackRover:Repair()
-	local city = self.city or UICity
+	local city = self.city or MainCity
 	self:DisconnectFromCommandCenters()
 	self.current_health = self.max_health
 	self.malfunction_idle_state = nil
 	self:SetState("idle")
 	self.is_repair_request_initialized = false
-	if city.mystery.reclaim_repaired_rovers then
+	if city.colony.mystery.reclaim_repaired_rovers then
 		self.reclaimed = true
 		self.palette = {"outside_dark","rover_base","outside_accent_2","rover_base"}
 		SetPaletteFromClassMember(self)
@@ -406,7 +418,7 @@ function AttackRover:Repair()
 end
 
 function AttackRover:Malfunction()
-	local city = self.city or UICity
+	local city = self.city or MainCity
 	city:RemoveFromLabel("HostileAttackRovers", self)
 	self.malfunction_idle_state = self.current_health == 0 and "destroyed" or "idle"
 	Msg("AttackRoverMalfunctioned", self)
@@ -418,7 +430,7 @@ function AttackRover:Dead()
 		Msg("AttackRoverDead", self)
 		self:SetCommand("Malfunction")
 	end
-	local city = self.city or UICity
+	local city = self.city or MainCity
 	city:RemoveFromLabel("HostileAttackRovers", self)
 	BaseRover.Dead(self)
 	ObjModified(self)
@@ -459,8 +471,8 @@ function AttackRover:GetRefundResources()
 end
 
 function AttackRover:OnDemolish()
-	PlaceResourceStockpile_Delayed(self:GetVisualPos(), "Metals", 20*const.ResourceScale, self:GetAngle(), true)
-	PlaceResourceStockpile_Delayed(self:GetVisualPos(), "Electronics", 10*const.ResourceScale, self:GetAngle(), true)
+	PlaceResourceStockpile_Delayed(self:GetVisualPos(), self:GetMapID(),  "Metals", 20*const.ResourceScale, self:GetAngle(), true)
+	PlaceResourceStockpile_Delayed(self:GetVisualPos(), self:GetMapID(),  "Electronics", 10*const.ResourceScale, self:GetAngle(), true)
 end
 
 function AttackRover:GetDescription()
@@ -535,9 +547,10 @@ function AttackRover:ToggleRepair()
 end
 
 function AttackRover:ToggleRepair_Update(button)
-	local count = MapCount(self, "hex", const.CommandCenterMaxRadius, "DroneControl", 
-								function(obj) 
-									return obj.accept_requester_connects and obj.work_radius >= HexAxialDistance(self, obj) and #(obj.drones or empty_table) > 0 
+	local count = GetRealm(self):MapCount(self, "hex", const.CommandCenterMaxRadius, "DroneNode", 
+								function(obj)
+									local center = obj:GetCommandCenter()
+									return center.accept_requester_connects and obj.work_radius >= HexAxialDistance(self, obj) and #(center.drones or empty_table) > 0 
 								end)
 	
 	if count > 0 then
@@ -624,7 +637,7 @@ function AttackRover:FireRocket(luaobj, rocket_class)
 	Sleep(self:TimeToAnimEnd())
 	self:SetAnim(1, "attackIdle")
 	Sleep(500)
-	local rocket = PlaceObject(rocket_class, luaobj)
+	local rocket = PlaceObjectIn(rocket_class, self:GetMapID(), luaobj)
 	local spot = self:GetSpotBeginIndex("Rocket")
 	local pos = self:GetSpotLoc(spot)
 	rocket.shooter = self

@@ -13,6 +13,7 @@ PlaceObj('StoryBit', {
 	EnableChance = 40,
 	Enabled = true,
 	Image = "UI/Messages/Events/23_red_alert.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckResource', {
 			'Resource', "Power",
@@ -52,6 +53,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(424202355279, --[[voice:narrator]] "A number of red lights go off as sparks start flying from the terminal that monitors our power networks."),
 	group = "Buildings",
 	id = "PowerSurge",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143765,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamSols', {
 		'Name', "shutdown_duration",
 		'Value', 2160000,

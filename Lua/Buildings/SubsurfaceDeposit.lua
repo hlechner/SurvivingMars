@@ -70,7 +70,7 @@ function SubsurfaceDepositMarker:PostLoad()
 	self:SetColorModifier(Resources[self.resource].color)
 	if TerrainDeposits[self.resource] then
 		self:ClearGameFlags(const.gofPermanent)
-		local obj = PlaceObject("TerrainDepositMarker", {resource = self.resource})
+		local obj = PlaceObjectIn("TerrainDepositMarker", self:GetMapID(), {resource = self.resource})
 		obj:SetPos(self:GetPos())
 		obj:SetGameFlags(const.gofPermanent)
 		obj.max_amount = MulDivRound(obj.max_amount, DepositGradeToMultiplier[self.grade], 100)
@@ -82,7 +82,7 @@ function SubsurfaceDepositMarker:SpawnDeposit()
 	if not SubSurfaceDeposits[self.resource] then
 		return
 	end
-	local deposit = PlaceObject("SubsurfaceDeposit" .. self.resource, {
+	local deposit = PlaceObjectIn("SubsurfaceDeposit" .. self.resource, self:GetMapID(), {
 		max_amount = self.max_amount, 
 		grade = self.grade,
 		revealed = self.revealed,
@@ -227,7 +227,7 @@ GlobalGameTimeThread("RecentlyRevDepositsNotif", function()
 end)
 
 function SubsurfaceDeposit:OnReveal()
-	g_RecentlyRevDeposits[#g_RecentlyRevDeposits + 1] = self
+	RequestNewObjsNotif(g_RecentlyRevDeposits, self, self:GetMapID(), true)
 	--[[
 	print("--DEPOSIT REVEALED--")
 	print("")
@@ -358,7 +358,9 @@ function SubsurfaceDeposit:NotifyNearbyExploiters(fn)
 	if fn then 
 		deposit_func = fn
 	end
-	MapForEach(self, "hex", const.RangeToCheckForExploitersOnDepositReveal,"BuildingDepositExploiterComponent", deposit_func, self )
+
+	local realm = GetRealm(self)
+	realm:MapForEach(self, "hex", const.RangeToCheckForExploitersOnDepositReveal,"BuildingDepositExploiterComponent", deposit_func, self )
 end
 
 function SubsurfaceDeposit:UpdateEntity()
@@ -424,7 +426,7 @@ function OnMsg.ConstValueChanged(prop, old_value, new_value)
 		old_value = old_value == 0 and 0 or 1
 		new_value = new_value == 0 and 0 or 1
 		if old_value ~= new_value then
-			MapForEach("map",
+			MapsForEach("map",
 				"SubsurfaceDeposit",
 				function(obj)
 					obj:UpdateEntity()

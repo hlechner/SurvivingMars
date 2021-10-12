@@ -46,7 +46,7 @@ function MarsSpecialProject:OnCompletion(city)
 				popup_preset = "CompleteSpecialProject",
 				GetPopupPreset =  function()return "Completed"..self.project_id end,
 				override_text = T{12169, "Completed: <display_name>", project},
-			})
+			}, nil, city.map_id)
 	end
 	-- spawn new project or reset this one bu removing the assigned rocket to it
 	self.rocket = false
@@ -120,7 +120,7 @@ function MarsSpecialProject:GetLaunchFuel()
 	end
 end
 
-function GenerateProjectsLatLong(poi_id, city, init)
+function GenerateProjectsLatLong(poi_id, init)
 	local project = Presets.POI.Default[poi_id]
 	if not project then
 		return 0,0
@@ -180,7 +180,7 @@ function CalcNextSpawnProject(poi_id, city)
 	local min = project.spawn_period.from
 	local max = project.spawn_period.to	
 	if min>0 and max>0 then
-		local day = city.day + city:Random(min, max)		
+		local day = UIColony.day + city:Random(min, max)		
 		g_SpecialProjectNextSpawn[poi_id] = g_SpecialProjectNextSpawn[poi_id] or {}
 		g_SpecialProjectNextSpawn[poi_id].day = day
 	end
@@ -208,7 +208,7 @@ function SpawnSpecialProject(poi_id, city, init)
 	end 	
 	
 	-- calc location
-	local lat, long = GenerateProjectsLatLong(poi_id, city, init)
+	local lat, long = GenerateProjectsLatLong(poi_id, init)
 	local obj = MarsSpecialProject:new{	
 		id           = project.id..(g_SpecialProjectSpawnNextIdx[poi_id] or ""),
 		project_id   = project.id,
@@ -226,9 +226,9 @@ function SpawnSpecialProject(poi_id, city, init)
 		MarsScreenMapParams.longitude = long
 		OpenPlanetaryView()
 	end
-	AddOnScreenNotification("NewSpecialProjects", CenterOnSpawned, {project_name = project.display_name})
+	AddOnScreenNotification("NewSpecialProjects", CenterOnSpawned, {project_name = project.display_name}, nil, city.map_id)
 	if not TerraformingSpecialProjectSpawned and project.is_terraforming then
-		AddOnScreenNotification("TerraformingSpecialProjects")
+		AddOnScreenNotification("TerraformingSpecialProjects", nil, nil, nil, city.map_id)
 		TerraformingSpecialProjectSpawned = true
 	end
 	CalcNextSpawnProject(poi_id, city)
@@ -241,7 +241,7 @@ function TrytoSpawnSpecialProject(poi, day)
 	if disabled then -- disabled from storybit
 		return 
 	end 
-	local day =  day or UICity.day
+	local day =  day or UIColony.day
 	local min = poi.spawn_period.from
 	local max = poi.spawn_period.to
 	local tech = poi.activation_by_tech_research
@@ -250,8 +250,8 @@ function TrytoSpawnSpecialProject(poi, day)
 	if not g_SpecialProjectSpawnNextIdx[id] 
 		or (min>0 and max>0 and g_SpecialProjectNextSpawn[id] and day >= g_SpecialProjectNextSpawn[id].day) 
 	then
-		if poi.PrerequisiteToCreate(poi, UICity) then
-			return SpawnSpecialProject(id, UICity, init)			
+		if poi.PrerequisiteToCreate(poi, MainCity) then
+			return SpawnSpecialProject(id, MainCity, init)
 		end
 	end
 end
@@ -313,8 +313,9 @@ DefineClass.Effect_UnlockSpecialProject = {
 	Description = T(12000, "<u(SpecialProject)>"),
 }
 
-function Effect_UnlockSpecialProject:OnApplyEffect(city)
+function Effect_UnlockSpecialProject:OnApplyEffect(colony)
 	local poi = Presets.POI.Default[self.SpecialProject]
+	local city = UICity
 	if poi.PrerequisiteToCreate(poi, city) then
 		SpawnSpecialProject(poi.id, city, "init")
 	end
@@ -322,15 +323,16 @@ end
 
 function CheatSpawnSpecialProjects(project_id)
 	local projects = Presets.POI.Default
+	local city = UICity
 	if project_id then
 		local project = Presets.POI.Default[project_id]
 		local init = not g_SpecialProjectSpawnNextIdx[project_id]
-		SpawnSpecialProject(project_id, UICity, init)	
+		SpawnSpecialProject(project_id, city, init)	
 		return
 	end
 	for _, poi in ipairs(projects) do
 		local id =  poi.id 
 		local init = not g_SpecialProjectSpawnNextIdx[id]
-		SpawnSpecialProject(id, UICity, init)			
+		SpawnSpecialProject(id, city, init)			
 	end
 end

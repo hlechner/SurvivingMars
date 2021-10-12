@@ -38,7 +38,7 @@ end
 -- nil means not-yet, false means failed, X means completed on sol X
 function Milestone:CompleteSol(milestone)
 	local time = MilestoneCompleted[self.id]
-	return time and ((time + City.hour * const.HourDuration) / const.DayDuration + 1)
+	return time and ((time + Colony.hour * const.HourDuration) / const.DayDuration + 1)
 end
 
 function Milestone:GetCompleteText()
@@ -47,7 +47,7 @@ function Milestone:GetCompleteText()
 		return  T{1159, "<display_name> - Sol <sol>", self, sol = sol}
 	elseif sol == false then
 		local enactor = MilestoneEnactors[self.id]
-		if enactor and enactor ~= UICity then
+		if enactor and enactor ~= MainCity then
 			return T{11675, "<display_name> - <enactor>", self, enactor = enactor.display_name}
 		end
 	end
@@ -65,18 +65,18 @@ function OnMsg.NewDay()
 end
 
 function MilestoneRestartThreads()
-	if g_Tutorial or not mapdata.GameLogic then return end
+	if g_Tutorial or not ActiveMapData.GameLogic then return end
 	local available_milestones = GetAvailablePresets(Presets.Milestone.Default)
 	for _, milestone in ipairs(available_milestones) do
 		local id = milestone.id
 		if MilestoneCompleted[id] == nil then
 			DeleteThread(MilestoneThreads[id])
 			MilestoneThreads[id] = CreateGameTimeThread(function(id)
-				assert(UICity)
-				if not UICity then
+				assert(MainCity)
+				if not MainCity then
 					return
 				end
-				local res = milestone:Complete(UICity)
+				local res = milestone:Complete(MainCity)
 				if milestone.class == "UnpersistedMissingPreset" then
 					return
 				end
@@ -90,7 +90,7 @@ function MilestoneRestartThreads()
 				if not res then
 					return
 				end
-				MilestoneEnactors[id] = UICity
+				MilestoneEnactors[id] = MainCity
 				Msg("MilestoneCompleted", id)
 				AddOnScreenNotification("MilestoneComplete", function() OpenDialog("Milestones") end, {
 					display_name = milestone.display_name,
@@ -98,7 +98,7 @@ function MilestoneRestartThreads()
 					score = milestone:GetScore()
 				})
 				if milestone.trigger_fireworks then
-					TriggerFireworks()
+					TriggerFireworks(MainMapID)
 				end
 				local sponsor = GetMissionSponsor()
 				local commander = GetCommanderProfile()
@@ -117,7 +117,7 @@ function MilestoneRestartThreads()
 					score_sum = score_sum + milestone:GetScore()
 				end
 				if all_completed then
-					WaitPopupNotification("AllMilestonesCompleted", { params = { sponsor = sponsor.display_name, commander = commander.display_name, sol = UICity.day, score = score_sum } })
+					WaitPopupNotification("AllMilestonesCompleted", { params = { sponsor = sponsor.display_name, commander = commander.display_name, sol = UIColony.day, score = score_sum } })
 				end
 			end, id)
 		end
@@ -138,7 +138,7 @@ GlobalVar("g_PopulationHighWatermark", 0)
 
 function UpdatePopulationHighWatermark()
 	CreateGameTimeThread(function()
-		local population = #(UICity.labels.Colonist or empty_table)
+		local population = #(UIColony:GetCityLabels("Colonist") or empty_table)
 		if population > g_PopulationHighWatermark then
 			g_PopulationHighWatermark = population
 			Msg("PopulationHighWatermark")
@@ -183,7 +183,7 @@ function Milestone_AllSectorsScanned()
 		for x = 1, n do
 			if not scanned then break end
 			for y = 1, n do
-				if g_MapSectors[x][y].status == "unexplored" then
+				if MainCity.MapSectors[x][y].status == "unexplored" then
 					scanned = false
 					break
 				end
@@ -211,7 +211,7 @@ end
 function OnMsg.MilestoneCompleted(milestone_id)
 	local enactor = MilestoneEnactors[milestone_id]
 	local research = Presets.Milestone.Default[milestone_id].reward_research
-	if enactor == UICity then
+	if enactor == MainCity then
 		GrantResearchPoints(research)
 	else
 		enactor.resources.research = enactor.resources.research + research

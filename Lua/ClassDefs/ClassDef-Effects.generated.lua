@@ -15,8 +15,8 @@ DefineClass.AddBuildingExtraCost = {
 	Documentation = "Adds extra cost to the construction of the specified building.",
 }
 
-function AddBuildingExtraCost:Execute(obj, context)
-	UICity:ModifyConstructionCost("add", self.BuildingClass, self.Resource, 0, self.Amount, "StoryBit")
+function AddBuildingExtraCost:Execute(map_id, obj, context)
+	UIColony.construction_cost:ModifyConstructionCost("add", self.BuildingClass, self.Resource, 0, self.Amount, "StoryBit")
 end
 
 UndefineClass('AddExpeditionRocketResources')
@@ -36,7 +36,7 @@ DefineClass.AddExpeditionRocketResources = {
 	Documentation = "Adds the specified resources to the rocket cargo. Note: In order to ensure that the resources will be properly loaded, in a StoryBit FollowUp which adds resources to the expedition, use trigger PlanetaryAnomalyAnalyzed. In order to ensure that the anomaly will be recognized as an associated object, use as a prerequisite IsCustomAnomaly.",
 }
 
-function AddExpeditionRocketResources:Execute(obj, context)
+function AddExpeditionRocketResources:Execute(map_id, obj, context)
 	local rocket = obj
 	if obj:IsKindOf("PlanetaryAnomaly") then
 		rocket =  obj.rocket
@@ -59,7 +59,7 @@ DefineClass.AddTrait = {
 	Documentation = "Add a specified trade or specialization to the associated colonist.",
 }
 
-function AddTrait:Execute(colonist, context)
+function AddTrait:Execute(map_id, colonist, context)
 	if self.Trait and IsValid(colonist) and not colonist:IsDying() then
 		colonist:RemoveIncompatibleTraitsWith(self.Trait)
 		colonist:AddTrait(self.Trait)
@@ -109,8 +109,7 @@ DefineClass.CallTradeRocket = {
 	Documentation = "Calls a trade rocket with the specified properties.",
 }
 
-function CallTradeRocket:Execute(obj, context)
-	local city = UICity
+function CallTradeRocket:Execute(map_id, obj, context)
 	assert(self.rocket_id ~= "", "CallTradeRocket StoryBit, missing rocket_id")
 	local trade_request = {}
 	for i = 1, 5 do
@@ -122,8 +121,7 @@ function CallTradeRocket:Execute(obj, context)
 		end
 	end
 	assert(#trade_request > 0, "CallTradeRocket StoryBit, no resource/amount specified!")
-	local rocket = PlaceBuilding("TradeRocket", {city = city, custom_id = self.rocket_id, export_goods = trade_request})
-	
+	local rocket = PlaceBuildingIn("TradeRocket", MainMapID, {custom_id = self.rocket_id, export_goods = trade_request})
 	
 	local cargo = false
 	if self.display_name ~= "" then
@@ -164,9 +162,10 @@ DefineClass.CauseFault = {
 	Documentation = "Cause a fault at a specified number of random spots on a grid.",
 }
 
-function CauseFault:Execute(obj, context)
+function CauseFault:Execute(map_id, obj, context)
+	local city = Cities[map_id]
 	local breakableGridFragments = {}
-	for _, fragment in ipairs(UICity[self.Grid]) do
+	for _, fragment in ipairs(city[self.Grid]) do
 		if fragment:IsBreakable() then
 			breakableGridFragments[#breakableGridFragments + 1] = fragment
 		end
@@ -197,7 +196,7 @@ DefineClass.CauseFracture = {
 	Documentation = "Cause a fracture on the associated dome.",
 }
 
-function CauseFracture:Execute(obj, context)
+function CauseFracture:Execute(map_id, obj, context)
 	local crack_type = (AsyncRand(100) < self.ChanceLarge) and "Large" or "Small"
 	obj:AddFracture(crack_type)
 end
@@ -239,7 +238,7 @@ DefineClass.CreatePlanetaryAnomaly = {
 	Documentation = "Creates a planetary anomaly with the specified properties.",
 }
 
-function CreatePlanetaryAnomaly:Execute(obj, context)
+function CreatePlanetaryAnomaly:Execute(map_id, obj, context)
 	local latitude = (self.latitude or min_int) ~= min_int and self.latitude or nil
 	local longitude = (self.longitude or min_int) ~= min_int and self.longitude or nil
 	local num_crew = self.required_crew or 0
@@ -263,7 +262,7 @@ function CreatePlanetaryAnomaly:Execute(obj, context)
 		latitude, longitude = GenerateMarsScreenPoI("anomaly")
 	end
 	
-	local anomaly = PlaceObject("PlanetaryAnomaly", {
+	local anomaly = PlaceObjectIn("PlanetaryAnomaly", MainMapID, {
 					custom_id = self.id,
 					display_name = self.display_name,
 					init_name = not self.display_name,
@@ -294,7 +293,7 @@ DefineClass.DelayExpedition = {
 	Documentation = "Delay the associated expedition rocket by the specified time.",
 }
 
-function DelayExpedition:Execute(rocket, context)
+function DelayExpedition:Execute(map_id, rocket, context)
 	rocket:AddExpeditionTime(self.Time)
 end
 
@@ -303,12 +302,12 @@ DefineClass.DeleteCargo = {
 	__parents = { "Effect", },
 	Description = Untranslated("Delete rocket cargo"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Delete the associated rocket's cargo.",
 }
 
-function DeleteCargo:Execute(rocket, context)
+function DeleteCargo:Execute(map_id, rocket, context)
 	rocket.cargo = {}
 end
 
@@ -330,7 +329,7 @@ DefineClass.DestroyBuilding = {
 	Documentation = "Destroy the associated building.",
 }
 
-function DestroyBuilding:Execute(obj, context)
+function DestroyBuilding:Execute(map_id, obj, context)
 	obj:BlowUp(self.KillColonists, "StoryBit", "single_building")
 end
 
@@ -344,7 +343,7 @@ DefineClass.DestroyVehicle = {
 	Documentation = "Destroy the associated vehicle.",
 }
 
-function DestroyVehicle:Execute(obj, context)
+function DestroyVehicle:Execute(map_id, obj, context)
 	obj:Destroy()
 end
 
@@ -353,12 +352,12 @@ DefineClass.DisableLanding = {
 	__parents = { "Effect", },
 	Description = Untranslated("Disable rocket landing"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Disable landing of the associated rocket (the rocket landing should be later enabled with EnableLanding).",
 }
 
-function DisableLanding:Execute(rocket, context)
+function DisableLanding:Execute(map_id, rocket, context)
 	rocket:SetCommand("LandingDisabled")
 end
 
@@ -367,12 +366,12 @@ DefineClass.DisableLaunch = {
 	__parents = { "Effect", },
 	Description = Untranslated("Disable rocket launch"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Disable launch for the associated rocket (the rocket launch should be later enabled with EnableLaunch).",
 }
 
-function DisableLaunch:Execute(rocket, context)
+function DisableLaunch:Execute(map_id, rocket, context)
 	rocket.launch_disabled = true
 	rocket:UpdateStatus("launch suspended")
 end
@@ -392,28 +391,28 @@ DefineClass.DiscoverTech = {
 	Documentation = "Discover the specified tech or a random tech from the specified field.",
 }
 
-function DiscoverTech:Execute(obj, context)
-	local city = UICity
+function DiscoverTech:Execute(map_id, obj, context)
+	local research = UIColony
 	local tech_id = self.Tech
 	if tech_id == "" then
 		local not_revealed_techs = {}
 		local all_techs = Presets.TechPreset[self.Field] or ""
 		for i = 1, #all_techs do
 			local id = all_techs[i].id
-			if not city:IsTechDiscovered(id) then
+			if not research:IsTechDiscovered(id) then
 				not_revealed_techs[#not_revealed_techs + 1] = id
 			end
 		end
-		tech_id = city:TableRand(not_revealed_techs)
+		tech_id = SessionRandom:TableRand(not_revealed_techs)
 		if not tech_id then
 			return
 		end
 	end
-	if not city:SetTechDiscovered(tech_id) then
+	if not research:SetTechDiscovered(tech_id) then
 		return
 	end
 	if self.Cost ~= -1 then
-		city:ChangeResearchCost(tech_id, self.Cost)
+		research:ChangeResearchCost(tech_id, self.Cost)
 	end
 end
 
@@ -436,9 +435,10 @@ DefineClass.EffectPickRocketWithStatus = {
 	Documentation = "Pick a rocket with a specific status.",
 }
 
-function EffectPickRocketWithStatus:Execute(obj, context)
+function EffectPickRocketWithStatus:Execute(map_id, obj, context)
 	local matching = {}
-	for _, rocket in ipairs(UICity.labels.SupplyRocket) do
+	local city = Cities[map_id]
+	for _, rocket in ipairs(city.labels.SupplyRocket) do
 		if rocket:IsRocketStatus(self.Status) then
 			matching[#matching + 1] = rocket
 		end
@@ -454,12 +454,12 @@ DefineClass.EnableLanding = {
 	__parents = { "Effect", },
 	Description = Untranslated("Enable rocket landing"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Enable landing of the associated rocket (should be used to enable rocket landing after disabling with DisableLanding)",
 }
 
-function EnableLanding:Execute(rocket, context)
+function EnableLanding:Execute(map_id, rocket, context)
 	Msg("LandingEnabled")
 end
 
@@ -468,12 +468,12 @@ DefineClass.EnableLaunch = {
 	__parents = { "Effect", },
 	Description = Untranslated("Enable rocket launch"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Enable launch for the associated rocket (should be used to enable rocket launch after disabling with DisableLaunch).",
 }
 
-function EnableLaunch:Execute(rocket, context)
+function EnableLaunch:Execute(map_id, rocket, context)
 	rocket.launch_disabled = false
 	rocket:WakeFromWaitingForResources()
 	rocket:UpdateStatus("ready for launch")
@@ -489,7 +489,7 @@ DefineClass.EraseColonist = {
 	Documentation = "Delete the associated colonist.",
 }
 
-function EraseColonist:Execute(colonist, context)
+function EraseColonist:Execute(map_id, colonist, context)
 	colonist:SetCommand("Erase")
 end
 
@@ -500,8 +500,8 @@ DefineClass.EraseObject = {
 	Documentation = "Delete the associated object.",
 }
 
-function EraseObject:Execute(obj, context)
-	if obj:IsKindOf("SupplyRocket") and obj:IsValidPos() then
+function EraseObject:Execute(map_id, obj, context)
+	if obj:IsKindOf("RocketBase") and obj:IsValidPos() then
 		obj:EjectColonists()
 		if obj.disembarking then
 			Sleep(#obj.disembarking * 1500)
@@ -526,9 +526,10 @@ DefineClass.EraseShuttles = {
 	Documentation = "Delete the specified amount of shuttles.",
 }
 
-function EraseShuttles:Execute(obj, context)
+function EraseShuttles:Execute(map_id, obj, context)
 	local count = self:ResolveValue("Count", context)
-	RemoveShuttles(count, self.IdleShuttlesFirst, self.LogicalObjectOnly)
+	local city = Cities[map_id] or MainCity
+	RemoveShuttles(city, count, self.IdleShuttlesFirst, self.LogicalObjectOnly)
 end
 
 UndefineClass('ExplodeBuilding')
@@ -551,7 +552,7 @@ DefineClass.ExplodeBuilding = {
 	Documentation = "Blow up the associated building.",
 }
 
-function ExplodeBuilding:Execute(obj, context)
+function ExplodeBuilding:Execute(map_id, obj, context)
 	obj:BlowUp(self.KillColonists, "StoryBit", nil, self.Radius)
 end
 
@@ -560,12 +561,12 @@ DefineClass.ExplodeRocket = {
 	__parents = { "Effect", },
 	Description = Untranslated("Explodes a landed rocket"),
 	RequiredObjClasses = {
-	"SupplyRocket",
+	"RocketBase",
 },
 	Documentation = "Blow up the associated rocket.",
 }
 
-function ExplodeRocket:Execute(rocket, context)
+function ExplodeRocket:Execute(map_id, rocket, context)
 	local pos = rocket:GetPos()
 	PlayFX("RocketExplosion", "start", rocket, nil, pos)
 	DoneObject(rocket.landing_site)
@@ -585,7 +586,7 @@ DefineClass.ExtendDisaster = {
 	Documentation = "Blow up the associated building.",
 }
 
-function ExtendDisaster:Execute(obj, context)
+function ExtendDisaster:Execute(map_id, obj, context)
 	if self.Disaster == "Cold Wave" then
 		ExtendColdWave(self.Time * const.HourDuration)
 	elseif self.Disaster == "Dust Storm" then
@@ -600,8 +601,8 @@ DefineClass.Fireworks = {
 	Documentation = "Trigger fireworks.",
 }
 
-function Fireworks:Execute(obj, context)
-	TriggerFireworks()
+function Fireworks:Execute(map_id, obj, context)
+	TriggerFireworks(map_id)
 end
 
 UndefineClass('ForEachExecuteEffects')
@@ -628,26 +629,27 @@ DefineClass.ForEachExecuteEffects = {
 	Documentation = "Execute the specified effects list for each object from the label which satisfies the conditions.",
 }
 
-function ForEachExecuteEffects:Execute(obj, context)
+function ForEachExecuteEffects:Execute(map_id, obj, context)
 	if not self.Label then
 		context:ShowError(self, "Label required!")
 		return
 	end
 	local objs
+	local city = Cities[map_id]
 	if not self.InDome then
-		objs = table.copy(GetObjectsByLabel(self.Label) or empty_table)
+		objs = table.copy(GetObjectsByLabel(city, self.Label) or empty_table)
 	elseif obj then
 		objs = table.copy(obj.labels[self.Label] or empty_table)
 	else
 		objs = {}
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+		for _, dome in ipairs(city.labels.Dome or empty_table) do
 				table.iappend(objs, dome.labels[self.Label])
 		end
 	end
 	
 	for _, condition in ipairs(self.Filters or empty_table) do
 		for i = #objs, 1, -1 do
-			if not condition:Evaluate(objs[i], context) then
+			if not condition:Evaluate(map_id, objs[i], context) then
 				objs[i] = objs[#objs]
 				objs[#objs] = nil
 			end
@@ -664,7 +666,7 @@ function ForEachExecuteEffects:Execute(obj, context)
 	table.shuffle(objs)
 	for _, effect in ipairs(self.Effects or empty_table) do
 		for i = 1, count do
-			effect:Execute(objs[i], context)
+			effect:Execute(map_id, objs[i], context)
 		end
 	end
 end
@@ -712,12 +714,12 @@ DefineClass.ForEachResident = {
 	Documentation = "Execute the specified effects list for the residents in the associated building.",
 }
 
-function ForEachResident:Execute(obj, context)
+function ForEachResident:Execute(map_id, obj, context)
 	local objs = obj.colonists
 	
 	for _, condition in ipairs(self.Filters or empty_table) do
 		for i = #objs, 1, -1 do
-			if not condition:Evaluate(objs[i], context) then
+			if not condition:Evaluate(map_id, objs[i], context) then
 				objs[i] = objs[#objs]
 				objs[#objs] = nil
 			end
@@ -734,7 +736,7 @@ function ForEachResident:Execute(obj, context)
 	table.shuffle(objs)
 	for _, effect in ipairs(self.Effects or empty_table) do
 		for i = 1, count do
-			effect:Execute(objs[i], context)
+			effect:Execute(map_id, objs[i], context)
 		end
 	end
 end
@@ -770,7 +772,7 @@ DefineClass.ForEachWorker = {
 	Documentation = "Execute the effects from the effects list for each of the workers which satisfies the filter conditions and works in the associated workplace.",
 }
 
-function ForEachWorker:Execute(obj, context)
+function ForEachWorker:Execute(map_id, obj, context)
 	local objs = {}
 	for i = 1, #obj.workers do
 		local shift = obj.workers[i]
@@ -781,7 +783,7 @@ function ForEachWorker:Execute(obj, context)
 	
 	for _, condition in ipairs(self.Filters or empty_table) do
 		for i = #objs, 1, -1 do
-			if not condition:Evaluate(objs[i], context) then
+			if not condition:Evaluate(map_id, objs[i], context) then
 				objs[i] = objs[#objs]
 				objs[#objs] = nil
 			end
@@ -798,7 +800,7 @@ function ForEachWorker:Execute(obj, context)
 	table.shuffle(objs)
 	for _, effect in ipairs(self.Effects or empty_table) do
 		for i = 1, count do
-			effect:Execute(objs[i], context)
+			effect:Execute(map_id, objs[i], context)
 		end
 	end
 end
@@ -821,7 +823,7 @@ DefineClass.ForceSuicide = {
 	Documentation = "Force the associated colonist to commit suicide.",
 }
 
-function ForceSuicide:Execute(colonist, context)
+function ForceSuicide:Execute(map_id, colonist, context)
 	colonist.force_suicide = true
 end
 
@@ -835,7 +837,7 @@ DefineClass.FreezeBuilding = {
 	Documentation = "Freeze the associated building.",
 }
 
-function FreezeBuilding:Execute(obj, context)
+function FreezeBuilding:Execute(map_id, obj, context)
 	if GetHeatAt(obj) < obj.freeze_heat then
 		obj:SetFrozen(true)
 	end
@@ -851,7 +853,7 @@ DefineClass.FreezeDrone = {
 	Documentation = "Freeze the associated drones.",
 }
 
-function FreezeDrone:Execute(drone, context)
+function FreezeDrone:Execute(map_id, drone, context)
 	drone:SetDisablingCommand("Freeze")
 end
 
@@ -869,7 +871,7 @@ DefineClass.KillColonist = {
 	Documentation = "Kill the associated colonist with the specified reason.",
 }
 
-function KillColonist:Execute(colonist, context)
+function KillColonist:Execute(map_id, colonist, context)
 	colonist:SetCommand("Die", self.DeathReason)
 end
 
@@ -887,7 +889,7 @@ DefineClass.KillExpedition = {
 	Documentation = "Destroy the associated expedition.",
 }
 
-function KillExpedition:Execute(rocket, context)
+function KillExpedition:Execute(map_id, rocket, context)
 	rocket:KillExpedition()
 end
 
@@ -906,13 +908,13 @@ DefineClass.LockUnlockBuildingFromBuildMenu = {
 	Documentation = "Lock the specified buildings from the build menu.",
 }
 
-function LockUnlockBuildingFromBuildMenu:Execute(obj, context)
+function LockUnlockBuildingFromBuildMenu:Execute(map_id, obj, context)
 	local bld = self.Building or obj.template_name
 	BuildMenuPrerequisiteOverrides[bld] = self.Lock and self.Message or nil
 	RefreshXBuildMenu()
 end
 
-function LockUnlockBuildingFromBuildMenu:GetLockText(obj, context)
+function LockUnlockBuildingFromBuildMenu:GetLockText(map_id, obj, context)
 	return Untranslated(self.Lock and "Lock" or "Unlock")
 end
 
@@ -929,12 +931,12 @@ DefineClass.LoseFundingPercent = {
 	Documentation = "Player loses a certain percent of their funding.",
 }
 
-function LoseFundingPercent:Execute(obj, context)
-	UICity:ChangeFunding(-self:GetLostFunding(context))
+function LoseFundingPercent:Execute(map_id, obj, context)
+	UIColony.funds:ChangeFunding(-self:GetLostFunding(context))
 end
 
 function LoseFundingPercent:GetLostFunding(context)
-	return (UICity.funding * self:ResolveValue("Percent", context) / 100) / 1000000 * 1000000
+	return (UIColony.funds.funding * self:ResolveValue("Percent", context) / 100) / 1000000 * 1000000
 end
 
 UndefineClass('Malfunction')
@@ -948,7 +950,7 @@ DefineClass.Malfunction = {
 	Documentation = "Malfunction the associated building.",
 }
 
-function Malfunction:Execute(obj, context)
+function Malfunction:Execute(map_id, obj, context)
 	obj:SetMalfunction()
 end
 
@@ -964,12 +966,12 @@ DefineClass.MalfunctionRocket = {
 	},
 	Description = Untranslated("Malfunction rocket and require <Amount> <Resource> to be able to launch"),
 	RequiredObjClasses = {
-	"SupplyRocket",
-},
+		"RocketBase",
+	},
 	Documentation = "Malfunction the associated rocket.",
 }
 
-function MalfunctionRocket:Execute(rocket, context)
+function MalfunctionRocket:Execute(map_id, rocket, context)
 	local amount = self:ResolveValue("Amount", context)
 	rocket:SetCommand("WaitMaintenance", self.Resource, amount)
 end
@@ -989,7 +991,7 @@ DefineClass.Marsquake = {
 	Documentation = "Trigger marsquake.",
 }
 
-function Marsquake:Execute(obj, context)
+function Marsquake:Execute(map_id, obj, context)
 	TriggerMarsquake(self.Epicenter, self.Radius, self.TargetsCount)
 end
 
@@ -1007,7 +1009,7 @@ DefineClass.ModifyCargoPrice = {
 	Documentation = "Modify the price of the associated or selected cargo by a certain percentage.",
 }
 
-function ModifyCargoPrice:Execute(obj, context)
+function ModifyCargoPrice:Execute(map_id, obj, context)
 	local cargo = self.Cargo
 	local percent = self:ResolveValue("Percent", context)
 	if cargo == "" or cargo == "-all-" then
@@ -1050,7 +1052,7 @@ DefineClass.ModifyColonistStat = {
 	Documentation = "Modify the associated colonist's stat by the amount or percent specified.",
 }
 
-function ModifyColonistStat:Execute(obj, context)
+function ModifyColonistStat:Execute(map_id, obj, context)
 	local stat = obj["stat_"..self.Stat:lower()]
 	local amount = self:ResolveValue("Amount", context)
 	local percent = self:ResolveValue("Percent", context)
@@ -1080,7 +1082,7 @@ DefineClass.ModifyConst = {
 	Documentation = "Applies a modifier to a specific game const by a certain amount or percent. Label modifiers are stored individually and can be removed or updated later on.",
 }
 
-function ModifyConst:Execute(obj, context)
+function ModifyConst:Execute(map_id, obj, context)
 	local id = self.ModifyId or self
 	local amount = self:ResolveValue("Amount", context)
 	local percent = self:ResolveValue("Percent", context)
@@ -1123,8 +1125,15 @@ DefineClass.ModifyLabel = {
 	Documentation = "Applies a modifier to a property for all objects in the specified label. Label modifiers are stored individually and can be removed or updated later on.",
 }
 
-function ModifyLabel:Execute(obj, context)
-	local ctrl = self.InDome and obj or UICity
+function ModifyLabel:Execute(map_id, obj, context)
+	local ctrl = MainCity
+	if self.InDome and obj then
+		ctrl = obj
+	elseif IsKindOf(obj, "CityObject") then
+		ctrl = obj.city or ctrl
+	end
+	assert(IsKindOf(ctrl, "LabelContainer"))
+	
 	local scale = ModifiablePropScale[self.Prop]
 	if not scale then
 		context:ShowError(self, "Trying to modify a non-modifiable property", self.Prop)
@@ -1158,7 +1167,7 @@ function ModifyLabel:Execute(obj, context)
 	end
 end
 
-function ModifyLabel:GetDomeText(obj, context)
+function ModifyLabel:GetDomeText(map_id, obj, context)
 	return self.InDome and "Dome." or ""
 end
 
@@ -1189,7 +1198,7 @@ DefineClass.ModifyObject = {
 	Documentation = "Applies a modifier to a property of the object parameter of this effect. All modifiers are stored individually and can be removed or updated later on.",
 }
 
-function ModifyObject:Execute(obj, context)
+function ModifyObject:Execute(map_id, obj, context)
 	local scale = ModifiablePropScale[self.Prop]
 	if not scale then
 		context:ShowError(self, "Trying to modify a non-modifiable property", self.Prop)
@@ -1229,7 +1238,7 @@ DefineClass.ModifyStatus = {
 	Documentation = "Add or remove a status effect from the colonist (status effects are things like Homeless, freezing, etc.)",
 }
 
-function ModifyStatus:Execute(colonist, context)
+function ModifyStatus:Execute(map_id, colonist, context)
 	if self.Status and self.Status ~= "" then
 		colonist:Affect(self.Status, self.Apply)
 	end
@@ -1245,7 +1254,7 @@ DefineClass.PauseExpedition = {
 	Documentation = "Pause the expedition with the associated rocket.",
 }
 
-function PauseExpedition:Execute(rocket, context)
+function PauseExpedition:Execute(map_id, rocket, context)
 	rocket:PauseExpedition()
 end
 
@@ -1263,18 +1272,18 @@ DefineClass.PauseResearch = {
 	Documentation = "Pause research points incoming from the specified research type (sponsor or outsource).",
 }
 
-function PauseResearch:Execute(obj, context)
+function PauseResearch:Execute(map_id, obj, context)
 	local paused_time = self:ResolveValue("Time", context)
 	local rtype = self.ResearchType
 	if rtype == "" or rtype == "outsource" then
-		UICity.paused_outsource_research_end_time = (UICity.paused_outsource_research_end_time or GameTime()) + paused_time
+		UIColony.paused_outsource_research_end_time = (UIColony.paused_outsource_research_end_time or GameTime()) + paused_time
 	end
 	if rtype == "" or rtype == "sponsor" then
-		UICity.paused_sponsor_research_end_time = (UICity.paused_sponsor_research_end_time or GameTime()) + paused_time
+		UIColony.paused_sponsor_research_end_time = (UIColony.paused_sponsor_research_end_time or GameTime()) + paused_time
 	end
 end
 
-function PauseResearch:GetResearchTypeText(obj, context)
+function PauseResearch:GetResearchTypeText(map_id, obj, context)
 	if self.ResearchType == "sponsor" then
 		return T(11168, "sponsor")
 	elseif self.ResearchType == "outsource" then
@@ -1296,8 +1305,8 @@ DefineClass.PayFunding = {
 	Documentation = "Lose a certain amount of funding.",
 }
 
-function PayFunding:Execute(obj, context)
-	UICity:ChangeFunding(-self:ResolveValue("Amount", context))
+function PayFunding:Execute(map_id, obj, context)
+	UIColony.funds:ChangeFunding(-self:ResolveValue("Amount", context))
 end
 
 UndefineClass('PickCargo')
@@ -1310,7 +1319,7 @@ DefineClass.PickCargo = {
 	Documentation = "Pick random cargo from the cargo list.",
 }
 
-function PickCargo:Execute(obj, context)
+function PickCargo:Execute(map_id, obj, context)
 	local cargos = {}
 	for _, id in ipairs(self.CargoList) do
 		cargos[#cargos + 1] = id
@@ -1352,19 +1361,20 @@ function PickFromLabelEffect:GetObjName(obj, context)
 	return Untranslated(prefix .. (self.Label or "Object"))
 end
 
-function PickFromLabelEffect:Execute(obj, context)
+function PickFromLabelEffect:Execute(map_id, obj, context)
 	if not self.Label then
 		context:ShowError(self, "Label required!")
 		return
 	end
 	local objs
+	local city = Cities[map_id]
 	if not self.InDome then
-		objs = GetObjectsByLabel(self.Label)
+		objs = GetObjectsByLabel(city, self.Label)
 	elseif obj then
 		objs = obj.labels[self.Label]
 	else
 		objs = {}
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+		for _, dome in ipairs(city.labels.Dome or empty_table) do
 				table.iappend(objs, dome.labels[self.Label])
 		end
 	end
@@ -1374,7 +1384,7 @@ function PickFromLabelEffect:Execute(obj, context)
 		local ok = true
 		if not self.PickDifferent or obj_i ~= obj then
 			for _, condition in ipairs(self.Conditions or empty_table) do
-				if not condition:Evaluate(obj_i, context) then
+				if not condition:Evaluate(map_id, obj_i, context) then
 					ok = false
 					break
 				end
@@ -1396,7 +1406,7 @@ DefineClass.RemoveAllTraits = {
 	Documentation = "Remove all traits from the associated colonist.",
 }
 
-function RemoveAllTraits:Execute(colonist, context)
+function RemoveAllTraits:Execute(map_id, colonist, context)
 	local additional_autotraits_to_remove= {"Renegade"}
 	colonist:RemoveAllTraits(additional_autotraits_to_remove)
 end
@@ -1415,9 +1425,9 @@ DefineClass.RemoveTrait = {
 	Documentation = "Remove a trait from the associated colonist.",
 }
 
-function RemoveTrait:Execute(colonist, context)
+function RemoveTrait:Execute(map_id, colonist, context)
 	local trait_id = self.Trait
-	if trait_id and IsValid(colonist) and not colonist:IsDying()  and colonist.traits[trait_id] then
+	if trait_id and IsValid(colonist) and not colonist:IsDying() and colonist.traits[trait_id] then
 		colonist:RemoveTrait(trait_id)
 	end
 end
@@ -1436,7 +1446,7 @@ DefineClass.RenameAssociatedObject = {
 	Documentation = "Change the name of the associated object.",
 }
 
-function RenameAssociatedObject:Execute(obj, context)
+function RenameAssociatedObject:Execute(map_id, obj, context)
 	if self.Name then
 		obj.name = _InternalTranslate(self.Name)
 	end
@@ -1461,7 +1471,7 @@ DefineClass.RenameObject = {
 	Documentation = "Change the name of a random object with a certain label which satisfies the filter conditions.",
 }
 
-function RenameObject:Execute(obj, context)
+function RenameObject:Execute(map_id, obj, context)
 	local new_name
 	if self.Name and self.Name ~= "" then
 		new_name = self.Name
@@ -1470,18 +1480,19 @@ function RenameObject:Execute(obj, context)
 	end
 	local objs
 	
-	objs = table.copy(GetObjectsByLabel(self.Label) or empty_table)
+	local city = Cities[map_id]
+	objs = table.copy(GetObjectsByLabel(city, self.Label) or empty_table)
 	
 	for _, condition in ipairs(self.Filters or empty_table) do
 		for i = #objs, 1, -1 do
-			if not condition:Evaluate(objs[i], context) then
+			if not condition:Evaluate(map_id, objs[i], context) then
 				objs[i] = objs[#objs]
 				objs[#objs] = nil
 			end
 		end
 	end
 	
-	local rand_i = UICity:Random(#objs) + 1
+	local rand_i = SessionRandom:Random(#objs) + 1
 	local to_rename = objs[rand_i]
 	assert(to_rename:IsKindOf("Renamable"), "Object to be renamed must be Renamable")
 	to_rename.name = new_name
@@ -1500,8 +1511,8 @@ DefineClass.ResetBuildingExtraCost = {
 	Documentation = "Reset the building cost of the selected building to the original one.",
 }
 
-function ResetBuildingExtraCost:Execute(obj, context)
-	UICity:ModifyConstructionCost("reset", self.BuildingClass, self.Resource, 0, 0, "StoryBit")
+function ResetBuildingExtraCost:Execute(map_id, obj, context)
+	UIColony.construction_cost:ModifyConstructionCost("reset", self.BuildingClass, self.Resource, 0, 0, "StoryBit")
 end
 
 UndefineClass('ResidenceExecuteEffect')
@@ -1519,10 +1530,10 @@ DefineClass.ResidenceExecuteEffect = {
 	Documentation = "Execute the specified list of effects on the associated colonist.",
 }
 
-function ResidenceExecuteEffect:Execute(obj, context)
+function ResidenceExecuteEffect:Execute(map_id, obj, context)
 	assert(obj.residence, "The colonist should have residence to execute WorkplaceExecuteEffect")
 	for _, effect in ipairs(self.Effects or empty_table) do
-		effect:Execute(obj.residence, context)
+		effect:Execute(map_id, obj.residence, context)
 	end
 end
 
@@ -1544,7 +1555,7 @@ DefineClass.ResumeExpedition = {
 	Documentation = "Resume the expedition of the associated rocket.",
 }
 
-function ResumeExpedition:Execute(rocket, context)
+function ResumeExpedition:Execute(map_id, rocket, context)
 	rocket:ResumeExpedition()
 end
 
@@ -1562,10 +1573,10 @@ DefineClass.RevealNextTechInField = {
 	Documentation = "Discover the next X amount of technologies in the specified field.",
 }
 
-function RevealNextTechInField:Execute(obj, context)
+function RevealNextTechInField:Execute(map_id, obj, context)
 	local amount = self:ResolveValue("Amount", context)
 	for i = 1, amount do
-		UICity:DiscoverTechInField(self.Field)
+		UIColony:DiscoverTechInField(self.Field)
 	end
 end
 
@@ -1585,10 +1596,10 @@ DefineClass.RewardApplicants = {
 	Documentation = "Grant a specific amount of applicants, with the selected traits and specialization.",
 }
 
-function RewardApplicants:Execute(obj, context)
+function RewardApplicants:Execute(map_id, obj, context)
 	local now = GameTime()
 	for i = 1, self:ResolveValue("Amount", context) do
-		local colonist = GenerateApplicant(now, UICity)
+		local colonist = GenerateApplicant(now, MainCity)
 		if self.Specialization then
 			colonist.traits[colonist.specialist] = nil
 			colonist.traits[self.Specialization] = true
@@ -1614,7 +1625,7 @@ DefineClass.RewardExportPrice = {
 	Documentation = "Increase the price of exporting rare metals to Earth by the specified percentage.",
 }
 
-function RewardExportPrice:Execute(obj, context)
+function RewardExportPrice:Execute(map_id, obj, context)
 	local id = self.ModifyId or self
 	local percent = self:ResolveValue("Percent", context)
 	g_Consts:SetModifier("ExportPricePreciousMetals", id, 0, percent)
@@ -1633,8 +1644,8 @@ DefineClass.RewardFunding = {
 	Documentation = "Receive the specified amount of funding.",
 }
 
-function RewardFunding:Execute(obj, context)
-	UICity:ChangeFunding(self:ResolveValue("Amount", context))
+function RewardFunding:Execute(map_id, obj, context)
+	UIColony.funds:ChangeFunding(self:ResolveValue("Amount", context))
 end
 
 UndefineClass('RewardNewRocket')
@@ -1644,8 +1655,8 @@ DefineClass.RewardNewRocket = {
 	Documentation = "Grant a new rocket.",
 }
 
-function RewardNewRocket:Execute(obj, context)
-	PlaceBuilding(GetRocketClass(), {city = UICity})
+function RewardNewRocket:Execute(map_id, obj, context)
+	PlaceBuildingIn(GetRocketClass(), MainMapID)
 end
 
 UndefineClass('RewardPrefab')
@@ -1663,17 +1674,18 @@ DefineClass.RewardPrefab = {
 	Documentation = "Grant a specific amounts of building prefabs or drones.",
 }
 
-function RewardPrefab:Execute(obj, context)
+function RewardPrefab:Execute(map_id, obj, context)
 	local amount = self:ResolveValue("Amount", context)
 	local prefab = self.Prefab or obj.template_name
+	local city = Cities[map_id]
 	if prefab == "DronePrefab" then
-		UICity.drone_prefabs = UICity.drone_prefabs + amount
+		city.drone_prefabs = city.drone_prefabs + amount
 	else
-		UICity:AddPrefabs(prefab, amount, false)
+		city:AddPrefabs(prefab, amount, false)
 	end
 end
 
-function RewardPrefab:GetDrone(obj, context)
+function RewardPrefab:GetDrone(map_id, obj, context)
 	local prefab = self.Prefab or obj.template_name
 	if prefab == "DronePrefab" then
 		return T(1681, "Drone")
@@ -1682,7 +1694,7 @@ function RewardPrefab:GetDrone(obj, context)
 	end
 end
 
-function RewardPrefab:GetBuilding(obj, context)
+function RewardPrefab:GetBuilding(map_id, obj, context)
 	local prefab = self.Prefab or obj.template_name
 	if prefab ~= "DronePrefab" then
 		return BuildingTemplates[prefab].display_name
@@ -1691,7 +1703,7 @@ function RewardPrefab:GetBuilding(obj, context)
 	end
 end
 
-function RewardPrefab:GetPrefabText(obj, context)
+function RewardPrefab:GetPrefabText(map_id, obj, context)
 	local amount = self:ResolveValue("Amount", context)
 	if amount == 1 then
 		return T(11170, "prefab")
@@ -1713,7 +1725,7 @@ DefineClass.RewardResearchPoints = {
 	Documentation = "Grant a specific amount of research points.",
 }
 
-function RewardResearchPoints:Execute(obj, context)
+function RewardResearchPoints:Execute(map_id, obj, context)
 	GrantResearchPoints(self:ResolveValue("Amount", context))
 end
 
@@ -1736,7 +1748,7 @@ DefineClass.RewardSponsorResearch = {
 	Documentation = "Grant a specific amount of sponsor research points.",
 }
 
-function RewardSponsorResearch:Execute(obj, context)
+function RewardSponsorResearch:Execute(map_id, obj, context)
 	local id = self.ModifyId or self
 	local amount = self:ResolveValue("Amount", context)
 	g_Consts:SetModifier("SponsorResearch", id, amount, 0)
@@ -1754,9 +1766,9 @@ DefineClass.RewardSupplyPods = {
 	Documentation = "Grant a specific amount of Supply Pods.",
 }
 
-function RewardSupplyPods:Execute(obj, context)
+function RewardSupplyPods:Execute(map_id, obj, context)
 	for i = 1, self:ResolveValue("Amount", context) do
-		local pod = PlaceBuilding(GetMissionSponsor().pod_class or "SupplyPod", {city = UICity})
+		local pod = PlaceBuildingIn(GetMissionSponsor().pod_class or "SupplyPod", MainMapID)
 	end
 end
 
@@ -1773,7 +1785,7 @@ DefineClass.RewardTech = {
 	Documentation = "Grant a specific or random tech in a specific or random field.",
 }
 
-function RewardTech:Execute(obj, context)
+function RewardTech:Execute(map_id, obj, context)
 	local field = self.Field
 	if field == "random" then
 		field = GetRandomDiscoverableTechField()
@@ -1782,16 +1794,16 @@ function RewardTech:Execute(obj, context)
 	if research == "random" then
 		research = GetRandomResearchableTech(field) or ""
 	end
-	UICity:SetTechResearched(research, "notify")
+	UIColony:SetTechResearched(research, "notify")
 end
 
-function RewardTech:GetResearchText(obj, context)
+function RewardTech:GetResearchText(map_id, obj, context)
 	if self.Research == "random" then return T(11888, "random tech") end
 	local desc = TechDef[self.Research]
 	return desc and desc.display_name or ""
 end
 
-function RewardTech:GetFieldText(obj, context)
+function RewardTech:GetFieldText(map_id, obj, context)
 	if self.Field == "random" then return T(11889, "random field") end
 	local field = TechFields[self.Field]
 	return field and field.display_name or ""
@@ -1813,7 +1825,7 @@ DefineClass.RewardTechBoost = {
 	Documentation = "Grant a tech boost to a specific or random tech in a specific or random field.",
 }
 
-function RewardTechBoost:Execute(obj, context)
+function RewardTechBoost:Execute(map_id, obj, context)
 	local amount = self:ResolveValue("Amount", context)
 	local research = self.Research
 	local field = self.Field
@@ -1824,20 +1836,20 @@ function RewardTechBoost:Execute(obj, context)
 		research = GetRandomResearchableTech(field, true) or ""
 	end
 	if research == "" then
-		UICity.TechBoostPerField[field] = (UICity.TechBoostPerField[field] or 0) + amount
+		UIColony.TechBoostPerField[field] = (UIColony.TechBoostPerField[field] or 0) + amount
 	else
-		UICity.TechBoostPerTech[research] = (UICity.TechBoostPerTech[research] or 0) + amount
+		UIColony.TechBoostPerTech[research] = (UIColony.TechBoostPerTech[research] or 0) + amount
 	end
 end
 
-function RewardTechBoost:GetResearchText(obj, context)
+function RewardTechBoost:GetResearchText(map_id, obj, context)
 	if self.Research == "" then return T(11890, "all techs") end
 	if self.Research == "random" then return T(11888, "random tech") end
 	local desc = TechDef[self.Research]
 	return desc and desc.display_name or ""
 end
 
-function RewardTechBoost:GetFieldText(obj, context)
+function RewardTechBoost:GetFieldText(map_id, obj, context)
 	if self.Field == "random" then return T(11889, "random field") end
 	local field = TechFields[self.Field]
 	return field and field.display_name or ""
@@ -1850,7 +1862,7 @@ DefineClass.RewardWonder = {
 	Documentation = "Grant a wonder.",
 }
 
-function RewardWonder:Execute(obj, context)
+function RewardWonder:Execute(map_id, obj, context)
 	GrantWonderTech()
 end
 
@@ -1876,9 +1888,9 @@ DefineClass.SetBuildingBreakdownState = {
 	Documentation = "Set the breakdown state of the associated building (maintenance or malfunction).",
 }
 
-function SetBuildingBreakdownState:Execute(building, context)
+function SetBuildingBreakdownState:Execute(map_id, building, context)
 	building:SetExceptionalCircumstancesMaintenance(self.RepairResource, self:ResolveValue("RepairAmount", context))
-	if self.State=="Malfunction" then
+	if self.State == "Malfunction" then
 		building:SetMalfunction()
 	end
 	building:Setexceptional_circumstances(not self.EnableBuilding)
@@ -1901,7 +1913,7 @@ DefineClass.SetBuildingEnabledState = {
 	Documentation = "Enable or disable the associated building.",
 }
 
-function SetBuildingEnabledState:Execute(building, context)
+function SetBuildingEnabledState:Execute(map_id, building, context)
 	local duration = self:ResolveValue("Duration", context)
 	if duration and duration>0 and not self.Enabled then
 		CreateGameTimeThread(function()
@@ -1930,7 +1942,7 @@ DefineClass.SetBuildingRogueState = {
 	Documentation = "Set the associate building's rouge state to true/false.",
 }
 
-function SetBuildingRogueState:Execute(bld, context)
+function SetBuildingRogueState:Execute(map_id, bld, context)
 	assert(bld:IsKindOf("BaseBuilding"))
 	bld:SetUIInteractionState(not self.RogueState)
 end
@@ -1951,7 +1963,7 @@ DefineClass.SetConstructionSiteState = {
 	Documentation = "Set the associated construction site state to the specified one.",
 }
 
-function SetConstructionSiteState:Execute(building, context)
+function SetConstructionSiteState:Execute(map_id, building, context)
 	local o = ConstructionSetState(building, self.State)
 	if o ~= building and self.AssociateCompletedBuilding then
 		context.object = o
@@ -1970,7 +1982,7 @@ DefineClass.SetEnabledSpecialProject = {
 	Documentation = "Enable or Disable special project. When disabled all pois from that type are removed and  expeditions to that type ot projects are canceled.",
 }
 
-function SetEnabledSpecialProject:Execute(obj, context)
+function SetEnabledSpecialProject:Execute(map_id, obj, context)
 	local id = self.project_id
 	if not id then return end
 	g_SpecialProjectsDisabled = g_SpecialProjectsDisabled or {}
@@ -1979,7 +1991,7 @@ function SetEnabledSpecialProject:Execute(obj, context)
 		RemoveAllSpotsForSpecialProject(self.project_id)
 	else
 		local projects = Presets.POI.Default
-		TrytoSpawnSpecialProject(projects[self.project_id],UICity.day)
+		TrytoSpawnSpecialProject(projects[self.project_id], UIColony.day)
 	end
 end
 
@@ -2026,10 +2038,11 @@ DefineClass.SpawnColonist = {
 	Documentation = "Spawn a colonist with the specified traits.",
 }
 
-function SpawnColonist:Execute(obj, context)
+function SpawnColonist:Execute(map_id, obj, context)
 	local available_domes = {}
 	local disabled_domes = {}
-	for idx, dome in ipairs(UICity.labels.Dome or empty_table) do
+	local city = Cities[map_id]
+	for idx, dome in ipairs(city.labels.Dome or empty_table) do
 		if dome.working then
 			available_domes[#available_domes + 1] = dome
 		elseif not dome.demolishing  and not dome.destroyed  then
@@ -2037,7 +2050,7 @@ function SpawnColonist:Execute(obj, context)
 		end
 	end
 	
-	local rockets =  UICity.labels.AllRockets or empty_table
+	local rockets =  city.labels.AllRockets or empty_table
 	local spawn_rocket
 	for _, rocket in ipairs(rockets) do
 		if rocket.command == "Unload" or rocket.command == "Refuel" or rocket.command == "WaitLaunchOrder" then
@@ -2046,25 +2059,28 @@ function SpawnColonist:Execute(obj, context)
 		end
 	end
 	
+	if not (#available_domes > 0 or spawn_rocket or #disabled_domes > 0) then
+		print("Colonist could not be placed in a dome or a rocket")
+		return
+	end
+	
 	local count = self:ResolveValue("Count", context)
 	for i=1, count do
 		local params = {}
 		params.entity_gender = self.Gender=="OtherGender" and (Random(1, 100) <= 50 and "Male" or "Female") or self.Gender
 		params.gender = self.Gender
-		local colonist = GenerateColonistData(UICity, self.Age, nil, params )
+		local colonist = GenerateColonistData(city, self.Age, nil, params )
 		if #available_domes > 0 then
-			local dome = available_domes[UICity:Random(1, #available_domes)]
+			local dome = available_domes[SessionRandom:Random(1, #available_domes)]
 			dome:SpawnColonist(colonist, true)
 		elseif spawn_rocket then
-				colonist.arriving = spawn_rocket
-				Colonist:new(colonist)
-				spawn_rocket.disembarking = spawn_rocket.disembarking or {}
-				spawn_rocket.disembarking[#spawn_rocket.disembarking + 1] = colonist
+			colonist.arriving = spawn_rocket
+			Colonist:new(colonist, map_id)
+			spawn_rocket.disembarking = spawn_rocket.disembarking or {}
+			spawn_rocket.disembarking[#spawn_rocket.disembarking + 1] = colonist
 		elseif #disabled_domes > 0 then
-			local dome = disabled_domes[UICity:Random(1, #disabled_domes)]
+			local dome = disabled_domes[SessionRandom:Random(1, #disabled_domes)]
 			dome:SpawnColonist(colonist, true)
-		else
-			assert(false, "Colonist could not be placed in a dome or a rocket")
 		end
 		if self.Specialization then colonist:AddTrait(self.Specialization) end
 		if self.Trait1 then colonist:AddTrait(self.Trait1) end
@@ -2104,18 +2120,21 @@ DefineClass.SpawnEffectDeposit = {
 	Documentation = "Spawn the selected type of effect deposits in a certain radius around a random building from the specified label.",
 }
 
-function SpawnEffectDeposit:Execute(obj, context)
-	local UnbuildableZ = buildUnbuildableZ()
+function SpawnEffectDeposit:Execute(map_id, obj, context)
+	local game_map = GameMaps[map_id]
+	local buildable_grid = game_map.buildable
+	local terrain = game_map.terrain
+	local city = Cities[map_id] or MainCity
 	local label_element
 	local radius = self:ResolveValue("Radius", context)
 	if self.Label then
-		local objs = GetObjectsByLabel(self.Label)
+		local objs = GetObjectsByLabel(city, self.Label)
 		if not objs or #objs == 0 or radius == 0 then return end
 		local list = {}
 		for i = 1, #objs do
 			local obj, ok = objs[i], true
 			for _, condition in ipairs(self.Conditions or empty_table) do
-				if not condition:Evaluate(obj, context) then
+				if not condition:Evaluate(map_id, obj, context) then
 					ok = false
 					break
 				end
@@ -2128,29 +2147,29 @@ function SpawnEffectDeposit:Execute(obj, context)
 	end
 	for i=1,self.Amount do
 		local marker
-		marker = PlaceObject("EffectDepositMarker")
+		marker = PlaceObjectIn("EffectDepositMarker", map_id)
 		marker.deposit_type = self.EffectType
 		
 		-- pick position
 		for i = 1, 50 do
 			local x, y
 			if label_element then
-				x, y = GetRandomPassableAround(label_element:GetPos(), radius * const.GridSpacing):xy()
+				x, y = GetRandomPassableAroundOnMap(map_id, label_element:GetPos(), radius * const.GridSpacing):xy()
 			else
-				local sector_x = UICity:Random(1, 10)
-				local sector_y = UICity:Random(1, 10)
-				local sector = g_MapSectors[sector_x][sector_y]
+				local sector_x = SessionRandom:Random(1, 10)
+				local sector_y = SessionRandom:Random(1, 10)
+				local sector = city.MapSectors[sector_x][sector_y]
 				
 				local minx, miny = sector.area:minxyz()		
 				local maxx, maxy = sector.area:maxxyz()
 				
-				x = UICity:Random(minx, maxx)
-				y = UICity:Random(miny, maxy)
+				x = SessionRandom:Random(minx, maxx)
+				y = SessionRandom:Random(miny, maxy)
 			end	
 			local q, r = WorldToHex(x, y)
-			if GetBuildableZ(q, r) ~= UnbuildableZ then
+			if buildable_grid:IsBuildable(q, r) then
 				local pt = point(x, y)
-				if terrain.IsPassable(pt) then
+				if terrain:IsPassable(pt) then
 					marker:SetPos(pt)
 					marker.revealed = true
 					marker:PlaceDeposit()
@@ -2187,15 +2206,15 @@ DefineClass.SpawnRefugeeRocket = {
 		{ id = "Refugee", name = "Add Refugee Trait", help = "Set to true to give the colonists the refugee trait.", 
 			editor = "bool", default = true, },
 		{ id = "Trait1", name = "Trait 1", help = "Set the first trait for the refugees.", 
-			editor = "choice", default = "", items = function (self) return BaseTraitsCombo(UICity, true) end, },
+			editor = "choice", default = "", items = function (self) return BaseTraitsCombo(true) end, },
 		{ id = "Chance1", name = "Trait 1 Chance", help = "Set the chance of a refugee getting the first trait.", 
 			editor = "number", default = 0, min = 0, max = 100, },
 		{ id = "Trait2", name = "Trait 2", help = "Set the second trait for the refugees.", 
-			editor = "choice", default = "", items = function (self) return BaseTraitsCombo(UICity, true) end, },
+			editor = "choice", default = "", items = function (self) return BaseTraitsCombo(true) end, },
 		{ id = "Chance2", name = "Trait 2 Chance", help = "Set the chance of a refugee getting the second trait.", 
 			editor = "number", default = 0, min = 0, max = 100, },
 		{ id = "Trait3", name = "Trait 3", help = "Set the third trait for the refugees.", 
-			editor = "choice", default = "", items = function (self) return BaseTraitsCombo(UICity, true) end, },
+			editor = "choice", default = "", items = function (self) return BaseTraitsCombo(true) end, },
 		{ id = "Chance3", name = "Trait 3 Chance", help = "Set the chance of a refugee getting the third trait.", 
 			editor = "number", default = 0, min = 0, max = 100, },
 		{ id = "AssociateWithStoryBit", name = "Associate with StoryBit", help = "Set to true to pass it as an associated object.", 
@@ -2205,9 +2224,9 @@ DefineClass.SpawnRefugeeRocket = {
 	Documentation = "Spawn a rocket with refugees coming to the colony.",
 }
 
-function SpawnRefugeeRocket:Execute(obj, context)
-	local city = UICity
-	local rocket = PlaceBuilding("RefugeeRocket", {city = city})
+function SpawnRefugeeRocket:Execute(map_id, obj, context)
+	local city = Cities[MainMapID] or MainCity
+	local rocket = PlaceBuildingIn("RefugeeRocket", MainMapID)
 	local cargo = {}
 	
 	-- optional customization props
@@ -2281,17 +2300,15 @@ DefineClass.SpawnRocketInOrbit = {
 	Documentation = "Spawn rocket in orbit.",
 }
 
-function SpawnRocketInOrbit:Execute(obj, context)
+function SpawnRocketInOrbit:Execute(map_id, obj, context)
 	local sponsor = GetMissionSponsor()
 	local class = self.is_supply_pod and sponsor.pod_class or sponsor.rocket_class
-	local rocket = PlaceBuilding(class, {city = UICity})
-	
-	rocket.cargo = {}
-	local cargo = rocket.cargo
+	local cargo = {}
 	for _, item in ipairs(self.cargo_list) do
 		cargo[#cargo + 1] = { amount = item.amount, class = item.cargo }
 	end
-	rocket.name = GenerateRocketName()
+	local rocket = PlaceBuildingIn(class, MainMapID, {cargo = cargo} )
+	rocket.name = GenerateRocketName(nil, class)
 	rocket:SetCommand("WaitInOrbit")
 	if self.AssociateWithStoryBit then
 		context.object = rocket
@@ -2323,17 +2340,20 @@ DefineClass.SpawnSubsurfaceDeposits = {
 	Documentation = "Spawn the selected type of subsurface deposits in a certain radius around a random building from the specified label.",
 }
 
-function SpawnSubsurfaceDeposits:Execute(obj, context)
-	local UnbuildableZ = buildUnbuildableZ()
+function SpawnSubsurfaceDeposits:Execute(map_id, obj, context)
+	local game_map = GameMaps[map_id]
+	local buildable_grid = game_map.buildable
+	local terrain = game_map.terrain
+	local city = Cities[map_id] or MainCity
 	local label_element
 	if self.Label then
-		local objs = GetObjectsByLabel(self.Label)
+		local objs = GetObjectsByLabel(city, self.Label)
 		if not objs or #objs == 0 or self.Radius == 0 then return end
 		local list = {}
 		for i = 1, #objs do
 			local obj, ok = objs[i], true
 			for _, condition in ipairs(self.Conditions or empty_table) do
-				if not condition:Evaluate(obj, context) then
+				if not condition:Evaluate(map_id, obj, context) then
 					ok = false
 					break
 				end
@@ -2347,7 +2367,7 @@ function SpawnSubsurfaceDeposits:Execute(obj, context)
 	
 	for i = 1, self.Amount do
 		local marker
-		marker = PlaceObject("SubsurfaceDepositMarker")
+		marker = PlaceObjectIn("SubsurfaceDepositMarker", map_id)
 		marker.resource = self.Resource
 		marker.grade = self.Grade
 		marker.max_amount =  self.ResourceAmount
@@ -2357,22 +2377,22 @@ function SpawnSubsurfaceDeposits:Execute(obj, context)
 		for i = 1, 50 do
 			local x, y
 			if label_element then
-				x, y = GetRandomPassableAround(label_element:GetPos(), self.Radius * const.GridSpacing):xy()
+				x, y = GetRandomPassableAroundOnMap(map_id, label_element:GetPos(), self.Radius * const.GridSpacing):xy()
 			else
-				local sector_x = UICity:Random(1, 10)
-				local sector_y = UICity:Random(1, 10)
-				local sector = g_MapSectors[sector_x][sector_y]
+				local sector_x = SessionRandom:Random(1, 10)
+				local sector_y = SessionRandom:Random(1, 10)
+				local sector = city.MapSectors[sector_x][sector_y]
 				
 				local minx, miny = sector.area:minxyz()		
 				local maxx, maxy = sector.area:maxxyz()
 				
-				x = UICity:Random(minx, maxx)
-				y = UICity:Random(miny, maxy)
+				x = SessionRandom:Random(minx, maxx)
+				y = SessionRandom:Random(miny, maxy)
 			end
 			local q, r = WorldToHex(x, y)
-			if GetBuildableZ(q, r) ~= UnbuildableZ then
+			if buildable_grid:IsBuildable(q, r) then
 				local pt = point(x, y)
-				if terrain.IsPassable(pt) then
+				if terrain:IsPassable(pt) then
 					marker:SetPos(pt)
 					marker.revealed = true
 					marker:PlaceDeposit()
@@ -2431,7 +2451,8 @@ function StartDisaster:GetDescription(context)
 	return string.format("Start %s disaster", self.Disaster)
 end
 
-function StartDisaster:Execute(obj, context)
+function StartDisaster:Execute(map_id, obj, context)
+	local city = MainCity
 	local disaster_to_data = {
 		["Dust Storm"] = DataInstances.MapSettings_DustStorm,
 		["Cold Wave"] = DataInstances.MapSettings_ColdWave,
@@ -2441,19 +2462,19 @@ function StartDisaster:Execute(obj, context)
 	local list = table.ifilter(disaster_to_data[self.Disaster], function(_, data)
 		return data.strength == self.Strength
 	end)
-	local data = UICity:TableRand(list)
+	local data = SessionRandom:TableRand(list)
 	if not data then
 		return
 	end
 	if self.Disaster == "Dust Storm" then
-		while g_DustStorm do
+		while HasDustStorm(city.map_id) do
 			WaitMsg("DustStormEnded", 3 * const.HourDuration)
 		end
 		CreateGameTimeThread(function()
 			StartDustStorm(self.Storm, data)
 		end)
 	elseif self.Disaster == "Cold Wave" then
-		while g_ColdWave do
+		while HasColdWave(city.map_id) do
 			WaitMsg("ColdWaveEnded", 3 * const.HourDuration)
 		end
 		CreateGameTimeThread(function()
@@ -2461,9 +2482,9 @@ function StartDisaster:Execute(obj, context)
 		end)
 	elseif self.Disaster == "Meteors" then
 		local pos = false
-		if self.Label and UICity.labels[self.Label] and #UICity.labels[self.Label] > 0 then
-			local i = #UICity.labels[self.Label]
-			pos = UICity.labels[self.Label][UICity:Random(i) + 1]:GetPos()
+		if self.Label and city.labels[self.Label] and #city.labels[self.Label] > 0 then
+			local i = #city.labels[self.Label]
+			pos = city.labels[self.Label][SessionRandom:Random(i) + 1]:GetPos()
 		end
 		CreateGameTimeThread(function()
 			MeteorsDisaster(data, self.Meteors, pos)
@@ -2471,9 +2492,9 @@ function StartDisaster:Execute(obj, context)
 	elseif self.Disaster == "Dust Devils" then
 		local pos = false
 		local building = false
-		if self.Label and UICity.labels[self.Label] and #UICity.labels[self.Label] > 0 then
-			local i = #UICity.labels[self.Label]
-			building = UICity.labels[self.Label][UICity:Random(i) + 1]
+		if self.Label and city.labels[self.Label] and #city.labels[self.Label] > 0 then
+			local i = #city.labels[self.Label]
+			building = city.labels[self.Label][SessionRandom:Random(i) + 1]
 			pos = building:GetPos()
 		end
 		if building and pos then
@@ -2481,13 +2502,14 @@ function StartDisaster:Execute(obj, context)
 			if building:HasMember("GetRadius") then
 				building_radius = building:GetRadius() 
 			end
-			pos = GetRandomPassableAround(pos, building_radius + 150*guim, building_radius)
+			local map_id = city.map_id
+			pos = GetRandomPassableAroundOnMap(map_id, pos, building_radius + 150*guim, building_radius)
 		end
-		pos = pos or GetRandomPassable()
+		pos = pos or GetRandomPassable(city)
 		if not pos then
 			return
 		end
-		local devil = GenerateDustDevil(pos, data)
+		local devil = GenerateDustDevilIn(pos, city.map_id, data)
 		devil:Start()
 	end
 end
@@ -2502,7 +2524,7 @@ DefineClass.UnfreezeBuilding = {
 	Documentation = "Unfreeze the associated building.",
 }
 
-function UnfreezeBuilding:Execute(obj, context)
+function UnfreezeBuilding:Execute(map_id, obj, context)
 	obj:SetFrozen(false)
 end
 
@@ -2520,7 +2542,7 @@ DefineClass.UnitAppear = {
 	Documentation = "Make the associated unit appear at the specified location.",
 }
 
-function UnitAppear:Execute(unit, context)
+function UnitAppear:Execute(map_id, unit, context)
 	unit:Appear(self.Location)
 end
 
@@ -2539,7 +2561,7 @@ DefineClass.UnitDisappear = {
 	Documentation = "Make the associated unit disappear.",
 }
 
-function UnitDisappear:Execute(unit, context)
+function UnitDisappear:Execute(map_id, unit, context)
 	unit:Disappear()
 end
 
@@ -2558,10 +2580,10 @@ DefineClass.WorkplaceExecuteEffect = {
 	Documentation = "Execute the specified effects for the associate colonist's workplace.",
 }
 
-function WorkplaceExecuteEffect:Execute(obj, context)
+function WorkplaceExecuteEffect:Execute(map_id, obj, context)
 	assert(obj.workplace, "The colonist should have workplace to execute WorkplaceExecuteEffect")
 	for _, effect in ipairs(self.Effects or empty_table) do
-		effect:Execute(obj.workplace, context)
+		effect:Execute(map_id, obj.workplace, context)
 	end
 end
 
@@ -2575,116 +2597,116 @@ end
 
 AddBuildingExtraCost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 15, AddBuildingExtraCost.Execute)
 AddExpeditionRocketResources.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 65, AddExpeditionRocketResources.Execute)
-AddTrait.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 122, AddTrait.Execute)
-CallTradeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 148, CallTradeRocket.Execute)
-CauseFault.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 322, CauseFault.Execute)
-CauseFault.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 343, CauseFault.GetDescription)
-CauseFracture.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 384, CauseFracture.Execute)
-CreatePlanetaryAnomaly.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 408, CreatePlanetaryAnomaly.Execute)
-DelayExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 550, DelayExpedition.Execute)
-DeleteCargo.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 581, DeleteCargo.Execute)
-DestroyBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 616, DestroyBuilding.Execute)
-DestroyVehicle.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 655, DestroyVehicle.Execute)
-DisableLanding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 686, DisableLanding.Execute)
-DisableLaunch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 717, DisableLaunch.Execute)
-DiscoverTech.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 740, DiscoverTech.Execute)
-DiscoverTech.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 786, DiscoverTech.GetDescription)
-EffectPickRocketWithStatus.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 818, EffectPickRocketWithStatus.Execute)
-EnableLanding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 858, EnableLanding.Execute)
-EnableLaunch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 889, EnableLaunch.Execute)
-EraseColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 922, EraseColonist.Execute)
-EraseObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 945, EraseObject.Execute)
-EraseShuttles.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 990, EraseShuttles.Execute)
-ExplodeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1035, ExplodeBuilding.Execute)
-ExplodeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1071, ExplodeRocket.Execute)
-ExtendDisaster.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1097, ExtendDisaster.Execute)
-Fireworks.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1134, Fireworks.Execute)
-ForEachExecuteEffects.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1189, ForEachExecuteEffects.Execute)
-ForEachExecuteEffects.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1232, ForEachExecuteEffects.EffectsList)
-ForEachExecuteEffects.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1243, ForEachExecuteEffects.GetObjName)
-ForEachExecuteEffects.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1250, ForEachExecuteEffects.GetWarning)
-ForEachResident.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1300, ForEachResident.Execute)
-ForEachResident.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1329, ForEachResident.EffectsList)
-ForEachWorker.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1387, ForEachWorker.Execute)
-ForEachWorker.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1422, ForEachWorker.EffectsList)
-ForceSuicide.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1464, ForceSuicide.Execute)
-FreezeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1495, FreezeBuilding.Execute)
-FreezeDrone.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1528, FreezeDrone.Execute)
-KillColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1565, KillColonist.Execute)
-KillColonist.GetDeathReasonText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1572, KillColonist.GetDeathReasonText)
-KillExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1603, KillExpedition.Execute)
-LockUnlockBuildingFromBuildMenu.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1641, LockUnlockBuildingFromBuildMenu.Execute)
-LockUnlockBuildingFromBuildMenu.GetLockText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1650, LockUnlockBuildingFromBuildMenu.GetLockText)
-LoseFundingPercent.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1685, LoseFundingPercent.Execute)
-LoseFundingPercent.GetLostFunding = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1692, LoseFundingPercent.GetLostFunding)
-Malfunction.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1724, Malfunction.Execute)
-MalfunctionRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1755, MalfunctionRocket.Execute)
-Marsquake.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1790, Marsquake.Execute)
-ModifyCargoPrice.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1849, ModifyCargoPrice.Execute)
-ModifyColonistStat.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1912, ModifyColonistStat.Execute)
-ModifyConst.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1980, ModifyConst.Execute)
-ModifyLabel.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2070, ModifyLabel.Execute)
-ModifyLabel.GetDomeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2108, ModifyLabel.GetDomeText)
-ModifyObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2182, ModifyObject.Execute)
-ModifyStatus.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2228, ModifyStatus.Execute)
-PauseExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2271, PauseExpedition.Execute)
-PauseResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2293, PauseResearch.Execute)
-PauseResearch.GetResearchTypeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2307, PauseResearch.GetResearchTypeText)
-PayFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2357, PayFunding.Execute)
-PickCargo.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2380, PickCargo.Execute)
-PickCargo.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2390, PickCargo.GetDescription)
-PickFromLabelEffect.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2430, PickFromLabelEffect.ConditionsFormat)
-PickFromLabelEffect.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2441, PickFromLabelEffect.GetObjName)
-PickFromLabelEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2449, PickFromLabelEffect.Execute)
-RemoveAllTraits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2510, RemoveAllTraits.Execute)
-RemoveTrait.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2547, RemoveTrait.Execute)
-RenameAssociatedObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2580, RenameAssociatedObject.Execute)
-RenameObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2618, RenameObject.Execute)
-ResetBuildingExtraCost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2674, ResetBuildingExtraCost.Execute)
-ResidenceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2712, ResidenceExecuteEffect.Execute)
-ResidenceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2721, ResidenceExecuteEffect.EffectsList)
-ResumeExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2763, ResumeExpedition.Execute)
-RevealNextTechInField.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2786, RevealNextTechInField.Execute)
-RewardApplicants.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2837, RewardApplicants.Execute)
-RewardExportPrice.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2870, RewardExportPrice.Execute)
-RewardFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2915, RewardFunding.Execute)
-RewardNewRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2937, RewardNewRocket.Execute)
-RewardPrefab.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2976, RewardPrefab.Execute)
-RewardPrefab.GetDrone = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2989, RewardPrefab.GetDrone)
-RewardPrefab.GetBuilding = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3001, RewardPrefab.GetBuilding)
-RewardPrefab.GetPrefabText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3013, RewardPrefab.GetPrefabText)
-RewardResearchPoints.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3052, RewardResearchPoints.Execute)
-RewardResearchPoints.GetResearchPoints = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3059, RewardResearchPoints.GetResearchPoints)
-RewardSponsorResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3087, RewardSponsorResearch.Execute)
-RewardSupplyPods.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3126, RewardSupplyPods.Execute)
-RewardTech.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3151, RewardTech.Execute)
-RewardTech.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3178, RewardTech.GetResearchText)
-RewardTech.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3187, RewardTech.GetFieldText)
-RewardTechBoost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3230, RewardTechBoost.Execute)
-RewardTechBoost.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3250, RewardTechBoost.GetResearchText)
-RewardTechBoost.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3260, RewardTechBoost.GetFieldText)
-RewardWonder.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3285, RewardWonder.Execute)
-SetBuildingBreakdownState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3341, SetBuildingBreakdownState.Execute)
-SetBuildingEnabledState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3391, SetBuildingEnabledState.Execute)
-SetBuildingRogueState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3438, SetBuildingRogueState.Execute)
-SetConstructionSiteState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3481, SetConstructionSiteState.Execute)
-SetEnabledSpecialProject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3512, SetEnabledSpecialProject.Execute)
-SetEnabledSpecialProject.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3527, SetEnabledSpecialProject.GetEditorView)
-SetEnabledSpecialProject.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3543, SetEnabledSpecialProject.GetWarning)
-SpawnColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3610, SpawnColonist.Execute)
-SpawnColonist.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3663, SpawnColonist.GetWarning)
-SpawnEffectDeposit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3702, SpawnEffectDeposit.Execute)
-SpawnEffectDeposit.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3776, SpawnEffectDeposit.ConditionsFormat)
-SpawnRefugeeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3889, SpawnRefugeeRocket.Execute)
-SpawnRefugeeRocket.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3944, SpawnRefugeeRocket.GetWarning)
-SpawnRocketInOrbit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3989, SpawnRocketInOrbit.Execute)
-SpawnSubsurfaceDeposits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4045, SpawnSubsurfaceDeposits.Execute)
-SpawnSubsurfaceDeposits.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4135, SpawnSubsurfaceDeposits.ConditionsFormat)
-StartDisaster.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4185, StartDisaster.GetDescription)
-StartDisaster.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4208, StartDisaster.Execute)
-UnfreezeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4300, UnfreezeBuilding.Execute)
-UnitAppear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4336, UnitAppear.Execute)
-UnitAppear.GetLocationText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4343, UnitAppear.GetLocationText)
-UnitDisappear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4375, UnitDisappear.Execute)
-WorkplaceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4402, WorkplaceExecuteEffect.Execute)
-WorkplaceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4411, WorkplaceExecuteEffect.EffectsList)
+AddTrait.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 119, AddTrait.Execute)
+CallTradeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 145, CallTradeRocket.Execute)
+CauseFault.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 317, CauseFault.Execute)
+CauseFault.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 339, CauseFault.GetDescription)
+CauseFracture.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 380, CauseFracture.Execute)
+CreatePlanetaryAnomaly.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 404, CreatePlanetaryAnomaly.Execute)
+DelayExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 546, DelayExpedition.Execute)
+DeleteCargo.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 577, DeleteCargo.Execute)
+DestroyBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 612, DestroyBuilding.Execute)
+DestroyVehicle.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 651, DestroyVehicle.Execute)
+DisableLanding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 682, DisableLanding.Execute)
+DisableLaunch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 713, DisableLaunch.Execute)
+DiscoverTech.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 736, DiscoverTech.Execute)
+DiscoverTech.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 782, DiscoverTech.GetDescription)
+EffectPickRocketWithStatus.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 814, EffectPickRocketWithStatus.Execute)
+EnableLanding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 855, EnableLanding.Execute)
+EnableLaunch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 886, EnableLaunch.Execute)
+EraseColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 919, EraseColonist.Execute)
+EraseObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 942, EraseObject.Execute)
+EraseShuttles.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 987, EraseShuttles.Execute)
+ExplodeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1033, ExplodeBuilding.Execute)
+ExplodeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1069, ExplodeRocket.Execute)
+ExtendDisaster.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1095, ExtendDisaster.Execute)
+Fireworks.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1132, Fireworks.Execute)
+ForEachExecuteEffects.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1187, ForEachExecuteEffects.Execute)
+ForEachExecuteEffects.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1231, ForEachExecuteEffects.EffectsList)
+ForEachExecuteEffects.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1242, ForEachExecuteEffects.GetObjName)
+ForEachExecuteEffects.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1249, ForEachExecuteEffects.GetWarning)
+ForEachResident.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1299, ForEachResident.Execute)
+ForEachResident.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1328, ForEachResident.EffectsList)
+ForEachWorker.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1386, ForEachWorker.Execute)
+ForEachWorker.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1421, ForEachWorker.EffectsList)
+ForceSuicide.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1463, ForceSuicide.Execute)
+FreezeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1494, FreezeBuilding.Execute)
+FreezeDrone.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1527, FreezeDrone.Execute)
+KillColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1564, KillColonist.Execute)
+KillColonist.GetDeathReasonText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1571, KillColonist.GetDeathReasonText)
+KillExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1602, KillExpedition.Execute)
+LockUnlockBuildingFromBuildMenu.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1640, LockUnlockBuildingFromBuildMenu.Execute)
+LockUnlockBuildingFromBuildMenu.GetLockText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1649, LockUnlockBuildingFromBuildMenu.GetLockText)
+LoseFundingPercent.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1684, LoseFundingPercent.Execute)
+LoseFundingPercent.GetLostFunding = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1691, LoseFundingPercent.GetLostFunding)
+Malfunction.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1723, Malfunction.Execute)
+MalfunctionRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1754, MalfunctionRocket.Execute)
+Marsquake.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1789, Marsquake.Execute)
+ModifyCargoPrice.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1848, ModifyCargoPrice.Execute)
+ModifyColonistStat.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1911, ModifyColonistStat.Execute)
+ModifyConst.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1979, ModifyConst.Execute)
+ModifyLabel.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2069, ModifyLabel.Execute)
+ModifyLabel.GetDomeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2114, ModifyLabel.GetDomeText)
+ModifyObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2188, ModifyObject.Execute)
+ModifyStatus.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2234, ModifyStatus.Execute)
+PauseExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2277, PauseExpedition.Execute)
+PauseResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2299, PauseResearch.Execute)
+PauseResearch.GetResearchTypeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2313, PauseResearch.GetResearchTypeText)
+PayFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2363, PayFunding.Execute)
+PickCargo.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2386, PickCargo.Execute)
+PickCargo.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2396, PickCargo.GetDescription)
+PickFromLabelEffect.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2436, PickFromLabelEffect.ConditionsFormat)
+PickFromLabelEffect.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2447, PickFromLabelEffect.GetObjName)
+PickFromLabelEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2455, PickFromLabelEffect.Execute)
+RemoveAllTraits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2517, RemoveAllTraits.Execute)
+RemoveTrait.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2554, RemoveTrait.Execute)
+RenameAssociatedObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2587, RenameAssociatedObject.Execute)
+RenameObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2625, RenameObject.Execute)
+ResetBuildingExtraCost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2682, ResetBuildingExtraCost.Execute)
+ResidenceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2720, ResidenceExecuteEffect.Execute)
+ResidenceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2729, ResidenceExecuteEffect.EffectsList)
+ResumeExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2771, ResumeExpedition.Execute)
+RevealNextTechInField.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2794, RevealNextTechInField.Execute)
+RewardApplicants.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2845, RewardApplicants.Execute)
+RewardExportPrice.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2878, RewardExportPrice.Execute)
+RewardFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2923, RewardFunding.Execute)
+RewardNewRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2945, RewardNewRocket.Execute)
+RewardPrefab.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2984, RewardPrefab.Execute)
+RewardPrefab.GetDrone = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2998, RewardPrefab.GetDrone)
+RewardPrefab.GetBuilding = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3010, RewardPrefab.GetBuilding)
+RewardPrefab.GetPrefabText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3022, RewardPrefab.GetPrefabText)
+RewardResearchPoints.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3061, RewardResearchPoints.Execute)
+RewardResearchPoints.GetResearchPoints = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3068, RewardResearchPoints.GetResearchPoints)
+RewardSponsorResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3096, RewardSponsorResearch.Execute)
+RewardSupplyPods.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3135, RewardSupplyPods.Execute)
+RewardTech.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3160, RewardTech.Execute)
+RewardTech.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3187, RewardTech.GetResearchText)
+RewardTech.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3196, RewardTech.GetFieldText)
+RewardTechBoost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3239, RewardTechBoost.Execute)
+RewardTechBoost.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3259, RewardTechBoost.GetResearchText)
+RewardTechBoost.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3269, RewardTechBoost.GetFieldText)
+RewardWonder.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3294, RewardWonder.Execute)
+SetBuildingBreakdownState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3350, SetBuildingBreakdownState.Execute)
+SetBuildingEnabledState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3400, SetBuildingEnabledState.Execute)
+SetBuildingRogueState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3447, SetBuildingRogueState.Execute)
+SetConstructionSiteState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3490, SetConstructionSiteState.Execute)
+SetEnabledSpecialProject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3521, SetEnabledSpecialProject.Execute)
+SetEnabledSpecialProject.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3536, SetEnabledSpecialProject.GetEditorView)
+SetEnabledSpecialProject.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3552, SetEnabledSpecialProject.GetWarning)
+SpawnColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3619, SpawnColonist.Execute)
+SpawnColonist.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3676, SpawnColonist.GetWarning)
+SpawnEffectDeposit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3715, SpawnEffectDeposit.Execute)
+SpawnEffectDeposit.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3792, SpawnEffectDeposit.ConditionsFormat)
+SpawnRefugeeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3905, SpawnRefugeeRocket.Execute)
+SpawnRefugeeRocket.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3960, SpawnRefugeeRocket.GetWarning)
+SpawnRocketInOrbit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4005, SpawnRocketInOrbit.Execute)
+SpawnSubsurfaceDeposits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4059, SpawnSubsurfaceDeposits.Execute)
+SpawnSubsurfaceDeposits.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4152, SpawnSubsurfaceDeposits.ConditionsFormat)
+StartDisaster.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4202, StartDisaster.GetDescription)
+StartDisaster.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4225, StartDisaster.Execute)
+UnfreezeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4319, UnfreezeBuilding.Execute)
+UnitAppear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4355, UnitAppear.Execute)
+UnitAppear.GetLocationText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4362, UnitAppear.GetLocationText)
+UnitDisappear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4394, UnitDisappear.Execute)
+WorkplaceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4421, WorkplaceExecuteEffect.Execute)
+WorkplaceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4430, WorkplaceExecuteEffect.EffectsList)

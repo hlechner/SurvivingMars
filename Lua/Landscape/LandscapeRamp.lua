@@ -1,14 +1,3 @@
-GlobalVar("CityLandscapeRamp", {})
-
-function GetLandscapeRampController()
-	local obj = CityLandscapeRamp[UICity]
-	if not obj then
-		obj = LandscapeRampController:new()
-		CityLandscapeRamp[UICity] = obj
-	end
-	return obj
-end
-
 DefineClass.LandscapeRampBuilding = {
 	__parents = { "LandscapeBuilding" },
 	construction_mode = "landscape_ramp",
@@ -27,13 +16,13 @@ DefineClass.LandscapeRampController = {
 
 function LandscapeRampController:Mark(test)
 	LandscapeMarkCancel()
-	local marked, ready, clamped = LandscapeMarkRamp(self.last_pos, self.last_undo_pos, self.brush_radius, test)
+	local marked, ready, clamped = LandscapeMarkRamp(self:GetMapID(), self.last_pos, self.last_undo_pos, self.brush_radius, test)
 	self.unlinked = clamped or not self:IsMarkSuitable()
 	local success = self:ValidateMark(true)
 	return success, ready
 end
 
-function LandscapeMarkRamp(pt1, pt0, radius, test)
+function LandscapeMarkRamp(map_id, pt1, pt0, radius, test)
 	local landscape = Landscapes[LandscapeMark]
 	if not landscape then
 		return
@@ -43,7 +32,8 @@ function LandscapeMarkRamp(pt1, pt0, radius, test)
 		pt0 = pt1
 	end
 	local h0 = landscape.height
-	local h1 = terrain.GetHeight(pt1)
+	local game_map = GameMaps[map_id]
+	local h1 = game_map.terrain:GetHeight(pt1)
 	local dist = pt1:Dist2D(pt0)
 	local s, c = sincos(const.MaxPassableTerrainSlope * 60 - 90)
 	local dh = MulDivRound(dist, s, c)
@@ -57,7 +47,7 @@ function LandscapeMarkRamp(pt1, pt0, radius, test)
 	else
 		ready = pt1 ~= pt0
 	end
-	local primes, bbox = Landscape_MarkLine(LandscapeMark, h0, pt0, h1, pt1, radius, LandscapeGrid, ObjectGrid, test)
+	local primes, bbox = Landscape_MarkLine(map_id, LandscapeMark, h0, pt0, h1, pt1, radius, game_map.landscape_grid, game_map.object_hex_grid.grid, test)
 	if not primes then
 		return
 	end

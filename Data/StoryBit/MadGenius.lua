@@ -6,12 +6,17 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/artificial_intelligence_mystery_02.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('AreDomesOpen', {
 			'Negate', true,
 		}),
 		PlaceObj('HasTrait', {
 			'Trait', "Genius",
+		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
 		}),
 	},
 	ScriptDone = true,
@@ -29,6 +34,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1550837235,
 				user = "Radomir",
+			},
+			{
+				action = "Modified",
+				time = 1625148070,
 			},
 		},
 	}),

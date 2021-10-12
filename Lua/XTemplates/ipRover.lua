@@ -102,6 +102,14 @@ PlaceObj('XTemplate', {
 			'OnPressParam', "ToggleCreateRouteMode",
 		}),
 		PlaceObj('XTemplateTemplate', {
+			'comment', "safari route",
+			'__context_of_kind', "RCSafari",
+			'__condition', function (parent, context) return context:ShouldShowRouteButton() end,
+			'__template', "InfopanelButton",
+			'RolloverDisabledText', T(124367847840, --[[XTemplate ipRover RolloverDisabledText]] "Vehicle inactive."),
+			'OnPressParam', "ToggleCreateRouteMode",
+		}),
+		PlaceObj('XTemplateTemplate', {
 			'comment', "build",
 			'__context_of_kind', "RCConstructorBase",
 			'__template', "InfopanelButton",
@@ -187,6 +195,23 @@ PlaceObj('XTemplate', {
 			end,
 		}),
 		PlaceObj('XTemplateTemplate', {
+			'comment', "clear route",
+			'__context_of_kind', "RCSafari",
+			'__template', "InfopanelButton",
+			'RolloverText', T(519056325841, --[[XTemplate ipRover RolloverText]] "Clears the route and stops the rover"),
+			'RolloverTitle', T(207617533981, --[[XTemplate ipRover RolloverTitle]] "Clear Route"),
+			'OnPressParam', "ClearRoute",
+			'OnPress', function (self, gamepad)
+				self.context:ClearRoute()
+			end,
+			'AltPress', true,
+			'OnAltPress', function (self, gamepad)
+				if gamepad then
+					self.context:ClearRoute()
+				end
+			end,
+		}),
+		PlaceObj('XTemplateTemplate', {
 			'__context_of_kind', "RCRover",
 			'__template', "sectionServiceArea",
 		}),
@@ -264,12 +289,20 @@ PlaceObj('XTemplate', {
 			}),
 			}),
 		PlaceObj('XTemplateTemplate', {
+			'__context_of_kind', "RCSafari",
+			'__template', "sectionVisitors",
+		}),
+		PlaceObj('XTemplateTemplate', {
+			'__context_of_kind', "RCSafari",
+			'__template', "sectionSafariWaypoints",
+		}),
+		PlaceObj('XTemplateTemplate', {
 			'__context_of_kind', "ExplorerRover",
 			'__template', "InfopanelSection",
 			'RolloverText', T(10118, --[[XTemplate ipRover RolloverText]] "Contributes to the currently selected research project.<newline><newline>Lifetime research<right><research(research_points_lifetime)>"),
 			'RolloverTitle', T(10119, --[[XTemplate ipRover RolloverTitle]] "Research Project <percent(ResearchProgress)>"),
 			'OnContextUpdate', function (self, context, ...)
-				self:SetVisible(UICity:IsTechResearched("ExplorerAI"))
+				self:SetVisible(UIColony:IsTechResearched("ExplorerAI"))
 				XSection.OnContextUpdate(self, context, ...)
 			end,
 			'Title', T(526919900594, --[[XTemplate ipRover Title]] "<UIResearchProject>"),
@@ -347,14 +380,14 @@ PlaceObj('XTemplate', {
 			'Icon', "UI/Icons/Sections/storage.tga",
 		}, {
 			PlaceObj('XTemplateTemplate', {
-				'__condition', function (parent, context) return context:HasMember("GetStored_Concrete") end,
-				'__template', "InfopanelText",
-				'Text', T(343032565187, --[[XTemplate ipRover Text]] "Concrete<right><concrete(Stored_Concrete)>"),
-			}),
-			PlaceObj('XTemplateTemplate', {
 				'__condition', function (parent, context) return context:HasMember("GetStored_Metals") end,
 				'__template', "InfopanelText",
 				'Text', T(455677282700, --[[XTemplate ipRover Text]] "Metals<right><metals(Stored_Metals)>"),
+			}),
+			PlaceObj('XTemplateTemplate', {
+				'__condition', function (parent, context) return context:HasMember("GetStored_Concrete") end,
+				'__template', "InfopanelText",
+				'Text', T(343032565187, --[[XTemplate ipRover Text]] "Concrete<right><concrete(Stored_Concrete)>"),
 			}),
 			PlaceObj('XTemplateTemplate', {
 				'__condition', function (parent, context) return context:HasMember("GetStored_Food") end,
@@ -372,11 +405,6 @@ PlaceObj('XTemplate', {
 				'Text', T(157677153453, --[[XTemplate ipRover Text]] "Polymers<right><polymers(Stored_Polymers)>"),
 			}),
 			PlaceObj('XTemplateTemplate', {
-				'__condition', function (parent, context) return context:HasMember("GetStored_Electronics") end,
-				'__template', "InfopanelText",
-				'Text', T(624861249564, --[[XTemplate ipRover Text]] "Electronics<right><electronics(Stored_Electronics)>"),
-			}),
-			PlaceObj('XTemplateTemplate', {
 				'__condition', function (parent, context) return context:HasMember("GetStored_MachineParts") end,
 				'__template', "InfopanelText",
 				'Text', T(407728864620, --[[XTemplate ipRover Text]] "Machine Parts<right><machineparts(Stored_MachineParts)>"),
@@ -387,14 +415,24 @@ PlaceObj('XTemplate', {
 				'Text', T(317815331128, --[[XTemplate ipRover Text]] "Fuel<right><fuel(Stored_Fuel)>"),
 			}),
 			PlaceObj('XTemplateTemplate', {
+				'__condition', function (parent, context) return context:HasMember("GetStored_Electronics") end,
+				'__template', "InfopanelText",
+				'Text', T(624861249564, --[[XTemplate ipRover Text]] "Electronics<right><electronics(Stored_Electronics)>"),
+			}),
+			PlaceObj('XTemplateTemplate', {
+				'__condition', function (parent, context) return IsDlcAvailable("armstrong") and UIColony:IsTechResearched("MartianVegetation") and context:HasMember("GetStored_Seeds") end,
+				'__template', "InfopanelText",
+				'Text', T(12002, --[[XTemplate ipRover Text]] "Seeds<right><seeds(Stored_Seeds)>"),
+			}),
+			PlaceObj('XTemplateTemplate', {
+				'__condition', function (parent, context) return IsDlcAvailable("picard") and context:HasMember("GetStored_PreciousMinerals") end,
+				'__template', "InfopanelText",
+				'Text', T(12806, --[[XTemplate ipRover Text]] "Exotic Minerals<right><preciousminerals(Stored_PreciousMinerals)>"),
+			}),
+			PlaceObj('XTemplateTemplate', {
 				'__condition', function (parent, context) return context:HasMember("GetStored_WasteRock") end,
 				'__template', "InfopanelText",
 				'Text', T(11842, --[[XTemplate ipRover Text]] "Waste Rock<right><wasterock(Stored_WasteRock)>"),
-			}),
-			PlaceObj('XTemplateTemplate', {
-				'__condition', function (parent, context) return IsDlcAvailable("armstrong") and UICity:IsTechResearched("MartianVegetation") and context:HasMember("GetStored_Seeds") end,
-				'__template', "InfopanelText",
-				'Text', T(12002, --[[XTemplate ipRover Text]] "Seeds<right><seeds(Stored_Seeds)>"),
 			}),
 			}),
 		PlaceObj('XTemplateTemplate', {

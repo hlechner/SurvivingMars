@@ -30,9 +30,9 @@ function ShowBuildingHexes(bld, hex_range_class, bind_func)
 	if not IsKindOf(bld, "Building") then
 		return false
 	end
-	if bld:IsValidPos() and not bld.destroyed then
+	if bld:IsValidPos() and not bld.destroyed and bld:HasMember(bind_func) then
 		CleanupHexRanges(bld, bind_func)
-		local obj = PlaceObject(hex_range_class)
+		local obj = PlaceObjectIn(hex_range_class, bld:GetMapID())
 		obj:SetPos(bld:GetPos():SetStepZ()) -- avoid attaching it in air in case of landing rockets
 		g_HexRanges[bld] = g_HexRanges[bld] or {}
 		table.insert(g_HexRanges[bld], obj)
@@ -44,7 +44,7 @@ end
 
 local function ShowConstructionSiteHexes(site, bind_func)
 	CleanupHexRanges(site, bind_func)
-	local obj = PlaceObject("RangeHexMultiSelectRadius")
+	local obj = PlaceObjectIn("RangeHexMultiSelectRadius", site:GetMapID())
 	site:Attach(obj)
 	g_HexRanges[site] = g_HexRanges[site] or {}
 	table.insert(g_HexRanges[site], obj)
@@ -58,9 +58,9 @@ function ShowHexRanges(city, class, cursor_obj, bind_func, single_obj)
 	city = city or UICity
 	
 	bind_func = bind_func or RangeHexRadius.bind_to
-	if class and (not g_Classes[class] or not g_Classes[class]:HasMember(bind_func)) then
+	if class and not g_Classes[class] then
 		return
-	end	
+	end
 	if single_obj and not class then
 		if IsKindOf(single_obj, "ConstructionSite") then
 			ShowConstructionSiteHexes(single_obj, bind_func)
@@ -68,8 +68,11 @@ function ShowHexRanges(city, class, cursor_obj, bind_func, single_obj)
 			ShowBuildingHexes(single_obj, single_obj == SelectedObj and "RangeHexMovableRadius" or "RangeHexMultiSelectRadius", bind_func)
 		end
 	end
-	if class and city.labels[class] then
-		for _, bld in ipairs(city.labels[class]) do
+	if class then
+		local map_id = city.map_id
+		local realm = GetRealm(city)
+		local buildings = city.labels[class] or realm:MapGet("map", "Building", function(bld) return bld:IsKindOf(class) end)
+		for _, bld in ipairs(buildings) do
 			ShowBuildingHexes(bld, bld == SelectedObj and "RangeHexMovableRadius" or "RangeHexMultiSelectRadius", bind_func)
 		end
 		for _, label in ipairs(s_ConstructionLabels) do
@@ -87,7 +90,7 @@ function ShowHexRanges(city, class, cursor_obj, bind_func, single_obj)
 		for _, site in ipairs(city.labels.ConstructionSite) do
 			if IsKindOf(site.building_class_proto, class) then
 				CleanupHexRanges(site, bind_func)
-				local obj = PlaceObject("RangeHexMultiSelectRadius")
+				local obj = PlaceObjectIn("RangeHexMultiSelectRadius", city:GetMapID())
 				site:Attach(obj)
 				g_HexRanges[site] = g_HexRanges[site] or {}
 				table.insert(g_HexRanges[site], obj)
@@ -99,7 +102,7 @@ function ShowHexRanges(city, class, cursor_obj, bind_func, single_obj)
 	if IsValid(cursor_obj) and cursor_obj:HasMember(bind_func) then	
 		assert(type(cursor_obj[bind_func]) == "number")
 		CleanupHexRanges(cursor_obj, bind_func)
-		local obj = PlaceObject("RangeHexMultiSelectRadius")
+		local obj = PlaceObjectIn("RangeHexMultiSelectRadius", city:GetMapID())
 		cursor_obj:Attach(obj)
 		g_HexRanges[cursor_obj] = g_HexRanges[cursor_obj] or {}
 		table.insert(g_HexRanges[cursor_obj], obj)
@@ -111,16 +114,18 @@ end
 
 function HideHexRanges(city, class)
 	city = city or UICity
+	assert(#class > 0)
 	
-	if city.labels[class] then
-		for _, bld in ipairs(city.labels[class]) do
-			for _, hex in ipairs(g_HexRanges[bld] or empty_table) do
-				if IsValid(hex) then
-					DoneObject(hex)
-				end
+	local map_id = city.map_id
+	local realm = GetRealm(city)
+	local buildings = city.labels[class] or realm:MapGet("map", "Building", function(bld) return bld:IsKindOf(class) end)
+	for _, bld in ipairs(buildings) do
+		for _, hex in ipairs(g_HexRanges[bld] or empty_table) do
+			if IsValid(hex) then
+				DoneObject(hex)
 			end
-			g_HexRanges[bld] = nil
 		end
+		g_HexRanges[bld] = nil
 	end
 	for _, label in ipairs(s_ConstructionLabels) do
 		if city.labels[label] then
@@ -139,6 +144,8 @@ function HideHexRanges(city, class)
 end
 
 function UpdateHexRanges(city, class)
+	assert(#class > 0)
+
 	if city.labels[class] then
 		for _, bld in ipairs(city.labels[class]) do
 			update_hex_range(bld)
@@ -153,10 +160,36 @@ function UpdateHexRanges(city, class)
 	end	
 end
 
-function OnMsg.Demolished(bld)
+local function ClearBuildingHexRanges(bld)
 	for _, range in ipairs(g_HexRanges[bld] or empty_table) do
 		DoneObject(range)
-		g_HexRanges[bld] = nil
+	end
+	g_HexRanges[bld] = nil
+end
+
+function OnMsg.Demolished(bld)
+	ClearBuildingHexRanges(bld)
+end
+
+function OnMsg.Refabricated(bld)
+	ClearBuildingHexRanges(bld)
+end
+
+local function UpdateHexRangeClass(obj, prev)
+	local hide_range_class = nil
+	if prev and prev:HasMember("show_range_class") and #prev.show_range_class > 0 then
+		hide_range_class = prev.show_range_class
+	end
+
+	if obj and obj:HasMember("show_range_class") and #obj.show_range_class > 0 then
+		UpdateHexRanges(UICity, obj.show_range_class)
+		if hide_range_class == obj.show_range_class then
+			hide_range_class = nil
+		end
+	end
+
+	if hide_range_class then
+		HideHexRanges(UICity, hide_range_class)
 	end
 end
 
@@ -167,39 +200,49 @@ function OnMsg.SelectedObjChange(obj, prev)
 		else
 			UpdateHexRanges(UICity, g_FXBuildingType.class)
 		end
+
 		-- ignore 'prev' so "end" is not fired twice
 		g_FXBuildingType = false
 	end
+	
+	UpdateHexRangeClass(obj, prev)
+		
 	for _, hex_range in ipairs(g_HexRanges[prev] or empty_table) do
 		if IsValid(hex_range) then
 			DoneObject(hex_range)
 		end
 		g_HexRanges[prev] = nil
 	end
-	
 
 	local bld = GetBuildingObj(obj)
-	if bld and bld.show_range and not bld.show_range_all then
-		ShowHexRanges(nil, nil, nil, nil, obj)
-	end
-	if bld and (bld.show_range_all or g_BCHexRangeEnable[bld.class]) then
-		g_FXBuildingType = { city = obj.city, class = bld.class }
-		ShowHexRanges(UICity, bld.class)
-	end
-	if bld and obj:IsValidPos() and IsKindOfClasses(bld, "SupplyRocket", "DustGenerator") then
-		g_FXBuildingType = { city = obj.city, class = bld.class }
-		local bind_func = "GetDustRadius"
-		local range = PlaceObject("RangeHexMultiSelectRadius")
-		range:SetPos(obj:GetPos():SetStepZ())
-		g_HexRanges[obj] = g_HexRanges[obj] or {}
-		table.insert(g_HexRanges[obj], range)
-		g_HexRanges[range] = obj
-		range.bind_to = bind_func
-		range:SetScale(bld[bind_func](bld))
+	if bld then
+		if bld.show_range and not bld.show_range_all then
+			ShowHexRanges(nil, nil, nil, nil, obj)
+		end
+		if bld.show_range_all or g_BCHexRangeEnable[bld.class] then
+			g_FXBuildingType = { city = obj.city, class = bld.class }
+			ShowHexRanges(UICity, bld.class)
+		end
+		if bld.show_range_class then
+			ShowHexRanges(UICity, bld.show_range_class)
+		end
+		if obj:IsValidPos() and IsKindOfClasses(bld, "RocketBase", "DustGenerator") then
+			g_FXBuildingType = { city = obj.city, class = bld.class }
+			local bind_func = "GetDustRadius"
+			local range = PlaceObjectIn("RangeHexMultiSelectRadius", obj:GetMapID())
+			range:SetPos(obj:GetPos():SetStepZ())
+			g_HexRanges[obj] = g_HexRanges[obj] or {}
+			table.insert(g_HexRanges[obj], range)
+			g_HexRanges[range] = obj
+			range.bind_to = bind_func
+			range:SetScale(bld[bind_func](bld))
+		end
 	end
 end
 
-function ResetRTSCamera()
+function ResetRTSCamera(zoom_mul, time_mul)	
+	zoom_mul = zoom_mul or 0.5
+	time_mul = time_mul or 1
 	local igi = GetInGameInterface()
 	if not CameraTransitionThread and igi and igi:GetVisible() and GetInGameInterfaceMode() ~= "overview" then
 		local eye = cameraRTS.GetEye()
@@ -208,9 +251,14 @@ function ResetRTSCamera()
 		v = RotateAxis(v, axis_z, 90*60 - CalcOrientation(lookat + v, lookat))
 		eye = lookat + v
 		eye = eye:SetZ((lookat:z() or 0 ) + const.DefaultCameraRTS.MaxHeight*guim)
-		cameraRTS.SetCamera(eye, lookat, 100)
+		zoom_mul = Clamp(zoom_mul,0,1)
+		time_mul = Clamp(time_mul,0,1)
+		local transition_time = 100 * time_mul
+		cameraRTS.SetCamera(eye, lookat, transition_time)
 		local min, max = cameraRTS.GetZoomLimits()
-		cameraRTS.SetZoom((min+max)/2, 100)
+		local zoom_dt = max - min
+		local zoom = min + zoom_dt * zoom_mul
+		cameraRTS.SetZoom(zoom, transition_time)
 	end
 end
 
@@ -271,6 +319,7 @@ function InGameInterface:Open(...)
 	self:SetMode("selection")
 	ShowMouseCursor("InGameInterface")
 	OpenDialog("HUD", self, UICity)
+	OpenDialog("PinsDlg", self)
 	OpenDialog("OnScreenIndication", self)
 	
 	HideGamepadCursorReasons = false
@@ -322,7 +371,7 @@ function OnMsg.NewMap()
 end
 
 function InGameInterface:CheckAboveZoomLimit()
-	if self.mode == "selection" and editor.Active == 0 and not CameraTransitionThread and cameraRTS.IsActive() then
+	if self.mode == "selection" and editor.Active == 0 and self.mode_dialog and self.mode_dialog:AllowExitToOverview() and not CameraTransitionThread and cameraRTS.IsActive() then
 		if now() - FirstZoomAll > 500 then
 			FirstZoomAll = now()
 			FirstZoom = cameraRTS.GetZoom()
@@ -335,7 +384,7 @@ function InGameInterface:CheckAboveZoomLimit()
 				ZoomOutCount = 1
 			end
 			LastZoomOut = now()
-			if ZoomOutCount > 4 and FirstZoom == maxZoom then
+			if ZoomOutCount > 4 and FirstZoom == maxZoom and ActiveMapData.IsAllowedToEnterOverview then
 				self:SetMode("overview")
 				LastZoomOut = now()
 				return "break"
@@ -382,7 +431,7 @@ function InGameInterface:OnXButtonDown(button, controller_id)
 		end
 		local dlg = GetDialog("Infopanel")
 		if dlg and IsKindOf(dlg.context,"ResourceOverview") then
-			return ResourceOverviewObj:OnShortcut(button)
+			return GetCityResourceOverview(UICity):OnShortcut(button)
 		end
 	end
 	return "continue"
@@ -405,7 +454,7 @@ function InGameInterface:OnShortcut(shortcut, source)
 	end
 	local dlg = GetDialog("Infopanel")
 	if dlg and IsKindOf(dlg.context,"ResourceOverview") then
-		return ResourceOverviewObj:OnShortcut(shortcut, source)
+		return GetCityResourceOverview(UICity):OnShortcut(shortcut, source)
 	end
 end
 
@@ -430,6 +479,9 @@ end
 function InGameInterface:SetMode(mode, context)
 	self.switching_mode = true
 	if self.mode_dialog then
+		if context then
+			self.mode_dialog:SetContext(context)
+		end
 		self.mode_dialog:Close()
 	end
 	local class_name = IGIModeClasses[mode]
@@ -439,7 +491,7 @@ function InGameInterface:SetMode(mode, context)
 	self.mode = mode
 	InGameInterfaceMode = mode
 	if self.mode_dialog:IsKindOf("UnitDirectionModeDialog") then
-		if IsKindOfClasses(SelectedObj, "DroneBase", "Colonist") or
+		if IsKindOf(SelectedObj, "InteractionController") or
 			(IsKindOf(SelectedObj, "MultiSelectionWrapper") and
 			(SelectedObj:IsClassSupported("DroneBase") or SelectedObj:IsClassSupported("Colonist")))
 		then
@@ -506,7 +558,7 @@ function GetInGameInterfaceModeDlg()
 end
 
 function ShowInGameInterface(bShow, instant)
-	if not mapdata.GameLogic then
+	if not ActiveMapData.GameLogic then
 		return
 	end
 	if not bShow and not GetInGameInterface() then 
@@ -567,7 +619,15 @@ function OnMsg.CityStart()
 
 		local igi = GetInGameInterface()
 		if not igi then return end
-		igi:SetMode("overview", {camera_transition_time = 0, exit_to = g_InitialSector and g_InitialSector.area:Center()}) -- make the transition immediate
+
+		if ActiveMapData.IsAllowedToEnterOverview then
+			igi:SetDialogMode("overview", { exit_to = UICity.InitialSector and UICity.InitialSector.area:Center() })
+		else
+			local zoom_mul = 1
+			local time_mul = 0
+			ResetRTSCamera(zoom_mul, time_mul)
+		end
+
 		igi.mode_dialog.camera_transition_time = nil -- restore to default for a smooth zoom in
 		WaitLoadingScreenClose()
 		igi = GetInGameInterface()
@@ -589,9 +649,44 @@ function OnMsg.DoneMap()
 	end
 end
 
+function InGameInterface:SetDialogMode(mode, additional_context)
+	additional_context = additional_context or {}
+	if not mode or mode == "" then
+		return
+	end
+	local dlg = GetInGameInterface()
+	if dlg and dlg.mode ~= mode then
+		additional_context = table.union(additional_context, dlg.context or {})
+		additional_context = table.union(additional_context, { no_camera_transition_time_once = true } )
+		dlg:SetMode(mode, additional_context)
+	end
+end
+
+function OnMsg.PreSwitchMap(map_id, next_map_id)
+	local city = Cities[map_id]
+	if city then
+		local igi = GetInGameInterface()
+		city.DialogType = igi.mode
+		igi:SetDialogMode("selection")
+	end
+end
+
+function OnMsg.PostSwitchMap(map_id)
+	local city = Cities[map_id]
+	if city then
+		if not city.DialogType or city.DialogType == "" then
+			local map_data = ActiveMaps[map_id]
+			city.DialogType = map_data.IsAllowedToEnterOverview and "overview" or "selection"
+		end
+		local igi = GetInGameInterface()
+		igi:SetDialogMode(city.DialogType)
+	end
+end
+
 function OnGameEnterEditor()
 	ShowInGameInterface(false)
-	HideExploration()
+	HideExploration_Queue(UICity)
+	HideExploration_Sectors(UICity)
 	ShowPauseDialog(false, "force")
 	if GetInGameInterfaceMode() == "overview" then
 		local dlg = GetInGameInterfaceModeDlg()
@@ -614,7 +709,8 @@ function OnGameExitEditor()
 	if GetInGameInterfaceMode() == "overview" then
 		local dlg = GetInGameInterfaceModeDlg()
 		LockCamera("overview")
-		ShowExploration()
+		ShowExploration_Queue(UICity, true)
+		ShowExploration_Sectors(UICity)
 		if dlg and IsValid(dlg.sector_obj) then
 			dlg.sector_obj:SetEnumFlags(const.efVisible)
 			dlg:OnMousePos()
@@ -641,13 +737,15 @@ end
 function OnMsg.SelectionChange()
 	local dlg = GetInGameInterfaceModeDlg()
 	if IsKindOf(dlg, "UnitDirectionModeDialog") then
-		if IsKindOfClasses(SelectedObj, "DroneBase", "Colonist", "MultiSelectionWrapper") then
-			if SelectedObj ~= dlg.unit then
-				if dlg.mode_name == "overview" then
-					dlg.saved_camera = nil
-					dlg.target_obj = SelectedObj			
-				end
-				SetUnitControlInteractionMode(dlg.unit, false)
+		if IsKindOfClasses(SelectedObj, "InteractionController", "MultiSelectionWrapper")
+			and SelectedObj ~= dlg.unit then
+			
+			if dlg.mode_name == "overview" then
+				dlg.saved_camera = nil
+				dlg.target_obj = SelectedObj
+			end
+			SetUnitControlInteractionMode(dlg.unit, false)
+			if SelectedObj:CanBeControlled(false) then
 				dlg:ActivateUnitControl(SelectedObj, SelectedObj.start_player_controllable)
 			end
 		else
@@ -703,8 +801,6 @@ function RestoreInGameInterfaceOnLoadGame()
 	
 	SelectObj()
 	
-	ShowNotifications()
-	OpenDialog("PinsDlg", GetInGameInterface())
 	local time_factor = GetTimeFactor()
 	SetTimeFactor(time_factor)
 	GetOnScreenHintDlg()
@@ -830,6 +926,6 @@ end
 
 end -- Platform.developer
 
-function SavegameFixups.RemoveHangedHexRanges()
+function SavegameFixups.RemoveStaleHexRanges()
 	MapForEach("map", "RangeHexRadius", function(o) if IsValid(o) then DoneObject(o) end end)
 end

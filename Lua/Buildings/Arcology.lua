@@ -49,7 +49,7 @@ function Arcology:GetHiveMindBonus()
 end
 
 function Arcology:ApplyHiveMindBonus()
-	if not self.city:IsTechResearched("HiveMind") then
+	if not self.city.colony:IsTechResearched("HiveMind") then
 		return
 	end
 	local bonus = self:GetHiveMindBonus()

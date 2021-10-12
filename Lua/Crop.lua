@@ -118,7 +118,7 @@ function IsCropAvailable(crop)
 	end
 	local tech_t = CropTechRequirements[crop.id] or ""
 	for i = 1, #tech_t do
-		if not UICity:IsTechResearched(tech_t[i]) then
+		if not UIColony:IsTechResearched(tech_t[i]) then
 			return false
 		end
 	end

@@ -6,12 +6,17 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/26_colonist.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "DroneHub",
 			'Filters', {},
 			'Condition', ">=",
 			'Amount', 1,
+		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
 		}),
 	},
 	ScriptDone = true,
@@ -23,6 +28,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(552354324216, --[[voice:narrator]] "A colonist has gone mad! Donning a space suit, the unstable individual has occupied one of our Drone Hubs, threatening to destroy it!"),
 	group = "Sanity Breakdown",
 	id = "TheLudditeVibe",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625148122,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(371578230411, --[[StoryBit TheLudditeVibe Text]] "We cannot afford to lose the Hub!"),
 	}),

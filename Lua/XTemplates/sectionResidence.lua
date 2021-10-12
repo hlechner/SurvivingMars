@@ -18,6 +18,12 @@ PlaceObj('XTemplate', {
 			'__template', "InfopanelText",
 			'Text', T(424588493338, --[[XTemplate sectionResidence Text]] "Comfort of residents<right><em><Stat(service_comfort)></em>"),
 		}),
+		PlaceObj('XTemplateTemplate', {
+			'__context_of_kind', "Apartments",
+			'__condition', function (parent, context) return context.satisfaction_change>0 end,
+			'__template', "InfopanelText",
+			'Text', T(12807, --[[XTemplate sectionResidence Text]] "Satisfaction per visit <right><em><Stat(satisfaction_change)></em>"),
+		}),
 		}),
 })
 

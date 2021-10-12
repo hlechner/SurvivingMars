@@ -401,6 +401,16 @@ PlaceObj('TextStyle', {
 })
 
 PlaceObj('TextStyle', {
+	RolloverTextColor = -922724,
+	ShadowColor = 0,
+	ShadowType = "outline",
+	TextColor = -1,
+	TextFont = T(13585, --[[TextStyle MapSwitchNotifications TextFont]] "SchemeBk, 16, aa"),
+	group = "Game",
+	id = "MapSwitchNotifications",
+})
+
+PlaceObj('TextStyle', {
 	TextColor = -9323809,
 	TextFont = T(600000000006, --[[TextStyle MediumHeader TextFont]] "LibelSuitRg, 32, aa"),
 	group = "Game",
@@ -819,6 +829,14 @@ PlaceObj('TextStyle', {
 })
 
 PlaceObj('TextStyle', {
+	RolloverTextColor = -462106,
+	TextColor = -922724,
+	TextFont = T(445191394361, --[[TextStyle ResearchQueuedProgress TextFont]] "LibelSuitRg, 50, aa"),
+	group = "Game",
+	id = "ResearchQueuedProgress",
+})
+
+PlaceObj('TextStyle', {
 	DisabledTextColor = -9276814,
 	RolloverTextColor = -462106,
 	TextColor = -922724,
@@ -840,6 +858,14 @@ PlaceObj('TextStyle', {
 	TextFont = T(988, --[[TextStyle RolloverTextStyle TextFont]] "SchemeBk, 18, aa"),
 	group = "Game",
 	id = "RolloverTextStyle",
+})
+
+PlaceObj('TextStyle', {
+	RolloverTextColor = -395595,
+	TextColor = -1445121,
+	TextFont = T(12654, --[[TextStyle RolloverTextStyleHighlight TextFont]] "SchemeBk, 18, aa"),
+	group = "Game",
+	id = "RolloverTextStyleHighlight",
 })
 
 PlaceObj('TextStyle', {

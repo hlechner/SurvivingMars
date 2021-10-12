@@ -11,6 +11,7 @@ PlaceObj('StoryBit', {
 	EnableChance = 30,
 	Enabled = true,
 	Image = "UI/Messages/Events/28_building_construction.tga",
+	MainMapExclusive = false,
 	NotificationText = "",
 	Prerequisites = {},
 	ScriptDone = true,
@@ -22,6 +23,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(800200228748, --[[voice:narrator]] "The drone attempts to put the square part into the round hole for the third consecutive time, determined to find a solution."),
 	group = "Buildings",
 	id = "BadPrefab",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143522,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(935411421898, --[[StoryBit BadPrefab Text]] "Let’s try to jury rig something…"),
 		'OutcomeText', "custom",

@@ -71,6 +71,8 @@ DefineClass.Cargo = {
 			editor = "number", default = 1000, min = 0, },
 		{ id = "locked", name = "Locked", 
 			editor = "bool", default = false, },
+		{ id = "hidden", name = "Hidden", 
+			editor = "bool", default = false, },
 		{ id = "icon", name = "Icon", 
 			editor = "browse", default = false, folder = "UI", filter = "Image files|*.tga", image_preview_size = 200, },
 	},
@@ -103,6 +105,8 @@ DefineClass.Challenge = {
 			editor = "number", default = 0, min = -70, max = 70, },
 		{ id = "longitude", name = "Landing Longitude", 
 			editor = "number", default = 0, min = -180, max = 180, },
+		{ id = "map", name = "Map", 
+			editor = "combo", default = false, items = function (self) return PresetsCombo("MapDataPreset") end, },
 		{ id = "time_perfected", name = "Time Limit (Perfected)", 
 			editor = "number", default = 720000, scale = "sols", min = 0, },
 		{ id = "time_completed", name = "Time Limit (Completed)", 
@@ -117,6 +121,8 @@ DefineClass.Challenge = {
 			editor = "combo", default = false, items = function (self) return PresetsCombo("GameRules") end, },
 		{ id = "gamerule3", name = "Game Rule 3", 
 			editor = "combo", default = false, items = function (self) return PresetsCombo("GameRules") end, },
+		{ id = "mystery", name = "Mystery", 
+			editor = "combo", default = false, items = function (self) return ClassDescendantsList("MysteryBase") end, },
 		{ id = "TrackProgress", name = "Track Progress", 
 			editor = "bool", default = false, },
 		{ id = "Init", name = "Init", 
@@ -916,6 +922,8 @@ DefineClass.PopupNotificationPreset = {
 			editor = "browse", default = "", folder = "UI", filter = "Image files|*.tga", },
 		{ id = "start_minimized", 
 			editor = "bool", default = true, },
+		{ id = "show_once", 
+			editor = "bool", default = false, },
 		{ id = "minimized_notification_priority", 
 			editor = "choice", default = "Critical", items = function (self) return table.keys(NotificationClasses) end, },
 		{ id = "no_ccc_button", 
@@ -1130,15 +1138,15 @@ function TechPreset:GetFieldDescription()
 end
 
 function TechPreset:Getcost()
-	if UICity then
-		local id, points, cost, researched = UICity:GetResearchInfo(self.id)
+	if UIColony then
+		local id, points, cost, researched = UIColony:GetResearchInfo(self.id)
 		return cost and cost or 0
 	end
 	return 0
 end
 
 function TechPreset:ResearchQueueCost(queue_idx)
-	return UICity:ResearchQueueCost(self.id, queue_idx)
+	return UIColony:ResearchQueueCost(self.id, queue_idx)
 end
 
 function TechPreset:OnDataLoaded()
@@ -1318,31 +1326,31 @@ DefineClass.TutorialPreset = {
 	EditorMenubar = "Editors.GameUI",
 }
 
-Cargo.OnEditorSetProperty = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 151, Cargo.OnEditorSetProperty)
-Challenge.Completed = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 277, Challenge.Completed)
-Challenge.GetDeadline = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 284, Challenge.GetDeadline)
-Challenge.GetPerfectDeadline = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 290, Challenge.GetPerfectDeadline)
-Challenge.GetCompletedText = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 296, Challenge.GetCompletedText)
-Challenge.GetChallengeDescriptionProgressText = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 309, Challenge.GetChallengeDescriptionProgressText)
-ColonyColorScheme.OnEditorSetProperty = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 341, ColonyColorScheme.OnEditorSetProperty)
-ColonyColorScheme.OnEditorSelect = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 348, ColonyColorScheme.OnEditorSelect)
-CropPreset.SetLocked = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 842, CropPreset.SetLocked)
-GameRules.IsEnabled = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 964, GameRules.IsEnabled)
-GameRules.GetDisabledText = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 978, GameRules.GetDisabledText)
-MissionSponsorPreset.GetDynamicProperties = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1417, MissionSponsorPreset.GetDynamicProperties)
-MissionSponsorPreset.GetFreeSpaceLeft = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1458, MissionSponsorPreset.GetFreeSpaceLeft)
-ModifierItem.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1500, ModifierItem.GetEditorView)
-OnScreenNotificationPreset.OnEditorSetProperty = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1618, OnScreenNotificationPreset.OnEditorSetProperty)
-RadioStationPreset.GetTracksFolder = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2045, RadioStationPreset.GetTracksFolder)
-TechPreset.GetFieldDisplayName = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2288, TechPreset.GetFieldDisplayName)
-TechPreset.GetFieldDescription = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2295, TechPreset.GetFieldDescription)
-TechPreset.Getcost = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2302, TechPreset.Getcost)
-TechPreset.ResearchQueueCost = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2313, TechPreset.ResearchQueueCost)
-TechPreset.OnDataLoaded = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2319, TechPreset.OnDataLoaded)
-ThresholdItem.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2344, ThresholdItem.GetEditorView)
-TraitPreset.AddIncompatible = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2482, TraitPreset.AddIncompatible)
-TraitPreset.AddDomeColonistsModifier = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2490, TraitPreset.AddDomeColonistsModifier)
-TraitPreset.RemoveDomeColonistsModifier = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2512, TraitPreset.RemoveDomeColonistsModifier)
-TraitPreset.Apply = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2523, TraitPreset.Apply)
-TraitPreset.UnApply = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2543, TraitPreset.UnApply)
-TraitPreset.GetSaveDataForFile = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2557, TraitPreset.GetSaveDataForFile)
+Cargo.OnEditorSetProperty = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 155, Cargo.OnEditorSetProperty)
+Challenge.Completed = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 291, Challenge.Completed)
+Challenge.GetDeadline = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 298, Challenge.GetDeadline)
+Challenge.GetPerfectDeadline = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 304, Challenge.GetPerfectDeadline)
+Challenge.GetCompletedText = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 310, Challenge.GetCompletedText)
+Challenge.GetChallengeDescriptionProgressText = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 323, Challenge.GetChallengeDescriptionProgressText)
+ColonyColorScheme.OnEditorSetProperty = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 355, ColonyColorScheme.OnEditorSetProperty)
+ColonyColorScheme.OnEditorSelect = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 362, ColonyColorScheme.OnEditorSelect)
+CropPreset.SetLocked = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 856, CropPreset.SetLocked)
+GameRules.IsEnabled = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 978, GameRules.IsEnabled)
+GameRules.GetDisabledText = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 992, GameRules.GetDisabledText)
+MissionSponsorPreset.GetDynamicProperties = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1431, MissionSponsorPreset.GetDynamicProperties)
+MissionSponsorPreset.GetFreeSpaceLeft = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1472, MissionSponsorPreset.GetFreeSpaceLeft)
+ModifierItem.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1514, ModifierItem.GetEditorView)
+OnScreenNotificationPreset.OnEditorSetProperty = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 1632, OnScreenNotificationPreset.OnEditorSetProperty)
+RadioStationPreset.GetTracksFolder = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2062, RadioStationPreset.GetTracksFolder)
+TechPreset.GetFieldDisplayName = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2305, TechPreset.GetFieldDisplayName)
+TechPreset.GetFieldDescription = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2312, TechPreset.GetFieldDescription)
+TechPreset.Getcost = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2319, TechPreset.Getcost)
+TechPreset.ResearchQueueCost = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2330, TechPreset.ResearchQueueCost)
+TechPreset.OnDataLoaded = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2336, TechPreset.OnDataLoaded)
+ThresholdItem.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2361, ThresholdItem.GetEditorView)
+TraitPreset.AddIncompatible = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2499, TraitPreset.AddIncompatible)
+TraitPreset.AddDomeColonistsModifier = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2507, TraitPreset.AddDomeColonistsModifier)
+TraitPreset.RemoveDomeColonistsModifier = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2529, TraitPreset.RemoveDomeColonistsModifier)
+TraitPreset.Apply = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2540, TraitPreset.Apply)
+TraitPreset.UnApply = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2560, TraitPreset.UnApply)
+TraitPreset.GetSaveDataForFile = SetFuncDebugInfo("@Data/ClassDef-PresetDefs.lua", 2574, TraitPreset.GetSaveDataForFile)

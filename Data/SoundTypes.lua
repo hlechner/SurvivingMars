@@ -97,6 +97,24 @@ PlaceObj('SoundTypePreset', {
 })
 
 PlaceObj('SoundTypePreset', {
+	channels = 2,
+	group = "Building",
+	id = "BuildingRefab",
+})
+
+PlaceObj('SoundTypePreset', {
+	channels = 5,
+	group = "CaveIns",
+	id = "CaveInsDestruction",
+})
+
+PlaceObj('SoundTypePreset', {
+	channels = 5,
+	group = "CaveIns",
+	id = "CaveInsImpact",
+})
+
+PlaceObj('SoundTypePreset', {
 	channels = 10,
 	group = "Disaster",
 	id = "DisasterDustdevil",

@@ -134,10 +134,10 @@ function StartGame(map, map_settings)
 	ChangeMap(map)
 end
 
-function OnMsg.GameTimeStart()
+function OnMsg.NewGame()
 	if g_DisastersSettings then
 		for disaster, preset in pairs(g_DisastersSettings) do
-			mapdata[disaster] = g_DisastersSettings[disaster]
+			ActiveMapData[disaster] = g_DisastersSettings[disaster]
 		end
 	end
 	g_DisastersSettings = false
@@ -176,28 +176,41 @@ end
 
 GlobalVar("g_RainDisaster", false)
 
-function IsDisasterActive()
-	return not not (g_ColdWave or g_DustStorm or g_MysteryDream or g_RainDisaster)
+function IsDisasterActive(map_id)
+	return not not (HasColdWave(map_id) or HasDustStorm(map_id) or g_MysteryDream or g_RainDisaster)
 end
 
 GlobalVar("g_DisastersPredicted", {})
 GlobalVar("g_DisasterDscrShown", {})
 
-function ShowDisasterDescription(disaster_type)
+function ShowDisasterDescription(disaster_type, map_id)
 	if g_DisasterDscrShown[disaster_type] then
 		return
 	end
 	local preset_name = "Disaster_" .. disaster_type
 	if PopupNotificationPresets[preset_name] then
-		ShowPopupNotification(preset_name)
+		ShowPopupNotification(preset_name, { map_id = map_id } )
 	end
 	g_DisasterDscrShown[disaster_type] = true
 end
 
-function AddDisasterNotification(id, params, extended)
+local function GetNotificationId(id, params, map_id)
+	id = GetOnScreenNotificationPreset(id, params, map_id)
+	id = params.override_id or id
+	if params.popup_notification then
+		id = "popup" .. id
+	end
+	return id
+end
+
+function AddDisasterNotification(id, params, extended, map_id)
 	assert(not IsDisasterPredicted() or extended)
-	g_DisastersPredicted[id] = true
-	AddOnScreenNotification(id, nil, params)
+	AddOnScreenNotification(id, nil, params, nil, map_id)
+
+	local disaster_id = GetNotificationId(id, params, map_id)
+	g_DisastersPredicted[disaster_id] = true
+
+	return disaster_id
 end
 
 function RemoveDisasterNotifications()
@@ -225,10 +238,10 @@ function GetDisasterLightmodelList()
 	if g_MysteryDream then
 		return "Dreamers"
 	end
-	if g_ColdWave then
+	if HasColdWave() then
 		return "ColdWave"
 	end
-	if g_DustStorm then
+	if HasDustStorm() then
 		return (g_DustStorm and g_DustStorm.type == "great") and "GreatDustStorm" or "DustStorm"
 	end
 	if g_RainDisaster == "toxic" then
@@ -279,7 +292,7 @@ function SA_StartDisaster:Exec(sequence_player, ip, seq, registers)
 	local list = table.ifilter(disaster_to_data[self.disaster], function(_, data)
 		return data.strength == self.strength
 	end)
-	local data = UICity:TableRand(list)
+	local data = SessionRandom:TableRand(list)
 	if not data then
 		sequence_player:Error(self, "No such disaster preset!")
 		return
@@ -309,12 +322,12 @@ function SA_StartDisaster:Exec(sequence_player, ip, seq, registers)
 			end)
 		end
 	elseif self.disaster == "Dust Devils" then
-		local pos = GetRandomPassable()
+		local pos = GetRandomPassable(MainCity)
 		if not pos then
 			sequence_player:Error(self, "No passable pos found!")
 			return
 		end
-		local devil = GenerateDustDevil(pos, data)
+		local devil = GenerateDustDevilIn(pos, MainCity.map_id, data)
 		devil:Start()
 	end
 end
@@ -359,12 +372,12 @@ DefineClass.SA_StopDisaster =
 
 function SA_StopDisaster:Exec(sequence_player, ip, seq, registers)
 	if self.disaster == "Dust Storm" then
-		if not g_DustStorm then
+		if not HasDustStorm() then
 			sequence_player:Error(self, "No active dust storm disaster to stop!")
 		end
 		StopDustStorm()
 	elseif self.disaster == "Cold Wave" then
-		if not g_ColdWave then
+		if not HasColdWave() then
 			sequence_player:Error(self, "No active cold wave disaster to stop!")
 		end
 		StopColdWave()
@@ -373,32 +386,4 @@ end
 
 function SA_StopDisaster:ShortDescription()
 	return string.format("Stop %s disaster", self.disaster)
-end
-
-----
-
-function GetRandomPassable(city)
-	local pfClass = 0
-	city = city or UICity
-	local seed = city:Random()
-	return GetRandomPassablePoint(seed)
-end
-
-function GetRandomPassableAwayFromBuilding(city)
-	local pfClass = 0
-	city = type(city) ~= "number" and city or UICity --backward compat, first arg used to be a number
-	local seed = city:Random()
-	return GetRandomPassablePoint(seed, pfClass, function(x, y)
-		return IsBuildableZone(x, y) and not IsPointNearBuilding(x, y)
-	end)
-end
-
-GetRandomPassableAwayFromLargeBuilding = GetRandomPassableAwayFromBuilding -- compatibility
-
-function GetRandomPassableAround(center, max_radius, min_radius, city, filter, ...)
-	local pfClass = 0
-	min_radius = min_radius or 0
-	city = city or UICity
-	local seed = city:Random()
-	return GetRandomPassablePoint(center, max_radius, min_radius, seed, pfClass, filter, ...)
 end

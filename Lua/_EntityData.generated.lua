@@ -72,6 +72,28 @@ EntityData["AlienDiggerTentacle"] = {
 		material_type = "Rock",
 	},
 }
+EntityData["Amphitheater"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		material_type = "Metal",
+	},
+}
+EntityData["AmphitheaterGlass"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["AmphitheaterWater"] = {
+	category_Buildings = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
 EntityData["Anomaly_01"] = {
 	category_Decors = true,
 	entity = {
@@ -283,6 +305,76 @@ EntityData["ArrowTutorial_03"] = {
 	},
 }
 EntityData["ArrowUnemployed"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_01"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_02"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_03"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_04"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_05"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_06"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_07"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_08"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_09"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["ArrowWaypoint_10"] = {
 	category_Decors = true,
 	entity = {
 		fade_category = "Never",
@@ -1898,6 +1990,14 @@ EntityData["DecHiveHabitatBase"] = {
 		material_type = "Stone",
 	},
 }
+EntityData["DecHotelBase"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BakedTerrainDecal",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
 EntityData["DecInfirmaryBase"] = {
 	category_Buildings = true,
 	entity = {
@@ -2572,6 +2672,30 @@ EntityData["DecorInt_06"] = {
 		material_type = "Metal",
 	},
 }
+EntityData["DecorInt_07"] = {
+	category_Decors = true,
+	entity = {
+		material_type = "Metal",
+	},
+}
+EntityData["DecorInt_08"] = {
+	category_Decors = true,
+	entity = {
+		material_type = "Metal",
+	},
+}
+EntityData["DecorInt_09"] = {
+	category_Decors = true,
+	entity = {
+		material_type = "Metal",
+	},
+}
+EntityData["DecorInt_10"] = {
+	category_Decors = true,
+	entity = {
+		material_type = "Metal",
+	},
+}
 EntityData["DecorInt_11"] = {
 	category_Decors = true,
 	entity = {
@@ -3041,6 +3165,24 @@ EntityData["DomeGrass_02"] = {
 	},
 }
 EntityData["DomeGrass_03"] = {
+	category_Decals = true,
+	entity = {
+		class_parent = "DomeGrass",
+	},
+}
+EntityData["DomeGrass_04"] = {
+	category_Decals = true,
+	entity = {
+		class_parent = "DomeGrass",
+	},
+}
+EntityData["DomeGrass_05"] = {
+	category_Decals = true,
+	entity = {
+		class_parent = "DomeGrass",
+	},
+}
+EntityData["DomeGrass_06"] = {
 	category_Decals = true,
 	entity = {
 		class_parent = "DomeGrass",
@@ -5578,6 +5720,70 @@ EntityData["HiveHabitat_02FloorDoor_02"] = {
 		material_type = "Metal",
 	},
 }
+EntityData["Hotel"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelDoor_01"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "Door",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelDoor_02"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "Door",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelDoor_03"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "Door",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelFloorDoor_01"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "Door",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelFloorDoor_02"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "Door",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelFloorDoor_03"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "Door",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelInterior"] = {
+	category_Buildings = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["HotelMannequins"] = {
+	category_Buildings = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
 EntityData["HydroponicFarm"] = {
 	category_Buildings = true,
 	entity = {
@@ -6150,6 +6356,14 @@ EntityData["LivingQuartersHouse_02"] = {
 	category_Decors = true,
 	entity = {
 		class_parent = "LivingQuartersHouseBase",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["LowGAmusementPark"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
 		fade_category = "Never",
 		material_type = "Metal",
 	},
@@ -7510,6 +7724,22 @@ EntityData["Rocks_02"] = {
 		material_type = "Rock",
 	},
 }
+EntityData["Rocks_03"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
+EntityData["Rocks_04"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
 EntityData["Rocks_05"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
@@ -7535,6 +7765,22 @@ EntityData["RocksDark_02"] = {
 	},
 }
 EntityData["RocksDark_03"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition,WasteRockObstructor",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
+EntityData["RocksDark_04"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition,WasteRockObstructor",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
+EntityData["RocksDark_05"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
 		class_parent = "Deposition,WasteRockObstructor",
@@ -7605,6 +7851,22 @@ EntityData["RocksLight_02"] = {
 	},
 }
 EntityData["RocksLight_03"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
+EntityData["RocksLight_04"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
+EntityData["RocksLight_05"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
 		class_parent = "Deposition",
@@ -7708,6 +7970,14 @@ EntityData["RocksSlate_02"] = {
 		material_type = "Rock",
 	},
 }
+EntityData["RocksSlate_03"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
 EntityData["RocksSlate_04"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
@@ -7717,6 +7987,22 @@ EntityData["RocksSlate_04"] = {
 	},
 }
 EntityData["RocksSlate_05"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
+EntityData["RocksSlate_06"] = {
+	category_StonesRocksCliffs = true,
+	entity = {
+		class_parent = "Deposition",
+		fade_category = "Never",
+		material_type = "Rock",
+	},
+}
+EntityData["RocksSlate_07"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
 		class_parent = "Deposition",
@@ -7859,6 +8145,29 @@ EntityData["RoverExplorerBuilding"] = {
 	},
 }
 EntityData["RoverExplorer_Trailblazer"] = {
+	category_Vehicles = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["RoverSafari"] = {
+	category_Vehicles = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["RoverSafariBuilding"] = {
+	category_Vehicles = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["RoverSafari_Trailblazer"] = {
 	category_Vehicles = true,
 	entity = {
 		class_parent = "BuildingEntityClass",
@@ -8208,6 +8517,13 @@ EntityData["SignBroken"] = {
 		material_type = "Metal",
 	},
 }
+EntityData["SignCableLeaks"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
 EntityData["SignConcrete"] = {
 	category_Decors = true,
 	entity = {
@@ -8398,6 +8714,13 @@ EntityData["SignOrphan"] = {
 	},
 }
 EntityData["SignOutOfRange"] = {
+	category_Decors = true,
+	entity = {
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["SignPipeLeaks"] = {
 	category_Decors = true,
 	entity = {
 		fade_category = "Never",
@@ -9256,6 +9579,14 @@ EntityData["StorageDepotSmall_09"] = {
 	},
 }
 EntityData["StorageDepotSmall_10"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["StorageDepotSmall_11"] = {
 	category_Buildings = true,
 	entity = {
 		class_parent = "BuildingEntityClass",

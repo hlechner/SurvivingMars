@@ -308,7 +308,7 @@ PlaceObj('XTemplate', {
 				'LayoutHSpacing', 53,
 				'ContextUpdateOnOpen', true,
 				'OnContextUpdate', function (self, context, ...)
-					local sol = UICity.day
+					local sol = UIColony.day
 					sol = Max(sol - 1, 50)
 					for i = 3, 1, -1 do
 						local label = self["idLegend" .. i]

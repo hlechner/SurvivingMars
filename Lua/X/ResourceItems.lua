@@ -110,6 +110,9 @@ function ResourceItems:CancelMenu()
 	local obj = self.context and self.context.object
 	if obj then 
 		obj:SetInteractionMode(obj.interaction_mode)
+		if self.context.cancel_callback then
+			self.context.cancel_callback(obj)
+		end
 	end	
 end
 

@@ -20,6 +20,10 @@ PlaceObj('XTemplate', {
 				'__template', "sectionDome",
 			}),
 			PlaceObj('XTemplateTemplate', {
+				'__condition', function (parent, context) return IsDlcAccessible("picard") end,
+				'__template', "sectionMicroGHabitat",
+			}),
+			PlaceObj('XTemplateTemplate', {
 				'__template', "sectionStorageWarning",
 			}),
 			PlaceObj('XTemplateTemplate', {
@@ -59,6 +63,10 @@ PlaceObj('XTemplate', {
 				'__template', "sectionResearchProject",
 			}),
 			PlaceObj('XTemplateTemplate', {
+				'__condition', function (parent, context) return IsDlcAccessible("picard") end,
+				'__template', "sectionReconCenter",
+			}),
+			PlaceObj('XTemplateTemplate', {
 				'__condition', function (parent, context) return IsDlcAvailable("gagarin") end,
 				'__template', "sectionGameDevProgress",
 			}),
@@ -76,6 +84,10 @@ PlaceObj('XTemplate', {
 			}),
 			PlaceObj('XTemplateTemplate', {
 				'__template', "sectionWorkshifts",
+			}),
+			PlaceObj('XTemplateTemplate', {
+				'__condition', function (parent, context) return IsDlcAccessible("picard") end,
+				'__template', "sectionBottomlessPitResearchCenter",
 			}),
 			PlaceObj('XTemplateTemplate', {
 				'__template', "sectionPowerStorage",
@@ -181,6 +193,28 @@ PlaceObj('XTemplate', {
 				end,
 			}),
 			PlaceObj('XTemplateTemplate', {
+				'comment', "tourist restrictions",
+				'__context_of_kind', "Hotel",
+				'__condition', function (parent, context) return true end,
+				'__template', "InfopanelButton",
+				'RolloverText', T(178777171911, --[[XTemplate ipBuilding RolloverText]] "Buildings that only accept Tourists won't allow other Colonists to take residence.<newline><newline>Accepting: <em><UITouristOnlyStatus></em>"),
+				'RolloverDisabledText', T(818564269263, --[[XTemplate ipBuilding RolloverDisabledText]] "This building is currently accepting any resident."),
+				'RolloverTitle', T(129927784288, --[[XTemplate ipBuilding RolloverTitle]] "Tourist Restrictions On/Off"),
+				'RolloverHint', T(238148642034, --[[XTemplate ipBuilding RolloverHint]] "<left_click> Activate <newline><em>Ctrl + <left_click></em> Activate for all <display_name_pl>"),
+				'RolloverHintGamepad', T(919224409562, --[[XTemplate ipBuilding RolloverHintGamepad]] "<ButtonA> Activate <newline><ButtonX> Activate for all <display_name_pl>"),
+				'OnPressParam', "ToggleTouristOnly",
+				'OnPress', function (self, gamepad)
+					self.context:ToggleTouristOnly(not gamepad and IsMassUIModifierPressed())
+				end,
+				'AltPress', true,
+				'OnAltPress', function (self, gamepad)
+					if gamepad then
+						self.context:ToggleTouristOnly(true)
+					end
+				end,
+				'Icon', "UI/Icons/IPButtons/colonists_all.tga",
+			}),
+			PlaceObj('XTemplateTemplate', {
 				'__template', "customDomeButtons",
 			}),
 			PlaceObj('XTemplateTemplate', {
@@ -201,7 +235,7 @@ PlaceObj('XTemplate', {
 			}),
 			PlaceObj('XTemplateTemplate', {
 				'comment', "toggle lrt",
-				'__condition', function (parent, context) return IsKindOfClasses(context, "StorageDepot", "MechanizedDepot") and not IsKindOf(context, "SupplyRocket") end,
+				'__condition', function (parent, context) return IsKindOfClasses(context, "StorageDepot", "MechanizedDepot") and not IsKindOf(context, "RocketBase") end,
 				'__template', "InfopanelButton",
 				'RolloverText', T(11233, --[[XTemplate ipBuilding RolloverText]] "Storages with forbidden Shuttle Access are never serviced by Shuttles.<newline><newline>Current status: <em><on_off(user_include_in_lrt)></em>"),
 				'RolloverTitle', T(11254, --[[XTemplate ipBuilding RolloverTitle]] "Shuttle Access"),
@@ -268,6 +302,41 @@ PlaceObj('XTemplate', {
 					end,
 				}),
 				}),
+			PlaceObj('XTemplateTemplate', {
+				'comment', "refab",
+				'__dlc', "picard",
+				'__context_of_kind', "Building",
+				'__condition', function (parent, context) return context:CanRefab() end,
+				'__template', "InfopanelButton",
+				'RolloverText', T(608358975996, --[[XTemplate ipBuilding RolloverText]] "Refab this building."),
+				'RolloverTitle', T(578067230743, --[[XTemplate ipBuilding RolloverTitle]] "Refab"),
+				'RolloverHintGamepad', T(7657, --[[XTemplate ipBuilding RolloverHintGamepad]] "<ButtonY> Activate"),
+				'OnPressParam', "ToggleRefab",
+				'Icon', "UI/Icons/IPButtons/refab.tga",
+			}, {
+				PlaceObj('XTemplateFunc', {
+					'name', "OnXButtonDown(self, button)",
+					'func', function (self, button)
+						if button == "ButtonY" then
+							return self:OnButtonDown(false)
+						elseif button == "ButtonX" then
+							return self:OnButtonDown(true)
+						end
+						return (button == "ButtonA") and "break"
+					end,
+				}),
+				PlaceObj('XTemplateFunc', {
+					'name', "OnXButtonUp(self, button)",
+					'func', function (self, button)
+						if button == "ButtonY" then
+							return self:OnButtonUp(false)
+						elseif button == "ButtonX" then
+							return self:OnButtonUp(true)
+						end
+						return (button == "ButtonA") and "break"
+					end,
+				}),
+				}),
 			}),
 		PlaceObj('XTemplateGroup', nil, {
 			PlaceObj('XTemplateTemplate', {
@@ -304,7 +373,7 @@ PlaceObj('XTemplate', {
 				'Id', "idDecommission",
 				'FoldWhenHidden', true,
 				'OnContextUpdate', function (self, context, ...)
-					self:SetEnabled(UICity:IsTechResearched("DecommissionProtocol") or false)
+					self:SetEnabled(UIColony:IsTechResearched("DecommissionProtocol") or false)
 					self:SetVisible(context.destroyed and not context.demolishing)
 					local hint = T(238148642034, "<left_click> Activate <newline><em>Ctrl + <left_click></em> Activate for all <display_name_pl>")
 					local hint_gamepad = T(919224409562, "<ButtonA> Activate <newline><ButtonX> Activate for all <display_name_pl>")

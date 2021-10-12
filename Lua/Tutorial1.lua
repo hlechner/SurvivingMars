@@ -48,7 +48,7 @@ g_TutorialScenarios.Tutorial1 = function()
 
 	-- 4. Land Rocket
 	-- create initial rocket with cargo
-	PlaceBuilding("SupplyRocket", {city = UICity})
+	local rocket = PlaceBuildingIn("SupplyRocket", MainMapID)
 	WaitOneMsGameTime()
 	local cargo = {
 			{class = "Polymers",       		amount = 5},
@@ -61,9 +61,9 @@ g_TutorialScenarios.Tutorial1 = function()
 			{class = "Drone",					amount = 8,},
 	}
 
-	UICity.labels.AllRockets[1].launch_fuel = 5*const.ResourceScale
-	UICity.labels.AllRockets[1].can_demolish = false -- just in case
-	UICity.labels.AllRockets[1]:SetCommand("FlyToMars", cargo, 0, nil, true)
+	rocket.launch_fuel = 5*const.ResourceScale
+	rocket.can_demolish = false -- just in case
+	rocket:SetCommand("FlyToMars", cargo, 0, nil, true)
 
 	-- show hint
 	WaitTutorialPopup("Tutorial1_Popup3_LandRocket")
@@ -108,14 +108,14 @@ g_TutorialScenarios.Tutorial1 = function()
 		ViewObjectMars(ghost)
 	end
 	
+	local city_construction = GetDefaultConstructionController(MainCity)
 	if GetUIStyleGamepad() then
-		CityConstruction[UICity]:UpdateCursor(g_Tutorial.MapMarkers.RocketLanding:GetPos())
+		city_construction:UpdateCursor(g_Tutorial.MapMarkers.RocketLanding:GetPos())
 	end
 
 	TutorialNextHint("Tutorial_1_LandRocket_2")
 
 	-- wait the rocket to begin landing
-	local rocket = UICity.labels.AllRockets[1]
 	while rocket.command == "WaitInOrbit" or rocket.command == "FlyToMars" do
 		Sleep(100)
 	end
@@ -124,13 +124,9 @@ g_TutorialScenarios.Tutorial1 = function()
 	-- cleanup construction target
 	g_Tutorial.ConstructionTarget = nil
 	
-	-- wait the landing/unload process to finish
-	while UICity.labels.AllRockets[1].command ~= "Refuel" do
-		Sleep(100)
-	end
+	WaitMsg("RocketLanded") -- wait the landing process to finish
 	
-	Sleep(8000) -- waiting for drones to get out
-	
+	Sleep(8000)  -- waiting for drones to get out
 	
 	-- 5. Drones & Resources
 	WaitTutorialPopup("Tutorial1_Popup4_DronesAndResources")
@@ -139,12 +135,12 @@ g_TutorialScenarios.Tutorial1 = function()
 	arrow = TutorialUIArrow:new({
 		AnchorType = "center-top",
 		FindTarget = function(self) 
-			if GetInGameInterfaceMode() ~= "construction" or CityConstruction[UICity].template ~= "StorageMetals" then
+			if GetInGameInterfaceMode() ~= "construction" or city_construction.template ~= "StorageMetals" then
 				return FindBuildMenuItem("StorageMetals", "Storages", "Depots")
 			end
 		end,
 	}, terminal.desktop)
-	while GetInGameInterfaceMode() ~= "construction" or CityConstruction[UICity].template ~= "StorageMetals" do
+	while GetInGameInterfaceMode() ~= "construction" or city_construction.template ~= "StorageMetals" do
 		Sleep(50)
 	end	
 	TutorialNextHint("Tutorial_1_DronesNResources_2")
@@ -164,7 +160,7 @@ g_TutorialScenarios.Tutorial1 = function()
 	-- wait the depot to have a few metals (cycle through the whole label in case the user built more depots)
 	local stored = 0
 	while stored < 5*const.ResourceScale do
-		local stores = UICity.labels.StorageMetals or empty_table
+		local stores = MainCity.labels.StorageMetals or empty_table
 		stored = 0
 		for _, depot in ipairs(stores) do
 			stored = stored + depot:GetStoredAmount()
@@ -239,15 +235,15 @@ g_TutorialScenarios.Tutorial1 = function()
 	WaitConstruction("StirlingGenerator")
 	g_Tutorial.BuildMenuWhitelist.PowerCables = true
 
-	local mines = UICity.labels.RegolithExtractor or empty_table
-	local gens = UICity.labels.StirlingGenerator or empty_table
+	local mines = MainCity.labels.RegolithExtractor or empty_table
+	local gens = MainCity.labels.StirlingGenerator or empty_table
 	if not (#mines > 0 and #gens > 0 and mines[1].electricity.grid == gens[1].electricity.grid) then
 		TutorialNextHint("Tutorial_1_Power_2")
 		WaitBuildMenuItemSelected("Power", "PowerCables", "electricity_grid")
 	
 		while true do
-			local mines = UICity.labels.RegolithExtractor or empty_table
-			local gens = UICity.labels.StirlingGenerator or empty_table
+			local mines = MainCity.labels.RegolithExtractor or empty_table
+			local gens = MainCity.labels.StirlingGenerator or empty_table
 			if #mines > 0 and #gens > 0 and mines[1].electricity.grid == gens[1].electricity.grid then
 				break
 			end
@@ -308,10 +304,10 @@ g_TutorialScenarios.Tutorial1 = function()
 	
 	-- wait these to be built and connected so the colony runs out of power
 	while true do
-		local gen = UICity.labels.StirlingGenerator or empty_table
-		local vap = UICity.labels.MoistureVaporator or empty_table
-		local ref = UICity.labels.FuelFactory or empty_table
-		if #gen > 0 and #vap > 0 and #ref > 0 and 
+		local gen = MainCity.labels.StirlingGenerator or empty_table
+		local vap = MainCity.labels.MoistureVaporator or empty_table
+		local ref = MainCity.labels.FuelFactory or empty_table
+		if #gen > 0 and #vap > 0 and #ref > 0 and (gen[1].electricity and vap[1].electricity and ref[1].electricity) and
 			gen[1].electricity.grid == vap[1].electricity.grid and
 			gen[1].electricity.grid == ref[1].electricity.grid
 		then
@@ -320,14 +316,14 @@ g_TutorialScenarios.Tutorial1 = function()
 		Sleep(100)
 	end
 	
-	UICity:AddPrefabs("StirlingGenerator", 1)
+	MainCity:AddPrefabs("StirlingGenerator", 1)
 	WaitTutorialPopup("Tutorial1_Popup12_RefuelingRocket_1")
 	TutorialNextHint("Tutorial_1_RefuelingRocket_1")
 	
 	-- wait until ALL buildings are powered (some won't be working at this point)
 	while true do
 		local powered = true
-		for _, bld in ipairs(UICity.labels.Building) do
+		for _, bld in ipairs(MainCity.labels.Building) do
 			if IsKindOf(bld, "ElectricityConsumer") then
 				powered = powered and bld:HasPower()
 			end
@@ -347,8 +343,8 @@ g_TutorialScenarios.Tutorial1 = function()
 	WaitBuildMenuItemSelected("Life-Support", "Pipes", "life_support_grid")
 	
 	while true do
-		local prod = UICity.labels.MoistureVaporator or empty_table
-		local cons = UICity.labels.FuelFactory or empty_table
+		local prod = MainCity.labels.MoistureVaporator or empty_table
+		local cons = MainCity.labels.FuelFactory or empty_table
 		if #prod > 0 and #cons > 0 and prod[1].water.grid == cons[1].water.grid then
 			break
 		end
@@ -361,7 +357,7 @@ g_TutorialScenarios.Tutorial1 = function()
 	
 	-- 18. Epilogue
 	-- wait the rocket to launch
-	while UICity.labels.AllRockets[1].command ~= "WaitLaunchOrder" do
+	while rocket.command ~= "WaitLaunchOrder" do
 		Sleep(100)
 	end
 	
@@ -376,13 +372,13 @@ g_TutorialScenarios.Tutorial1 = function()
 			end
 		end,
 	}, terminal.desktop)
-	while UICity.labels.AllRockets[1].command == "WaitLaunchOrder" do
+	while rocket.command == "WaitLaunchOrder" do
 		Sleep(100)
 	end
 	arrow:delete()
 	HintDisable("Tutorial_1_FireRocket")
 	
-	while UICity.labels.AllRockets[1].command ~= "Takeoff" do
+	while rocket.command ~= "Takeoff" do
 		Sleep(100)
 	end
 	

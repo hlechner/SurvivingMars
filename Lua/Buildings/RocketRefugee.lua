@@ -51,7 +51,7 @@ end
 
 function RefugeeRocket:UpdateStatus(status)
 	if status ~= "on earth" then
-		SupplyRocket.UpdateStatus(self, status)
+		RocketBase.UpdateStatus(self, status)
 	end
 end
 
@@ -77,7 +77,7 @@ end
 
 function RefugeeRocket:Unload(...)
 	g_RefugeeOutcome[self.custom_id] = "success"
-	SupplyRocket.Unload(self, ...)
+	RocketBase.Unload(self, ...)
 end
 
 function RefugeeRocket:OnPassengersLost()

@@ -62,6 +62,10 @@ PlaceObj('StoryBit', {
 				time = 1550837288,
 				user = "Radomir",
 			},
+			{
+				action = "Modified",
+				time = 1625147715,
+			},
 		},
 	}),
 	PlaceObj('StoryBitReply', {

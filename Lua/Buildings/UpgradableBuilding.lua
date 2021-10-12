@@ -125,7 +125,7 @@ function UpgradableBuilding:CreateUpgradeUpkeepObject(upgrade_tier)
 						consumption_resource_stockpile_spot_name = consumption_resource_stockpile_spot_name, 
 						consumption_resource_type = c_t_r, consumption_type = c_t}
 	
-	return PlaceObject("UpgradeConsumption", params)
+	return PlaceObjectIn("UpgradeConsumption", self:GetMapID(), params)
 end
 
 function GetUpgradeIdList()
@@ -165,7 +165,7 @@ function UISetupUpgradeButtonRollover(button, obj, upgrade_tier)
 	button.GetRolloverText = function(self)
 		local status = ""
 		
-		if not UICity:IsUpgradeUnlocked(upgrade_id) then
+		if not UIColony:IsUpgradeUnlocked(upgrade_id) then
 			status = T(7513, "Locked by research.")
 		elseif obj:HasUpgrade(upgrade_id) then
 			status = T{7514, "Upgrade already constructed. Current status: <working>", 
@@ -182,7 +182,7 @@ function UISetupUpgradeButtonRollover(button, obj, upgrade_tier)
 		return T{7517, "<description><newline><newline><status>", description = obj:GetUpgradeDescription(upgrade_tier), status = status}
 	end
 	button.GetRolloverHint = function(self, shortcut, mass_shortcut)
-		if not UICity:IsUpgradeUnlocked(upgrade_id) then
+		if not UIColony:IsUpgradeUnlocked(upgrade_id) then
 			return ""
 		end
 		shortcut = shortcut or T(7519, "<left_click>")
@@ -219,7 +219,7 @@ function UICreateUpgradeButtons(parent, obj, notify)
 	
 	for i = 1, 3 do
 		local id = obj:GetUpgradeID(i) or ""
-		if id ~= "" and UICity:IsUpgradeUnlocked(id) then
+		if id ~= "" and UIColony:IsUpgradeUnlocked(id) then
 			local context = SubContext(obj, {i = i})
 			local button = XTemplates["ColonistOverviewRowUpgrade"]:Eval(parent, context)
 			local icon = obj:GetUpgradeIcon(i)

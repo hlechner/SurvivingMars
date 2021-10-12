@@ -11,6 +11,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/13_renegades.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -28,6 +29,10 @@ PlaceObj('StoryBit', {
 				PlaceObj('IsBuildingWorking', nil),
 			},
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(246855400631, --[[StoryBit GripOfLawless Text]] "A bomb has exploded in a Spacebar. There are casualties. \n\nIn light of our recent Renegade problem, this brazen act of violence was the final drop as far as our otherwise peaceful Colonists are concerned.\n\nEveryone is voicing their disdain with the Renegades and demands that we take action. Ruthless action."),
@@ -37,6 +42,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(851083944565, --[[voice:narrator]] "A war between two rival gangs of Renegades has taken a dark turn."),
 	group = "Renegades",
 	id = "GripOfLawless",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625147615,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(807674322812, --[[StoryBit GripOfLawless Text]] "So it has come to this - our first executions on another world. Humanity will never change."),
 		'OutcomeText', "custom",

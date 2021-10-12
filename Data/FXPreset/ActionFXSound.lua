@@ -240,6 +240,14 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Breakdown",
+	Actor = "Amphitheater",
+	Moment = "start",
+	Sound = "Building Amphitheater Fail",
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Breakdown",
 	Actor = "Apartments",
 	EndRules = {},
 	Moment = "start",
@@ -325,7 +333,7 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Breakdown",
-	Actor = "Casino Complex",
+	Actor = "CasinoComplex",
 	Moment = "start",
 	Sound = "Building Casino Fail",
 })
@@ -2679,6 +2687,15 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Destroyed",
+	Actor = "Amphitheater",
+	Moment = "start",
+	Sound = "Building Amphitheater Demolition",
+	Source = "ActionPos",
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Destroyed",
 	Actor = "Apartments",
 	EndRules = {},
 	Moment = "start",
@@ -2765,7 +2782,7 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Destroyed",
-	Actor = "Casino Complex",
+	Actor = "CasinoComplex",
 	Moment = "start",
 	Sound = "Building Casino Demolition",
 	Source = "ActionPos",
@@ -8504,6 +8521,23 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "SelectObj",
+	Actor = "Amphitheater",
+	Moment = "start",
+	Sound = "Building Amphitheater Select",
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "SelectObj",
+	Actor = "Amphitheater",
+	Moment = "start",
+	Sound = "UI SelectBuilding",
+	Source = "UI",
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "SelectObj",
 	Actor = "Apartments",
 	Moment = "start",
 	Sound = "UI SelectHome",
@@ -8758,14 +8792,14 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "SelectObj",
-	Actor = "Casino Complex",
+	Actor = "CasinoComplex",
 	Moment = "start",
 	Sound = "Building Casino Select",
 })
 
 PlaceObj('ActionFXSound', {
 	Action = "SelectObj",
-	Actor = "Casino Complex",
+	Actor = "CasinoComplex",
 	Moment = "start",
 	Sound = "UI SelectBuilding",
 	Source = "UI",
@@ -11320,6 +11354,15 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Spawn",
+	Actor = "Amphitheater",
+	Moment = "start",
+	Sound = "UI BuildComplete",
+	Source = "UI",
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Spawn",
 	Actor = "Apartments",
 	EndRules = {},
 	Moment = "start",
@@ -11413,7 +11456,7 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Spawn",
-	Actor = "Casino Complex",
+	Actor = "CasinoComplex",
 	Moment = "start",
 	Sound = "UI BuildComplete",
 	Source = "UI",
@@ -13519,6 +13562,22 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Working",
+	Actor = "Amphitheater",
+	AttachToObj = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	FadeIn = 1000,
+	FadeOut = 1000,
+	Sound = "Object Fountain1 Loop2",
+	handle = 502029775,
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Working",
 	Actor = "ArtificialSun",
 	Moment = "end",
 	Sound = "Object ArtificialSun LoopStop",
@@ -13957,6 +14016,21 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Working",
+	Actor = "Amphitheater",
+	AttachToObj = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Sound = "Building Amphitheater Loop",
+	handle = 167555394,
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Working",
 	Actor = "Arcology",
 	AttachToObj = true,
 	EndRules = {
@@ -14135,7 +14209,7 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Working",
-	Actor = "Casino Complex",
+	Actor = "CasinoComplex",
 	AttachToObj = true,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
@@ -15828,7 +15902,7 @@ PlaceObj('ActionFXSound', {
 	FadeOut = 1500,
 	Moment = "start",
 	Sound = "Object WaterExtractor Loop",
-	handle = 1547987038,
+	handle = 1071764258,
 })
 
 PlaceObj('ActionFXSound', {

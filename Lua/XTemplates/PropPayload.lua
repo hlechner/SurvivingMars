@@ -76,7 +76,7 @@ PlaceObj('XTemplate', {
 				'RepeatStart', 300,
 				'RepeatInterval', 300,
 				'OnPress', function (self, gamepad)
-					GetDialogContext(self):RemoveItem(self.context.prop_meta.id)
+					GetDialogContext(self):RemoveItem(self.context.prop_meta.id, Resources[self.context.prop_meta.id] and 5 or nil)
 				end,
 				'Image', "UI/Infopanel/arrow_remove.tga",
 			}),
@@ -106,7 +106,7 @@ PlaceObj('XTemplate', {
 				'RepeatStart', 300,
 				'RepeatInterval', 300,
 				'OnPress', function (self, gamepad)
-					GetDialogContext(self):AddItem(self.context.prop_meta.id)
+					GetDialogContext(self):AddItem(self.context.prop_meta.id, nil, Resources[self.context.prop_meta.id] and 5 or nil)
 				end,
 				'Image', "UI/Infopanel/arrow_add.tga",
 			}),
@@ -116,7 +116,7 @@ PlaceObj('XTemplate', {
 			'func', function (self, context, prop_meta, value)
 				local obj = ResolvePropObj(context)
 				local item = RocketPayload_GetMeta(prop_meta.id)
-				self.idAmount:SetText(tostring(obj:GetAmount(item)))
+				self.idAmount:SetText(tostring(obj:GetAmount(prop_meta)))
 				self.idPrice:SetText(obj:GetPrice(item))
 				self.idRemove:SetVisible(obj:CanUnload(item))
 				self.idAdd:SetVisible(obj:CanLoad(item))

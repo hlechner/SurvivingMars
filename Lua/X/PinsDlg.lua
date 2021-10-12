@@ -7,10 +7,12 @@ DefineClass.PinsDlg = {
 	LayoutMethod = "HOverlappingList",
 	FocusOnOpen = "",
 	LayoutHSpacing = 10,
-	Margins = box(100, 0, 100, 0),
+	Margins = box(100, 0, 500, 0),
+	map_id = ActiveMapID,
 }
 
 function PinsDlg:Open(...)
+	self.map_id = ActiveMapID
 	self:RecalculateMargins()
 	local gamepad_image = XTemplateSpawn("XImage", self)
 	gamepad_image:SetId("idGamepadImage")
@@ -22,19 +24,25 @@ function PinsDlg:Open(...)
 	gamepad_image:SetVisible(gamepad)
 	gamepad_image:SetDock(gamepad and "left" or "ignore")
 	
-	for _, obj in ipairs(g_PinnedObjs) do
-		self:Pin(obj, "open")
+	local game_map = GameMaps[ActiveMapID]
+	if game_map then
+		local pinned_objects = game_map.pinnables.pins or empty_table
+		self:PinObjects(pinned_objects, "open")
 	end
+
 	self:CreateThread("AutoUpdate", function(self)
 		--this 1ms delay is here to quickly update the dialog after the first objects have been added
 		Sleep(1)
 		while true do
-			for _, obj in ipairs(g_PinnedObjs) do
+			local game_map = GameMaps[ActiveMapID]
+			local pinned_objects = game_map and game_map.pinnables.pins or empty_table
+			for _, obj in ipairs(pinned_objects) do
 				ObjModified(obj)
 			end
 			Sleep(1000)
 		end
 	end, self)
+
 	XDialog.Open(self, ...)
 end
 
@@ -48,6 +56,12 @@ function PinsDlg:Pin(obj, on_open)
 	end
 end
 
+function PinsDlg:PinObjects(objs, on_open)
+	for _, obj in ipairs(objs) do
+		self:Pin(obj, on_open)
+	end
+end
+
 function PinsDlg:Unpin(obj)
 	for _, win in ipairs(self) do
 		if not win.Dock and win.context == obj then
@@ -56,6 +70,12 @@ function PinsDlg:Unpin(obj)
 			self:UpdateGamepadHint()
 			return
 		end
+	end
+end
+
+function PinsDlg:UnpinObjects(objs)
+	for _, obj in ipairs(objs) do
+		self:Unpin(obj)
 	end
 end
 
@@ -243,17 +263,10 @@ function PinsDlg:OnShortcut(shortcut, source)
 	return XDialog.OnShortcut(self, shortcut, source)
 end
 
-local command_center_filter = {
-	class = "DroneControl",
-	hexradius = const.CommandCenterMaxRadius,
-	filter = function (center, sphere)
-		return HexAxialDistance(sphere, center) <= center.work_radius
-	end
-}
 function PinsDlg:GetPinConditionImage(obj)
 	if not obj then return end
 	local img
-	if obj:IsKindOf("SupplyRocket") then
+	if obj:IsKindOf("RocketBase") then
 		img = obj.pin_status_img
 	elseif obj:HasMember("ui_working") and not obj.ui_working then
 		img = "UI/Icons/pin_turn_off.tga"
@@ -263,9 +276,9 @@ function PinsDlg:GetPinConditionImage(obj)
 		img = "UI/Icons/pin_malfunction.tga"
 	elseif obj:IsKindOf("ElectricityConsumer") and obj:ShouldShowNoElectricitySign() then
 		img = "UI/Icons/pin_power.tga"
-	elseif obj:IsKindOf("LifeSupportConsumer") and obj:ShouldShowNoAirSign() then
+	elseif obj:IsKindOf("AirConsumer") and obj:ShouldShowNoAirSign() then
 		img = "UI/Icons/pin_oxygen.tga"
-	elseif obj:IsKindOf("LifeSupportConsumer") and obj:ShouldShowNoWaterSign() then
+	elseif obj:IsKindOf("WaterConsumer") and obj:ShouldShowNoWaterSign() then
 		img = "UI/Icons/pin_water.tga"
 	elseif obj:IsKindOf("BaseRover") then
 		if obj:IsDead() then
@@ -461,43 +474,8 @@ function PinsDlg:InitPinButton(button)
 	end
 end
 
-local function AddPinnedObjs(objects_to_add, list, used)
-	local IsKindOf = IsKindOf
-	for i,obj in ipairs(objects_to_add or empty_table) do
-		if IsKindOf(obj, "PinnableObject") and obj:IsPinned() and not used[obj] then
-			list[#list + 1] = obj
-			used[obj] = true
-		end
-	end
-end
-
-function SortPinnedObjs()
-	local used, new_order = {}, {}
-	local labels = UICity.labels or empty_table
-	
-	--supply rockets
-	AddPinnedObjs(labels.SupplyRocket, new_order, used)
-	--rovers
-	AddPinnedObjs(labels.Rover, new_order, used)
-	--domes
-	AddPinnedObjs(labels.Dome, new_order, used)
-	--drones
-	AddPinnedObjs(labels.Drone, new_order, used)
-	--orbital probes (only the first in the label is pinned)
-	local probes = labels.OrbitalProbe or empty_table
-	if IsKindOf(probes[1], "PinnableObject") and probes[1]:IsPinned() then
-		new_order[#new_order + 1] = probes[1]
-		used[probes[1]] = true
-	end
-	--buildings
-	AddPinnedObjs(labels.Building, new_order, used)
-	--colonists
-	AddPinnedObjs(labels.Colonist, new_order, used)
-	--everything else
-	AddPinnedObjs(g_PinnedObjs, new_order, used)
-	
-	--update global list
-	g_PinnedObjs = new_order
+local function UpdatePinDlgOrdering(map_id)
+	local pinned_objects = GameMaps[map_id].pinnables.pins
 
 	--update order of ctrls in the pins dialog
 	local pins_dlg = GetDialog("PinsDlg")
@@ -509,7 +487,7 @@ function SortPinnedObjs()
 			obj_to_ctrl[ctrl.context] = ctrl
 			rawset(pins_dlg, i, nil)
 		end
-		for i,obj in ipairs(g_PinnedObjs) do
+		for i,obj in ipairs(pinned_objects) do
 			rawset(pins_dlg, i + 1, obj_to_ctrl[obj])
 		end
 		pins_dlg:InvalidateLayout()
@@ -517,8 +495,29 @@ function SortPinnedObjs()
 	end
 end
 
-function OnMsg.LoadGame()
+function SortPinnedObjs()
+	SortPins(ActiveMapID)
+	UpdatePinDlgOrdering(ActiveMapID)
+end
+
+function OnMsg.PostLoadGame()
 	SortPinnedObjs()
+end
+
+function OnMsg.SwitchMap(map_id)
+	local pins_dlg = GetDialog("PinsDlg")
+	if pins_dlg then
+		local old_objs = {}
+		for i=2,#pins_dlg do
+			local ctrl = pins_dlg[i].context
+			table.insert(old_objs, ctrl)
+		end		
+		pins_dlg:UnpinObjects(old_objs)
+
+		local pins = GameMaps[map_id].pinnables.pins
+		pins_dlg:PinObjects(pins)
+		pins_dlg.map_id = map_id
+	end
 end
 
 function OnMsg.GamepadUIStyleChanged()

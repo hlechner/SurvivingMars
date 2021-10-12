@@ -32,9 +32,8 @@ PlaceObj('XTemplate', {
 			'name', "OnDelete",
 			'func', function (self, ...)
 				if GameState.gameplay then
-					if UICity then
-						--UICity.launch_elevator_mode = false
-						UICity.launch_mode = false
+					if MainCity then
+						MainCity.launch_mode = false
 						RefundSupply()
 					end
 				end
@@ -73,25 +72,6 @@ PlaceObj('XTemplate', {
 					'mode', "items",
 				}, {
 					PlaceObj('XTemplateWindow', {
-						'__condition', function (parent, context) return GetUIStyleGamepad() and UICity and UICity.launch_mode ~= "elevator" end,
-						'__class', "XImage",
-						'Id', "idGamepadRenameHint",
-						'Margins', box(-40, 0, 0, 0),
-						'Dock', "box",
-						'HAlign', "left",
-						'VAlign', "center",
-						'FoldWhenHidden', true,
-						'ImageScale', point(520, 520),
-					}),
-					PlaceObj('XTemplateCode', {
-						'run', function (self, parent, context)
-							local hint = parent:ResolveId("idGamepadRenameHint")
-							if hint then
-								hint:SetImage(GetPlatformSpecificImagePath("RSPress"))
-							end
-						end,
-					}),
-					PlaceObj('XTemplateWindow', {
 						'__class', "XText",
 						'Id', "idRocketName",
 						'Padding', box(0, 0, 0, 0),
@@ -101,7 +81,7 @@ PlaceObj('XTemplate', {
 						'TextStyle', "PGLandingPosDetails",
 						'ContextUpdateOnOpen', true,
 						'OnContextUpdate', function (self, context, ...)
-							if UICity and UICity.launch_mode == "elevator" then
+							if MainCity and MainCity.launch_mode == "elevator" then
 								self:SetMargins(box(38,0,0,0))
 							end
 						end,
@@ -146,7 +126,7 @@ PlaceObj('XTemplate', {
 						'OnAction', function (self, host, source)
 							BuyRocket(host)
 						end,
-						'__condition', function (parent, context) return GameState.gameplay and g_Consts.RocketPrice > 0 and UICity and (not UICity.launch_mode or UICity.launch_mode == "rocket") end,
+						'__condition', function (parent, context) return GameState.gameplay and g_Consts.RocketPrice > 0 and MainCity and (not MainCity.launch_mode or MainCity.launch_mode == "rocket") end,
 					}),
 					PlaceObj('XTemplateAction', {
 						'ActionId', "rename",
@@ -156,7 +136,7 @@ PlaceObj('XTemplate', {
 						'OnAction', function (self, host, source)
 							host.context:RenameRocket(host)
 						end,
-						'__condition', function (parent, context) return not UICity or UICity.launch_mode ~= "elevator" end,
+						'__condition', function (parent, context) return not MainCity or MainCity.launch_mode ~= "elevator" end,
 					}),
 					PlaceObj('XTemplateAction', {
 						'ActionId', "next",
@@ -238,7 +218,7 @@ PlaceObj('XTemplate', {
 						'Padding', box(0, 0, 0, 0),
 						'TextStyle', "PGChallengeDescription",
 						'Translate', true,
-						'Text', T(270405570569, --[[XTemplate PGMissionPayload Text]] "<Capacity> kg"),
+						'Text', T(13692, --[[XTemplate PGMissionPayload Text]] "<UsedCapacity>/<TotalCapacity> kg"),
 					}),
 					PlaceObj('XTemplateWindow', {
 						'__class', "XText",
@@ -274,7 +254,7 @@ PlaceObj('XTemplate', {
 					'HandleMouse', false,
 					'TextStyle', "MediumHeader",
 					'Translate', true,
-					'Text', T(4067, --[[XTemplate PGMissionPayload Text]] "SELECT ROCKET"),
+					'Text', T(13693, --[[XTemplate PGMissionPayload Text]] "SELECT PAYLOAD"),
 					'HideOnEmpty', true,
 				}),
 				PlaceObj('XTemplateMode', {
@@ -333,25 +313,33 @@ PlaceObj('XTemplate', {
 						PlaceObj('XTemplateForEach', {
 							'comment', "item",
 							'array', function (parent, context) return context:GetProperties() end,
-							'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and not context:IsLocked(item.id) and not context:IsBlacklisted(item) and not BuildingTemplates[item.id] end,
+							'condition', function (parent, context, item, i)
+								return (not item.filter or item.filter()) and 
+								not context:IsLocked(item.id) and 
+								not context:IsImportLocked(item) and 
+								not context:IsBlacklisted(item) and 
+								not context:IsBlacklistedSubmenu(item) and 
+								not context:IsHidden(item) and 
+								not BuildingTemplates[item.id]
+							end,
 							'item_in_context', "prop_meta",
 							'run_after', function (child, context, item, i, n)
 								local id = item.id
-								local rollover = context:GetRollover(id)
+								local rollover = context:GetRollover(id, Resources[id] and 5 or nil)
 								if rollover then
 									child:SetRolloverTitle(rollover.title)
 									child:SetRolloverText(rollover.descr)
 									child:SetRolloverHint(rollover.hint)
 									child:SetRolloverHintGamepad(rollover.gamepad_hint)
 								end
-								if GameState.gameplay and ResourceOverviewObj.data then
+								if GameState.gameplay and GetCityResourceOverview(MainCity).data then
+									local resource_overview = GetCityResourceOverview(MainCity)
 									if Resources[id] then
-										child.idAvailable:SetText(T{11592, "<num>", num = FormatResource(ResourceOverviewObj, ResourceOverviewObj:GetAvailable(id), id)})
-									elseif id == "Drone" then
-										child.idAvailable:SetText(T{11592, "<num>", num = FormatResource(empty_table, #(UICity.labels.Drone or ""), id)})
-									elseif UICity.labels[id] then
-										local count = table.count(UICity.labels[id], "class", id)
-										child.idAvailable:SetText(T{11592, "<num>", num =  count})
+										child.idAvailable:SetText(T{11592, "<num>", num = FormatResource(resource_overview, resource_overview:GetAvailable(id), id)})
+									elseif id == "Drone" or id == "FlyingDrone" then
+										child.idAvailable:SetText(T{11592, "<num>", num = FormatResource(empty_table, #(MainCity.labels.Drone or {}), "Drone")})
+									elseif not item.submenu then
+										child.idAvailable:SetText(T{11592, "<num>", num = GetTotalAvailable("Colony", id)})
 									end
 								end
 							end,
@@ -386,7 +374,15 @@ PlaceObj('XTemplate', {
 						PlaceObj('XTemplateForEach', {
 							'comment', "item",
 							'array', function (parent, context) return context:GetProperties() end,
-							'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and not context:IsLocked(item.id) and not context:IsBlacklisted(item) and BuildingTemplates[item.id] end,
+							'condition', function (parent, context, item, i)
+								return (not item.filter or item.filter()) and 
+								not context:IsLocked(item.id) and 
+								not context:IsImportLocked(item) and 
+								not context:IsBlacklisted(item) and 
+								not context:IsBlacklistedSubmenu(item) and 
+								not context:IsHidden(item) and 
+								BuildingTemplates[item.id]
+							end,
 							'item_in_context', "prop_meta",
 							'run_after', function (child, context, item, i, n)
 								local rollover = context:GetRollover(item.id)

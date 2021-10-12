@@ -22,6 +22,7 @@ PlaceObj('StoryBit', {
 		"BloodMusic_Repeatable",
 	},
 	Image = "UI/Messages/Events/25_medical_check.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickFromLabel', {
 			'Label', "Colonist",
@@ -40,6 +41,10 @@ PlaceObj('StoryBit', {
 			'Field', "Biotech",
 			'TechId', "StemReconstruction",
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(107559612687, --[[StoryBit BloodMusic_0 Text]] "<effect><DisplayName> has lost all traits and has gained the Perks Composed, Fit and Sexy."),
@@ -49,6 +54,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(160830422430, --[[voice:narrator]] "A Colonist has somehow been completely changed overnight! Not just their personality, but also their looks and overall health!"),
 	group = "Breakthroughs",
 	id = "BloodMusic_0",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143219,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(448305278287, --[[StoryBit BloodMusic_0 Text]] "Get the research team working on this! "),
 	}),

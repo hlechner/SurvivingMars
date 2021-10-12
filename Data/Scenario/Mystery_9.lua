@@ -14,7 +14,7 @@ PlaceObj('Scenario', {
 		}),
 		PlaceObj('SA_WaitExpression', {
 			'comment', "trigger condition",
-			'expression', "#(UICity.labels.Colonist or empty_table) >= 120",
+			'expression', "#(MainCity.labels.Colonist or empty_table) >= 120",
 			'duration', 5000,
 		}),
 		PlaceObj('SA_WaitMarsTime', {
@@ -808,13 +808,13 @@ PlaceObj('Scenario', {
 			'sequence', "Timeout",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'UICity:ChangeTechRepeatable("SolExploration", false)',
+			'expression', 'UIColony:ChangeTechRepeatable("SolExploration", false)',
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'UICity:DequeueResearch("SolExploration", "all")',
+			'expression', 'UIColony:DequeueResearch("SolExploration", "all")',
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'local rockets = table.copy(UICity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "MoonRocket" or id == "AsteroidRocket" or id == "RubiconRocket" or id == "GanymedeRocket" then\n    rocket:LeaveForever()\n  end\nend',
+			'expression', 'local rockets = table.copy(MainCity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "MoonRocket" or id == "AsteroidRocket" or id == "RubiconRocket" or id == "GanymedeRocket" then\n    rocket:LeaveForever()\n  end\nend',
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 30000,
@@ -969,13 +969,13 @@ PlaceObj('Scenario', {
 			'sequence', "Trade Rockets",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'UICity:ChangeTechRepeatable("SolExploration", false)',
+			'expression', 'UIColony:ChangeTechRepeatable("SolExploration", false)',
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'UICity:DequeueResearch("SolExploration", "all")',
+			'expression', 'UIColony:DequeueResearch("SolExploration", "all")',
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'local rockets = table.copy(UICity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "MoonRocket" or id == "AsteroidRocket" or id == "RubiconRocket" or id == "GanymedeRocket" then\n    rocket:LeaveForever()\n  end\nend',
+			'expression', 'local rockets = table.copy(MainCity.labels.TradeRocket or empty_table)\n\nfor _, rocket in ipairs(rockets) do\n  local id = rocket.custom_id\n  if id == "MoonRocket" or id == "AsteroidRocket" or id == "RubiconRocket" or id == "GanymedeRocket" then\n    rocket:LeaveForever()\n  end\nend',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(8433, --[[Scenario Mystery 9 title]] "Beyond Earth: The Dream is Dead"),

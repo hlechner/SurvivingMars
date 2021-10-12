@@ -93,7 +93,7 @@ function SaveLoadObject:RemoveItem(id)
 end
 
 function SaveLoadObject:CalcDefaultSaveName()
-	local default_text = _InternalTranslate(GetMissionSponsor().display_name or "") .. " Sol " .. UICity.day
+	local default_text = _InternalTranslate(GetMissionSponsor().display_name or "") .. " Sol " .. UIColony.day
 	local items = self.items
 	local max_num = 0
 	for k, v in ipairs(items) do
@@ -194,7 +194,7 @@ function ShowSavegameDescription(item, dialog)
 				data.longitude = g_CurrentMapParams.longitude
 				data.active_mods = GetLoadedModsSavegameData()
 				data.active_game_rules = g_CurrentMissionParams.idGameRules
-				data.elapsed_sols = UICity and UICity.day or 0
+				data.elapsed_sols = UIColony and UIColony.day or 0
 				data.displayname = T(4182, "<<< New Savegame >>>")
 				data.timestamp = os.time()
 				data.playtime = GetCurrentPlaytime()
@@ -255,14 +255,25 @@ function ShowSavegameDescription(item, dialog)
 				game_rules_string = TList(game_rules_list)
 			end
 			
-			local dlcs_list = {}
+			local missing_dlc_list = {}
 			for _, dlc in ipairs(data.dlcs or empty_table) do
-				if not IsDlcAvailable(dlc.id) then
-					dlcs_list[#dlcs_list + 1] = dlc.name
+				if not IsDlcAvailable(dlc.id) and IsDlcRequired(dlc.id) then
+					missing_dlc_list[#missing_dlc_list + 1] = dlc.name
 				end
 			end
-			local missing_dlcs = TList(dlcs_list)
+			local missing_dlcs = TList(missing_dlc_list)
 			
+			local unused_dlc_list = {}
+			if metadata and IsDevelopmentSandbox() then
+				local available_dlcs = GetAvailableDlcList()
+				for _, dlc in pairs(available_dlcs) do
+					if not table.find(data.dlcs, "id", dlc) then
+						unused_dlc_list[#unused_dlc_list + 1] = GetDLCDisplayName(dlc)
+					end
+				end
+			end
+			local unused_dlcs = TList(unused_dlc_list)
+
 			local playtime = T(77, "Unknown")
 			if data.playtime then
 				local h, m, s = FormatElapsedTime(data.playtime, "hms")
@@ -284,6 +295,8 @@ function ShowSavegameDescription(item, dialog)
 				problem_text = T{8502, "<red>Missing downloadable content: <dlcs></red>", dlcs = Untranslated(missing_dlcs)}
 			elseif mods_missing then
 				problem_text = T(4195, "<red>There are missing mods!</red>")
+			elseif unused_dlcs and unused_dlcs ~= "" then
+				problem_text = T{13762, "Unused downloadable content: <dlcs>", dlcs = Untranslated(unused_dlcs)}
 			end
 			dialog.idProblem:SetText(problem_text)
 			

@@ -8,9 +8,10 @@ DefineClass.OnScreenIndication = {
 
 local mode_to_img = {
 	no_mode = false,
-	normal_speed = "UI/Onscreen/onscreen_normalspeed.tga",
-	medium_speed = "UI/Onscreen/onscreen_fastspeed.tga",
-	fast_speed = "UI/Onscreen/onscreen_super_fastspeed.tga",
+	play = "UI/Onscreen/onscreen_normalspeed.tga",
+	medium = "UI/Onscreen/onscreen_fastspeed.tga",
+	fast = "UI/Onscreen/onscreen_super_fastspeed.tga",
+	ultra = "UI/Onscreen/onscreen_super_fastspeed.tga",
 	paused = "UI/Onscreen/onscreen_pause.tga",
 }
 
@@ -37,16 +38,7 @@ function OnScreenIndication:Open(...)
 end
 
 function OnScreenIndication:GetTimeMode()
-	local time_factor = GetTimeFactor()
-	if IsPaused() or time_factor==0 then
-		return "paused"
-	elseif time_factor > 0 and time_factor <= const.DefaultTimeFactor then
-		return "normal_speed"
-	elseif time_factor > const.DefaultTimeFactor and time_factor < const.DefaultTimeFactor * const.fastGameSpeed then
-		return "medium_speed"
-	elseif time_factor >= const.DefaultTimeFactor * const.fastGameSpeed then
-		return "fast_speed"
-	end
+	return GetEstimatedGameSpeedState()
 end
 
 function OnScreenIndication:UpdateIcon()

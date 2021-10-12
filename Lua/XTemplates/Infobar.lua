@@ -139,8 +139,8 @@ PlaceObj('XTemplate', {
 					'RolloverAnchor', "bottom",
 					'RolloverText', T(11682, --[[XTemplate Infobar RolloverText]] "<ElectricityGridRollover>"),
 					'RolloverTitle', T(11683, --[[XTemplate Infobar RolloverTitle]] "Electricity"),
-					'RolloverHint', T(11684, --[[XTemplate Infobar RolloverHint]] "<left_click> Toggle Display"),
-					'RolloverHintGamepad', T(11685, --[[XTemplate Infobar RolloverHintGamepad]] "<ButtonA> Toggle Display<newline><DPad> Navigate <DPadDown> Close"),
+					'RolloverHint', T(11684, --[[XTemplate Infobar RolloverHint]] "<left_click> Cycle Grid"),
+					'RolloverHintGamepad', T(11685, --[[XTemplate Infobar RolloverHintGamepad]] "<ButtonA> Cycle Grid<newline><DPad> Navigate <DPadDown> Close"),
 					'Id', "idElectricity",
 					'HAlign', "center",
 					'BorderColor', RGBA(0, 0, 0, 0),
@@ -153,7 +153,7 @@ PlaceObj('XTemplate', {
 					'FocusedBackground', RGBA(0, 0, 0, 0),
 					'DisabledBorderColor', RGBA(0, 0, 0, 0),
 					'OnPress', function (self, gamepad)
-						ToggleElectricityOverlay()
+						CycleElectricityOverlay()
 					end,
 					'RolloverBackground', RGBA(0, 0, 0, 0),
 					'PressedBackground', RGBA(0, 0, 0, 0),
@@ -182,8 +182,8 @@ PlaceObj('XTemplate', {
 					'RolloverAnchor', "bottom",
 					'RolloverText', T(11687, --[[XTemplate Infobar RolloverText]] "<LifesupportGridRollover>"),
 					'RolloverTitle', T(11688, --[[XTemplate Infobar RolloverTitle]] "Life support"),
-					'RolloverHint', T(11684, --[[XTemplate Infobar RolloverHint]] "<left_click> Toggle Display"),
-					'RolloverHintGamepad', T(11685, --[[XTemplate Infobar RolloverHintGamepad]] "<ButtonA> Toggle Display<newline><DPad> Navigate <DPadDown> Close"),
+					'RolloverHint', T(11684, --[[XTemplate Infobar RolloverHint]] "<left_click> Cycle Grid"),
+					'RolloverHintGamepad', T(11685, --[[XTemplate Infobar RolloverHintGamepad]] "<ButtonA> Cycle Grid<newline><DPad> Navigate <DPadDown> Close"),
 					'Id', "idLifeSupport",
 					'HAlign', "center",
 					'BorderColor', RGBA(0, 0, 0, 0),
@@ -196,7 +196,7 @@ PlaceObj('XTemplate', {
 					'FocusedBackground', RGBA(0, 0, 0, 0),
 					'DisabledBorderColor', RGBA(0, 0, 0, 0),
 					'OnPress', function (self, gamepad)
-						ToggleWaterOverlay()
+						CycleWaterOverlay()
 					end,
 					'RolloverBackground', RGBA(0, 0, 0, 0),
 					'PressedBackground', RGBA(0, 0, 0, 0),
@@ -236,6 +236,43 @@ PlaceObj('XTemplate', {
 						'HAlign', "center",
 						'LayoutMethod', "HList",
 					}, {
+						PlaceObj('XTemplateWindow', {
+							'__condition', function (parent, context) return IsDevelopmentSandbox() end,
+							'__class', "XButton",
+							'RolloverTemplate', "Rollover",
+							'RolloverAnchor', "bottom",
+							'RolloverText', T(13684, --[[XTemplate Infobar RolloverText]] "<ScannedResourcesRollover>"),
+							'RolloverTitle', T(13685, --[[XTemplate Infobar RolloverTitle]] "Scanned Resources (Dev only)"),
+							'HAlign', "center",
+							'BorderColor', RGBA(0, 0, 0, 0),
+							'Background', RGBA(0, 0, 0, 0),
+							'MouseCursor', "UI/Cursors/Rollover.tga",
+							'RelativeFocusOrder', "next-in-line",
+							'FXMouseIn', "UIButtonMouseIn",
+							'FXPress', "BuildMenuButtonClick",
+							'FocusedBorderColor', RGBA(0, 0, 0, 0),
+							'FocusedBackground', RGBA(0, 0, 0, 0),
+							'DisabledBorderColor', RGBA(0, 0, 0, 0),
+							'RolloverBackground', RGBA(0, 0, 0, 0),
+							'PressedBackground', RGBA(0, 0, 0, 0),
+						}, {
+							PlaceObj('XTemplateWindow', {
+								'__class', "XImage",
+								'Id', "idRollover",
+								'Dock', "box",
+								'Visible', false,
+								'Image', "UI/Common/row_shine_2.tga",
+								'ImageFit', "stretch",
+							}),
+							PlaceObj('XTemplateWindow', {
+								'__class', "XText",
+								'Id', "idMetals",
+								'Padding', box(3, 4, 3, 4),
+								'TextStyle', "Infobar",
+								'Translate', true,
+								'Text', T(13686, --[[XTemplate Infobar Text]] "<ScannedResourcesText>"),
+							}),
+							}),
 						PlaceObj('XTemplateWindow', {
 							'__class', "XButton",
 							'RolloverTemplate', "Rollover",
@@ -661,6 +698,69 @@ PlaceObj('XTemplate', {
 						}),
 					}),
 				PlaceObj('XTemplateWindow', {
+					'__dlc', "picard",
+					'__class', "XContextControl",
+					'Id', "idRareMineralsResources",
+					'IdNode', false,
+					'Padding', box(16, 0, 16, 0),
+					'RolloverOnFocus', true,
+				}, {
+					PlaceObj('XTemplateFunc', {
+						'name', "OnSetFocus",
+						'func', function (self, ...)
+							XCreateRolloverWindow(self, true)
+							XContextWindow.OnSetFocus(self, ...)
+						end,
+					}),
+					PlaceObj('XTemplateWindow', {
+						'comment', "centers the texts",
+						'HAlign', "center",
+						'LayoutMethod', "HList",
+					}, {
+						PlaceObj('XTemplateWindow', {
+							'__class', "XButton",
+							'RolloverTemplate', "Rollover",
+							'RolloverAnchor', "bottom",
+							'RolloverText', T(722125688483, --[[XTemplate Infobar RolloverText]] "<PreciousMineralsRollover>"),
+							'RolloverTitle', T(608869515243, --[[XTemplate Infobar RolloverTitle]] "Exotic Minerals"),
+							'RolloverHint', T(185759925809, --[[XTemplate Infobar RolloverHint]] "<left_click> Cycle stored resources"),
+							'RolloverHintGamepad', T(238973917718, --[[XTemplate Infobar RolloverHintGamepad]] "<ButtonA> Cycle stored resources<newline><DPad> Navigate <DPadDown> Close"),
+							'HAlign', "center",
+							'BorderColor', RGBA(0, 0, 0, 0),
+							'Background', RGBA(0, 0, 0, 0),
+							'MouseCursor', "UI/Cursors/Rollover.tga",
+							'RelativeFocusOrder', "next-in-line",
+							'FXMouseIn', "UIButtonMouseIn",
+							'FXPress', "BuildMenuButtonClick",
+							'FocusedBorderColor', RGBA(0, 0, 0, 0),
+							'FocusedBackground', RGBA(0, 0, 0, 0),
+							'DisabledBorderColor', RGBA(0, 0, 0, 0),
+							'OnPress', function (self, gamepad)
+								self.context:CycleResources("PreciousMinerals")
+							end,
+							'RolloverBackground', RGBA(0, 0, 0, 0),
+							'PressedBackground', RGBA(0, 0, 0, 0),
+						}, {
+							PlaceObj('XTemplateWindow', {
+								'__class', "XImage",
+								'Id', "idRollover",
+								'Dock', "box",
+								'Visible', false,
+								'Image', "UI/Common/row_shine_2.tga",
+								'ImageFit', "stretch",
+							}),
+							PlaceObj('XTemplateWindow', {
+								'__class', "XText",
+								'Id', "idPreciousMinerals",
+								'Padding', box(3, 4, 3, 4),
+								'TextStyle', "Infobar",
+								'Translate', true,
+								'Text', T(644253517128, --[[XTemplate Infobar Text]] "<PreciousMineralsText>"),
+							}),
+							}),
+						}),
+					}),
+				PlaceObj('XTemplateWindow', {
 					'__class', "XContextControl",
 					'Id', "idWasteRockResources",
 					'IdNode', false,
@@ -718,6 +818,63 @@ PlaceObj('XTemplate', {
 								'TextStyle', "Infobar",
 								'Translate', true,
 								'Text', T(12410, --[[XTemplate Infobar Text]] "<WasteRockText>"),
+							}),
+							}),
+						}),
+					}),
+				PlaceObj('XTemplateWindow', {
+					'__class', "XContextControl",
+					'Id', "idPrefabs",
+					'IdNode', false,
+					'Padding', box(16, 0, 16, 0),
+					'RolloverOnFocus', true,
+				}, {
+					PlaceObj('XTemplateFunc', {
+						'name', "OnSetFocus",
+						'func', function (self, ...)
+							XCreateRolloverWindow(self, true)
+							XContextWindow.OnSetFocus(self, ...)
+						end,
+					}),
+					PlaceObj('XTemplateWindow', {
+						'comment', "centers the texts",
+						'HAlign', "center",
+						'LayoutMethod', "HList",
+					}, {
+						PlaceObj('XTemplateWindow', {
+							'__class', "XButton",
+							'RolloverTemplate', "Rollover",
+							'RolloverAnchor', "bottom",
+							'RolloverText', T(13687, --[[XTemplate Infobar RolloverText]] "<PrefabRollover>"),
+							'RolloverTitle', T(13688, --[[XTemplate Infobar RolloverTitle]] "Prefabs"),
+							'MinWidth', 25,
+							'BorderColor', RGBA(0, 0, 0, 0),
+							'Background', RGBA(0, 0, 0, 0),
+							'MouseCursor', "UI/Cursors/Rollover.tga",
+							'RelativeFocusOrder', "next-in-line",
+							'FXMouseIn', "UIButtonMouseIn",
+							'FXPress', "BuildMenuButtonClick",
+							'FocusedBorderColor', RGBA(0, 0, 0, 0),
+							'FocusedBackground', RGBA(0, 0, 0, 0),
+							'DisabledBorderColor', RGBA(0, 0, 0, 0),
+							'RolloverBackground', RGBA(0, 0, 0, 0),
+							'PressedBackground', RGBA(0, 0, 0, 0),
+						}, {
+							PlaceObj('XTemplateWindow', {
+								'__class', "XImage",
+								'Id', "idRollover",
+								'Dock', "box",
+								'Visible', false,
+								'Image', "UI/Common/row_shine_2.tga",
+								'ImageFit', "stretch",
+							}),
+							PlaceObj('XTemplateWindow', {
+								'__class', "XText",
+								'Id', "idPrefabs",
+								'Padding', box(3, 4, 3, 4),
+								'TextStyle', "Infobar",
+								'Translate', true,
+								'Text', T(496092205026, --[[XTemplate Infobar Text]] "<PrefabText>"),
 							}),
 							}),
 						}),
@@ -798,6 +955,9 @@ PlaceObj('XTemplate', {
 							'FocusedBorderColor', RGBA(0, 0, 0, 0),
 							'FocusedBackground', RGBA(0, 0, 0, 0),
 							'DisabledBorderColor', RGBA(0, 0, 0, 0),
+							'OnPress', function (self, gamepad)
+								self.context:CycleColonists()
+							end,
 							'RolloverBackground', RGBA(0, 0, 0, 0),
 							'PressedBackground', RGBA(0, 0, 0, 0),
 						}, {
@@ -816,6 +976,47 @@ PlaceObj('XTemplate', {
 								'TextStyle', "Infobar",
 								'Translate', true,
 								'Text', T(11186, --[[XTemplate Infobar Text]] "<TotalColonists>"),
+							}),
+							}),
+						PlaceObj('XTemplateWindow', {
+							'__class', "XButton",
+							'RolloverTemplate', "Rollover",
+							'RolloverAnchor', "bottom",
+							'RolloverText', T(987403678509, --[[XTemplate Infobar RolloverText]] "<TouristsRollover>"),
+							'RolloverTitle', T(337230815465, --[[XTemplate Infobar RolloverTitle]] "Tourists<right><tourist(TouristCount)>"),
+							'RolloverHint', T(12781, --[[XTemplate Infobar RolloverHint]] "<left_click> Cycle overstaying Tourists"),
+							'RolloverHintGamepad', T(12782, --[[XTemplate Infobar RolloverHintGamepad]] "<ButtonA> Cycle overstaying Tourists<newline><DPad> Navigate <DPadDown> Close"),
+							'HAlign', "center",
+							'BorderColor', RGBA(0, 0, 0, 0),
+							'Background', RGBA(0, 0, 0, 0),
+							'MouseCursor', "UI/Cursors/Rollover.tga",
+							'RelativeFocusOrder', "next-in-line",
+							'FXMouseIn', "UIButtonMouseIn",
+							'FXPress', "BuildMenuButtonClick",
+							'FocusedBorderColor', RGBA(0, 0, 0, 0),
+							'FocusedBackground', RGBA(0, 0, 0, 0),
+							'DisabledBorderColor', RGBA(0, 0, 0, 0),
+							'OnPress', function (self, gamepad)
+								self.context:CycleOverstayingTourists()
+							end,
+							'RolloverBackground', RGBA(0, 0, 0, 0),
+							'PressedBackground', RGBA(0, 0, 0, 0),
+						}, {
+							PlaceObj('XTemplateWindow', {
+								'__class', "XImage",
+								'Id', "idRollover",
+								'Dock', "box",
+								'Visible', false,
+								'Image', "UI/Common/row_shine_2.tga",
+								'ImageFit', "stretch",
+							}),
+							PlaceObj('XTemplateWindow', {
+								'__class', "XText",
+								'Id', "idTotalTourists",
+								'Padding', box(3, 4, 3, 4),
+								'TextStyle', "Infobar",
+								'Translate', true,
+								'Text', T(698640184457, --[[XTemplate Infobar Text]] "<TotalTourists>"),
 							}),
 							}),
 						PlaceObj('XTemplateWindow', {

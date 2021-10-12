@@ -132,39 +132,6 @@ Status
 Negate Condition
 : Tick to select the opposite status.
 
-## CheckTerraformingParam
-
-Checks if the specified Terraforming parameter has reached certain percentage value.
-Terraforming Param
-: Select the parameter to check.
-
-Amount
-: Set the percentage value to check against.
-
-Condition
-: Select the relation to the specified value.
-
-## CountRivalResource
-
-Checks the quantity of the specified resource type of the associated Rival colony against a specific value.
-Condition
-: Select the relation to the specified value.
-
-Resource
-: Select the type of resource to check for.
-
-Amount
-: Set the value to check against.
-
-## CountRivals
-
-Checks the number of Rival colonies operating on Mars against the specified amount.
-Condition
-: Select the relation to the specified value.
-
-Amount
-: Set the value to check against.
-
 ## CountShuttles
 
 Checks the number of shuttles in the colony, according to the specified criteria (shuttles in flight, refueling shuttles, idle shuttles, all shuttles).
@@ -197,12 +164,6 @@ Description
 Checks if Founder stage is completed (colony is approved).
 Negate Condition
 : if true, checks for the opposite condition
-
-## HasLandedRocket
-
-Checks if the player has at least one Rocket landed on Mars.
-DisabledDescriptionOnly
-: Use disabled description in negotiation replies text.
 
 ## HasTrait
 
@@ -291,14 +252,14 @@ Checks if asociated rocket is the Founder's rocket
 Negate Condition
 : if true, checks for the opposite condition
 
-## IsMilestone
+## IsMapEnvironment
 
-Checks whether the last completed milestone is the one specified.
+Checks if the map environment is of specified type.
 Negate Condition
-: if true, checks for the opposite condition
+: If true, checks for the opposite condition
 
-Milestone
-: Select Milestone to check for.
+SelectedMapEnvironment
+: Map Environment to check
 
 ## IsMysteryActive
 
@@ -396,15 +357,6 @@ Check if the associated colonist works in the specified building.
 Building
 : Select a workplace for the colonist.
 
-## NoRivalHasWonder
-
-Check whether one of the rivals has already built the specified wonder.
-Negate Condition
-: if true, checks for the opposite condition
-
-Wonder
-: Select a wonder to check against.
-
 ## PickFromLabel
 
 Picks a random object from a specific label, fulfilling the specified conditions.
@@ -422,12 +374,6 @@ ParentBuildingLabel
 
 ResidentConditions
 : List the conditions the colonist has to satisfy to be selected.
-
-## PickRivalColony
-
-Pick a random rival colony which satisfies the condition specified.
-Conditions
-: List all the conditions the rival colony has to fulfill in order to be chosen.
 
 ## PickRocketWithStatus
 
@@ -449,87 +395,6 @@ ParentBuildingLabel
 
 WorkerConditions
 : List the conditions the colonist has to satisfy to be selected.
-
-## RivalAcceptDistressCall
-
-Checks if the associated rival colony will accept the player's distress call.
-## RivalHasOpenedTradeRoute
-
-Checks if the associated rival colony has opened a trade route.
-Negate Condition
-: if true, checks for the opposite condition
-
-## RivalHasTech
-
-Checks if the associated rival colony has researched a certain technology.
-Negate Condition
-: if true, checks for the opposite condition
-
-Tech
-: Select a technology to check against.
-
-## RivalHasTechYouDont
-
-Checks if the associated rival colony has researched a technology which the player hasn't.
-Negate Condition
-: if true, checks for the opposite condition
-
-## RivalHasWonder
-
-Checks if the associated rival colony has built a specific wonder.
-Negate Condition
-: if true, checks for the opposite condition
-
-Wonder
-: Select a wonder to check against.
-
-## RivalIsSponsor
-
-Checks if the associated rival colony has a specific sponsor.
-SponsorName
-: Select a sponsor to check against.
-
-Negate Condition
-: if true, checks for the opposite condition
-
-## RivalIsStanding
-
-Checks if the player has more than a certain amount of Standing with the associated rival colony.
-Standing
-: Set the standing to check against.
-
-Negate Condition
-: if true, checks for the opposite condition
-
-## RivalIsStanding2
-
-Checks if the player has one of two levels of Standing with the associated rival colony.
-Standing1
-: Select the first one of the possible standings for the Rival Colony.
-
-Standing2
-: Select the second one of the possible standings for the Rival Colony.
-
-Negate Condition
-: if true, checks for the opposite condition
-
-## RivalsMaxStanding
-
-Checks the player's maximal standing with any rival against a specific amount.
-Amount
-: Set the amount to chek against.
-
-Condition
-: Select the relation to the specified value.
-
-## RivalsMinStanding
-
-Checks the player's minimal standing with any rival against a specific amount.
-Amount
-: Set the amount to chek against.
-
-Condition
-: Select the relation to the specified value.
 
 ## SupplyMissionsEnabled
 

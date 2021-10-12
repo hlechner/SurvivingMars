@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/30_playing_children.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckTechStatus', {
 			'Field', "Breakthroughs",
@@ -21,6 +22,10 @@ PlaceObj('StoryBit', {
 			'Condition', ">=",
 			'Amount', 30,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(11368, --[[StoryBit ChildrenOfTomorrow Text]] "It’s no surprise that our Martian children behave differently, given the fact that they are raised and educated so differently than the children on Earth."),
@@ -30,6 +35,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(356184329450, --[[voice:narrator]] "Our children have become quite strange lately. Organizing in small, eccentric groups, they shun outsiders and immerse in their own distinctive sub-cultures of gestures, expressions and language."),
 	group = "Breakthroughs",
 	id = "ChildrenOfTomorrow",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143231,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(775466350337, --[[StoryBit ChildrenOfTomorrow Text]] "Quite alarming. We must put an end to this, whether they like it or not!"),
 		'OutcomeText', "custom",

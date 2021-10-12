@@ -9,7 +9,7 @@ PlaceObj('Scenario', {
 		'autostart', true,
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Colonist and #UICity.labels.Colonist >= 100 and UICity.labels.Dome and #UICity.labels.Dome >= 2",
+			'expression', "MainCity.labels.Colonist and #MainCity.labels.Colonist >= 100 and MainCity.labels.Dome and #MainCity.labels.Dome >= 2",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'wait_type', "Sols",
@@ -44,7 +44,7 @@ PlaceObj('Scenario', {
 			'Research', "TheMartianNetwork",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.NetworkNode and #UICity.labels.NetworkNode >= 1",
+			'expression', "MainCity.labels.NetworkNode and #MainCity.labels.NetworkNode >= 1",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 30000,
@@ -94,7 +94,7 @@ PlaceObj('Scenario', {
 			'funding', "funding_reward",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.NetworkNode and #UICity.labels.NetworkNode >= 2",
+			'expression', "MainCity.labels.NetworkNode and #MainCity.labels.NetworkNode >= 2",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 150000,
@@ -133,7 +133,7 @@ PlaceObj('Scenario', {
 			'comment', "grant random non-mystery tech",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.NetworkNode and #UICity.labels.NetworkNode >= 3",
+			'expression', "MainCity.labels.NetworkNode and #MainCity.labels.NetworkNode >= 3",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 300000,
@@ -646,7 +646,7 @@ PlaceObj('Scenario', {
 		'name', "Anomaly: Effects",
 	}, {
 		PlaceObj('SA_Exec', {
-			'expression', 'rover:SetCommand("Malfunction")',
+			'expression', 'if rover then rover:SetCommand("Malfunction") end',
 		}),
 		PlaceObj('SA_GoRogue', {
 			'Number', "5",

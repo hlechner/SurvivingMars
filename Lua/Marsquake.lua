@@ -1,6 +1,5 @@
-DefineClass.MapSettings_Marsquake = {
-	__parents = { "PropertyObject" },
-}
+DefineClass("MapSettings_Marsquake", "PropertyObject")
+DefineClass("MapSettings_UndergroundMarsquake", "PropertyObject")
 
 GlobalVar("g_MarsquakeActive", false)
 
@@ -9,7 +8,7 @@ local function grid_obj_filter(obj)
 end
 
 local function SelectBuildings(epicenter_label, radius, targets_count)
-	local label = UICity.labels[epicenter_label]
+	local label = MainCity.labels[epicenter_label]
 	if not label or not next(label) then return end
 	local center_building = table.rand(label)
 	
@@ -28,7 +27,7 @@ local function SelectBuildings(epicenter_label, radius, targets_count)
 	
 	--find all surrounding buildings
 	local q, r = WorldToHex(center_building:GetPos())
-	local buildings_in_range = HexGridGetObjectsInRange(ObjectGrid, q, r, radius, "RequiresMaintenance", nil, grid_obj_filter)
+	local buildings_in_range = HexGridGetObjectsInRange(GetObjectHexGrid(center_building).grid, q, r, radius, "RequiresMaintenance", nil, grid_obj_filter)
 	
 	targets_count = Min(targets_count, #buildings_in_range)
 	
@@ -78,7 +77,7 @@ function TriggerMarsquake(epicenter_label, radius, targets_count)
 		end
 	end
 	
-	AddOnScreenNotification("Marsquake", nil, { count = #affected_buildings }, affected_buildings)
+	AddOnScreenNotification("Marsquake", nil, { count = #affected_buildings }, affected_buildings, MainCity.map_id)
 	
 	PlayFX("Marsquake", "end", center_building)
 	MarsquakeShakeCamera(2000, shake_force, 0)
@@ -101,13 +100,14 @@ function MarsquakeShakeCamera(total_time, start_force, end_force)
 	
 	local start_time = now()
 	local end_time = now() + total_time
+	local surface_map_id = MainCity:GetMapID()
 	while true do
 		local passed_time = now() - start_time
 		if passed_time >= total_time then
 			break
 		end
 		
-		if not IsCameraLocked() and not CameraTransitionThread then
+		if not IsCameraLocked() and not CameraTransitionThread and ActiveMapID == surface_map_id then
 			local dir2D
 			local next_pos, next_lookat
 			

@@ -86,10 +86,11 @@ function Tunnel:GameInit()
 	self:MergeGrids("electricity")
 	self:MergeGrids("water")
 	--mark tunnel mask
-	local conn = HexGridGet(SupplyGridConnections.electricity, self.registered_point)
-	HexGridSet(SupplyGridConnections.electricity, self.registered_point, bor(conn, TunnelMask))
-	conn = HexGridGet(SupplyGridConnections.water, self.registered_point)
-	HexGridSet(SupplyGridConnections.water, self.registered_point, bor(conn, TunnelMask))
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid.electricity, self.registered_point)
+	HexGridSet(supply_connection_grid.electricity, self.registered_point, bor(conn, TunnelMask))
+	conn = HexGridGet(supply_connection_grid.water, self.registered_point)
+	HexGridSet(supply_connection_grid.water, self.registered_point, bor(conn, TunnelMask))
 end
 
 function SavegameFixups.FixAdjacency()
@@ -109,11 +110,12 @@ end
 
 function Tunnel:Done()
 	--clean conn grid if not cleared
-	local conn = HexGridGet(SupplyGridConnections.electricity, self.registered_point)
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid.electricity, self.registered_point)
 	if band(conn, TunnelMask) ~= 0 then
-		HexGridSet(SupplyGridConnections.electricity, self.registered_point, band(conn, bnot(TunnelMask)))
-		conn = HexGridGet(SupplyGridConnections.water, self.registered_point)
-		HexGridSet(SupplyGridConnections.water, self.registered_point, band(conn, bnot(TunnelMask)))
+		HexGridSet(supply_connection_grid.electricity, self.registered_point, band(conn, bnot(TunnelMask)))
+		conn = HexGridGet(supply_connection_grid.water, self.registered_point)
+		HexGridSet(supply_connection_grid.water, self.registered_point, band(conn, bnot(TunnelMask)))
 	end
 	self:KickUnitsFromHolder()
 	self:RemovePFTunnel()
@@ -127,10 +129,11 @@ function Tunnel:Done()
 end
 
 function Tunnel:CleanTunnelMask()
-	local conn = HexGridGet(SupplyGridConnections.electricity, self.registered_point)
-	HexGridSet(SupplyGridConnections.electricity, self.registered_point, band(conn, bnot(TunnelMask)))
-	conn = HexGridGet(SupplyGridConnections.water, self.registered_point)
-	HexGridSet(SupplyGridConnections.water, self.registered_point, band(conn, bnot(TunnelMask)))
+	local supply_connection_grid = GetSupplyConnectionGrid(self)
+	local conn = HexGridGet(supply_connection_grid.electricity, self.registered_point)
+	HexGridSet(supply_connection_grid.electricity, self.registered_point, band(conn, bnot(TunnelMask)))
+	conn = HexGridGet(supply_connection_grid.water, self.registered_point)
+	HexGridSet(supply_connection_grid.water, self.registered_point, band(conn, bnot(TunnelMask)))
 end
 
 function Tunnel:OnSetDemolishing(...)
@@ -150,7 +153,7 @@ end
 
 function Tunnel:Rebuild()
 	assert(self.destroyed)
-	local group = CreateConstructionGroup("Tunnel", self:GetPos(), 2, false)
+	local group = CreateConstructionGroup("Tunnel", self:GetPos(), self:GetMapID(), 2, false)
 	local params1 = {construction_group = group, place_stockpile = false}
 	local params2 = {construction_group = group, place_stockpile = false}
 	params1.linked_obj = params2
@@ -178,7 +181,11 @@ function Tunnel:MergeGrids(type_of_grid)
 		local smaller_grid = #my_grid.elements < #his_grid.elements and my_grid or his_grid
 		local other_grid = smaller_grid == my_grid and his_grid or my_grid
 		assert(smaller_grid ~= other_grid) --todo:rem
-		MergeGrids(other_grid, smaller_grid) --merge smaller into bigger, should be faster
+
+		local game_map = GetGameMap(self)
+		local supply_connection_grid = game_map.supply_connection_grid
+		local supply_overlay_grid = game_map.supply_overlay_grid
+		MergeGrids(supply_overlay_grid, supply_connection_grid, other_grid, smaller_grid) --merge smaller into bigger, should be faster
 	end
 end
 
@@ -214,7 +221,7 @@ function Tunnel:AddPFTunnel()
 
 	local tunnel_len = entrance[1]:Dist2D(exit[1])
 	local enter_exit_len = entrance[1]:Dist2D(entrance[#entrance]) + exit[1]:Dist2D(exit[#exit])
-	local weight = (tunnel_len/10 + enter_exit_len) * pathfind[1].terrain / terrain.RoadTileSize()
+	local weight = (tunnel_len/10 + enter_exit_len) * pathfind[1].terrain / const.TerrainRoadTileSize
 
 	pf.AddTunnel(self, start_point, exit_point, weight, -1, 0)
 end
@@ -245,7 +252,7 @@ function Tunnel:TraverseTunnel(unit, start_point, end_point, param)
 		if IsValid(linked_obj) then
 			unit:SetHolder(linked_obj)
 			if camera3p.IsActive() and unit == CameraFollowObj then
-				dummy_obj = PlaceObject("Movable"); 
+				dummy_obj = PlaceObjectIn("Movable", self:GetMapID()); 
 				dummy_obj:SetPos(unit_pos)
 				camera3p.DetachObject(unit)
 				camera3p.AttachObject(dummy_obj)
@@ -273,7 +280,7 @@ function Tunnel:TraverseTunnel(unit, start_point, end_point, param)
 end
 
 function OnMsg.LoadGame()
-	MapForEach("map","Tunnel", Tunnel.AddPFTunnel )
+	MapsForEach("map","Tunnel", Tunnel.AddPFTunnel )
 end
 
 function Tunnel:GetRefundResources()

@@ -147,6 +147,10 @@ function SolarPanel:UpdateProduction()
 end
 
 function SolarPanel:Done()
+	if IsValidThread(self.open_close_thread) then
+		DeleteThread(self.open_close_thread)
+	end
+	
 	if IsValid(self.panel_obj) then
 		DoneObject(self.panel_obj)
 	end
@@ -209,7 +213,7 @@ function SolarPanel:SetPalette(...)
 end
 
 function OnMsg.SunChange()
-	UICity:ForEachLabelObject("SolarPanelBase", "UpdateProduction")
+	UIColony:ForEachLabelObject("SolarPanelBase", "UpdateProduction")
 end
 
 function SunToSolarPanelAngle(sun_azi)
@@ -220,7 +224,7 @@ function SolarPanelsOrientToSun(anim_time)
 	local idle_state = EntityStates["idleOpened"]
 	local opening_state = EntityStates["opening"]
 	local azi = SunToSolarPanelAngle(GetSunPos())
-	for _, panel in ipairs(UICity.labels.SolarPanel or empty_table) do
+	for _, panel in ipairs(UIColony.city_labels.labels.SolarPanel or empty_table) do
 		local panel_obj = panel.panel_obj
 		if panel:IsOpened() then
 			local panel_state = panel_obj:GetState()
@@ -249,7 +253,7 @@ end)
 
 GlobalVar("g_DustRepulsion", false)
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "DustRepulsion" then
 		g_DustRepulsion = TechDef.DustRepulsion.param1
 	end
@@ -273,7 +277,7 @@ DefineClass("SolarPanelBigTop", "SolarPanelTop")
 
 function OnMsg.TerraformParamChanged(name, value, old_value)
 	if name ~= "Atmosphere" then return end
-	for _, panel in ipairs(UICity.labels.SolarPanel or {}) do
+	for _, panel in ipairs(MainCity.labels.SolarPanel or {}) do
 		panel:UpdateCounterAtmosphereModifier()
 	end
 end

@@ -4,7 +4,7 @@ PlaceObj('XTemplate', {
 	group = "Infopanel Sections",
 	id = "sectionVisitors",
 	PlaceObj('XTemplateTemplate', {
-		'__context_of_kind', "Service",
+		'__context_of_kind', "ServiceBase",
 		'__template', "InfopanelSection",
 		'RolloverText', T(7423, --[[XTemplate sectionVisitors RolloverText]] "Each Service Building will accept a number of visitors during each open work shift. Colonists seek to visit a building corresponding to one of their interests chosen every Sol at random. The visit will improve their Comfort up to the Service Comfort value."),
 		'Title', T(526, --[[XTemplate sectionVisitors Title]] "Visitors"),
@@ -25,6 +25,11 @@ PlaceObj('XTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'__template', "InfopanelText",
 			'Text', T(531, --[[XTemplate sectionVisitors Text]] "Service Comfort<right><Stat(EffectiveServiceComfort)>"),
+		}),
+		PlaceObj('XTemplateTemplate', {
+			'__condition', function (parent, context) return context.satisfaction_change>0 end,
+			'__template', "InfopanelText",
+			'Text', T(230729433746, --[[XTemplate sectionVisitors Text]] "Satisfaction gained by Tourists <right><Stat(satisfaction_change)>"),
 		}),
 		}),
 })

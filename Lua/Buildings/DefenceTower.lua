@@ -23,9 +23,9 @@ function RocketProjectile:Place(pos, axis, angle)
 	
 	self:SetPos(pos)
 	
-	axis, angle = ComposeRotation(axis_y, 90*60, axis, angle)	
+	axis, angle = ComposeRotation(axis_y, 90*60, axis, angle)
 	self:SetAxis(axis)
-	self:SetAngle(angle)	
+	self:SetAngle(angle)
 end
 
 function RocketProjectile:StartMoving()
@@ -39,8 +39,8 @@ function RocketProjectile:StartMoving()
 	end, self)
 end
 
-function DomeCollisionCheck(p1, p2)
-	local domes = UICity.labels.Dome or empty_table
+function DomeCollisionCheck(city, p1, p2)
+	local domes = city.labels.Dome or empty_table
 	local esCollision = EntitySurfaces.Collision
 	for _, dome in ipairs(domes) do
 		local glass = dome:GetAttach(dome.entity .. "_Glass")
@@ -54,11 +54,12 @@ function DomeCollisionCheck(p1, p2)
 end
 
 function ProjectileDomeCollision(obj, p1, p2)
-	local dome, hit, normal = DomeCollisionCheck(p1, p2)
+	local city = GetCityByID(obj:GetMapID())
+	local dome, hit, normal = DomeCollisionCheck(city, p1, p2)
 	if not dome then
 		return
 	end
-	PlayFX("MeteorDomeExplosion", "start", obj, nil, p2, p2 - p1)				
+	PlayFX("MeteorDomeExplosion", "start", obj, nil, p2, p2 - p1)
 	PlayFX("MeteorHitDome", "start", dome, obj, hit, normal)
 	dome:AddFracture("Small", hit)
 	dome:HitByMeteor(obj)
@@ -68,8 +69,12 @@ end
 function RocketProjectile:Move()
 	local tick = 50
 	local pt = self:GetPos()
+
+	local terrain = GetTerrain(self)
+	local realm = GetRealm(self)
+
 	if not pt:IsValidZ() then
-		pt = pt:SetStepZ()
+		pt = realm:SnapToStep(pt)
 	end
 	local dir = SetLen(self.move_dir, self.start_speed)
 	local target = self.target
@@ -79,7 +84,7 @@ function RocketProjectile:Move()
 	local tStart = GameTime()
 	local max_travel = MulDivRound(self.max_speed, tick, 1000)
 	
-	local fly_up_time = UICity:Random(4000, 6000)
+	local fly_up_time = SessionRandom:Random(4000, 6000)
 	
 	while IsValid(self) do
 		local t = GameTime() - tStart + tick
@@ -88,10 +93,11 @@ function RocketProjectile:Move()
 			self:SetPos(next_pos, tick)
 			Sleep(tick)
 		elseif IsValid(target) and target:IsValidPos() then
-			local target_pos = target:GetVisualPos():SetStepZ()
+			local target_pos = target:GetVisualPos()
+			target_pos = realm:SnapToStep(target_pos)
 			local pos = self:GetVisualPos()
 			
-			if pos:z() <= terrain.GetHeight(pos) then
+			if pos:z() <= terrain:GetHeight(pos) then
 				-- somehow hit terrain, miss
 				break
 			end
@@ -148,7 +154,9 @@ function RocketProjectile:Move()
 	if IsValid(target) and target:IsValidPos() and self:GetVisualDist(target) <= HexGetHeight() / 2 then
 		self:HitTarget(target)
 	end
-	PlayFX("MissileExplode", "start", self.shooter, nil, self:GetPos():SetStepZ())
+
+	local explode_pos = realm:SnapToStep(self:GetPos())
+	PlayFX("MissileExplode", "start", self.shooter, nil, explode_pos)
 end
 
 function RocketProjectile:HitTarget(target)
@@ -361,7 +369,7 @@ function DefenceTower:SetDustVisualsPerc(perc)
 end
 
 function DefenceTower:DefenceTick()
-	local mystery = self.city.mystery
+	local mystery = self.city.colony.mystery
 	if not mystery or mystery.class ~= "MarsgateMystery" or not mystery.can_shoot_rovers then
 		return
 	end
@@ -413,7 +421,7 @@ function DefenceTower:FireRocket(spot, target, rocket_class, luaobj)
 	luaobj = luaobj or {}
 	luaobj.shooter = luaobj.shooter or self
 	luaobj.target = luaobj.target or target
-	local rocket = PlaceObject(rocket_class, luaobj)
+	local rocket = PlaceObjectIn(rocket_class, self:GetMapID(), luaobj)
 	rocket:Place(pos, axis, angle)
 	rocket:StartMoving()
 	

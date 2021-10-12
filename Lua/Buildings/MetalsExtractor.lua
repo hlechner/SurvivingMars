@@ -1,7 +1,7 @@
 GlobalVar("g_ExtractorAIResearched", false)
 GlobalVar("g_EternalFusionResearched", false)
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "ExtractorAI" then
 		g_ExtractorAIResearched = true
 	elseif tech_id == "EternalFusion" then

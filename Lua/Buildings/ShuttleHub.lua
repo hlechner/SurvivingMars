@@ -196,7 +196,7 @@ function ShuttleLanding:GetWaitPos(shuttle)
 	local center = self:GetPos()
 	local min_radius = self:GetRadius()
 	local max_radius = min_radius * 6
-	local mw, mh = terrain.GetMapSize()
+	local mw, mh = GetTerrain(self):GetMapSize()
 	local x, y = RotateRadius(min_radius + self:Random(max_radius - min_radius), self:Random(360 * 60), center, true)
 	x = Clamp(x, guim, mw - guim)
 	y = Clamp(y, guim, mh - guim)
@@ -205,12 +205,14 @@ end
 
 function ShuttleLanding:ShuttleLeadIn(shuttle)
 	local his_pos = shuttle:GetVisualPos()
-	local los = CheckLineOfSight(his_pos, his_pos:SetZ(terrain.GetHeight(his_pos)))
+	local terrain = GetTerrain(self)
+	local his_height = terrain:GetHeight(his_pos)
+	local los = GetRealm(self):CheckLineOfSight(his_pos, his_pos:SetZ(his_height))
 	local z
 	if not los then
-		z = Flight_GetHeight(his_pos:xy()) + shuttle.landed_height
+		z = GetFlightCache(self):GetHeight(his_pos:xy()) + shuttle.landed_height
 	else
-		z = terrain.GetHeight(his_pos) + shuttle.landed_height
+		z = his_height + shuttle.landed_height
 	end
 	local dz = abs(his_pos:z() - z)
 	
@@ -246,7 +248,8 @@ function ShuttleLanding:ShuttleLeadOut(shuttle)
 	end)
 	shuttle:LandingEnd()
 	local his_pos = shuttle:GetPos()
-	local z = Flight_GetHeight(his_pos:xy()) + shuttle.hover_height
+	local flight_cache = GetFlightCache(self)
+	local z = flight_cache:GetHeight(his_pos:xy()) + shuttle.hover_height
 	local dz = abs(his_pos:z() - z)
 	shuttle:SetAcceleration(1500)
 	shuttle:SetPos(his_pos:SetZ(z - dz / 2), 1000)
@@ -272,7 +275,7 @@ if Platform.developer then
 		local pos = GetTerrainCursor()
 		
 		if not IsValid(fx_shuttle) then
-			fx_shuttle = PlaceObject("CargoShuttle")
+			fx_shuttle = PlaceObjectIn("CargoShuttle", self:GetMapID())
 			fx_shuttle:SetEnumFlags(const.efVisible)
 		end
 		
@@ -311,8 +314,9 @@ if Platform.developer then
 			return
 		end
 		local hex_rad = const.GridSpacing / 2
+		local map_id = bld:GetMapID()
 		for _, slot in ipairs(bld.landing_slots or empty_table) do
-			local x, y = FindDropPos(slot.pos:xy())
+			local x, y = FindDropPos(map_id, slot.pos:xy())
 			if x then
 				local pos = point(x, y)
 				local close = IsCloser2D(pos, slot.pos, hex_rad)
@@ -328,7 +332,8 @@ if Platform.developer then
 	function ShowDropPosition(pos)
 		pos = pos or GetTerrainCursor()
 		DbgClearVectors()
-		local x, y = FindDropPos(pos:xy())
+		local map_id = ActiveMapID
+		local x, y = FindDropPos(map_id, pos:xy())
 		if x then
 			DbgAddVector(point(x, y), 100*guim)
 		end
@@ -336,7 +341,7 @@ if Platform.developer then
 end
 
 function IsLRTransportAvailable(city)
-	for _, hub in ipairs((city or UICity).labels.ShuttleHub or empty_table) do
+	for _, hub in ipairs((city or MainCity).labels.ShuttleHub or empty_table) do
 		if #(hub.shuttle_infos or "") > 0
 		and (hub.working or hub:GetWorkNotPermittedReason() and not hub:GetWorkNotPossibleReason())
 		and (hub.transport_mode == "all" or hub.transport_mode == "people") then
@@ -367,9 +372,9 @@ end
 function ShuttleInfo:CreateShuttle(task)
 	assert(not self.shuttle_obj)
 	assert(task)
-	local shuttle = PlaceObject(self.shuttle_class, { hub = self.hub, info_obj = self })
+	local city = self.hub and self.hub.city or MainCity
+	local shuttle = PlaceObjectIn(self.shuttle_class, city:GetMapID(), { hub = self.hub, info_obj = self })
 	self.shuttle_obj = shuttle
-	local city = self.hub and self.hub.city or UICity
 	city:AddToLabel("CargoShuttle", shuttle)
 	shuttle:SetTransportTask(task)
 	shuttle:SetCommand("Transport")
@@ -404,7 +409,7 @@ DefineClass.CargoShuttle = {
 		{ id = "move_speed", default = 30*guim, name = T(6765, "Max Shuttle speed"), modifiable = true, editor = "number" , no_edit = true},
 	},
 	
-	storable_resources = {"Concrete", "Metals", "Polymers", "Food", "Electronics", "MachineParts", "PreciousMetals", "Fuel", "Colonist", "MysteryResource", "BlackCube", "WasteRock", "Seeds"},
+	storable_resources = {"Concrete", "Metals", "Polymers", "Food", "Electronics", "MachineParts", "PreciousMetals", "Fuel", "Colonist", "MysteryResource", "BlackCube", "WasteRock", "Seeds", "PreciousMinerals"},
 	max_x = 2,
 	max_y = 2,
 	max_z = 5,
@@ -423,6 +428,7 @@ DefineClass.CargoShuttle = {
 	landing = false,
 	waiting = false,
 	dest_dome = false,
+	dbg_flight = false,
 	
 	--resolve inheritance
 	entity = Shuttle.entity,
@@ -453,7 +459,7 @@ end
 
 function CargoShuttle:Done()
 	local hub = self.hub or empty_table
-	local city = hub.city or UICity
+	local city = hub.city or MainCity
 	city:RemoveFromLabel("CargoShuttle", self)
 	self:ClearRequests()
 	self:SetTransportTask(false)
@@ -539,32 +545,37 @@ function CargoShuttle:WaitingEnd()
 	end
 end
 
-function FindDropPos(x, y, pfclass, err_dist)
+function FindDropPos(map_id, x, y, pfclass, err_dist)
 	pfclass = pfclass or 0
-	if terrain.IsPassable(x, y, pfclass) and IsBuildableZone(x, y) then
+	local game_map = GameMaps[map_id]
+	local buildable_grid = game_map.buildable
+	local terrain = game_map.terrain
+	if terrain:IsPassable(x, y, pfclass) and buildable_grid:IsBuildableZone(x, y) then
 		return x, y
 	end
-	local HexGridGetObject = BreathableAtmosphere and empty_func or HexGridGetObject
+
+	local ObjectHexGridGetObject = GetAtmosphereBreathable(map_id) and empty_func or ObjectHexGrid.GetObject
 	local GetPassablePointNearby = GetPassablePointNearby
 	local hex_radius = const.GridSpacing / 2
-	local grid = ObjectGrid
-	local px, py = GetPassablePointNearby(x, y, pfclass, hex_radius)
+	local object_hex_grid = game_map.object_hex_grid
+	local realm = game_map.realm
+	local px, py = realm:GetPassablePointNearby(x, y, pfclass, hex_radius)
 	if px then
 		local q, r = WorldToHex(px, py)
-		if IsBuildableZoneQR(q, r)
-		and not HexGridGetObject(grid, q, r, "Dome")
-		and not HexGridGetObject(grid, q, r, "DomeInterior") then
+		if buildable_grid:IsBuildable(q, r)
+		and not ObjectHexGridGetObject(object_hex_grid, q, r, "Dome")
+		and not ObjectHexGridGetObject(object_hex_grid, q, r, "DomeInterior") then
 			return px, py
 		end
 	end
 	local max_depth = err_dist and (err_dist / const.GridSpacing) or -1
-	local found = FindBuildableAround(x, y, function(qi, ri)
-		if HexGridGetObject(grid, qi, ri, "Dome")
-		or HexGridGetObject(grid, qi, ri, "DomeInterior") then
+	local found = FindBuildableAround(object_hex_grid, buildable_grid, x, y, function(qi, ri)
+		if ObjectHexGridGetObject(object_hex_grid, qi, ri, "Dome")
+		or ObjectHexGridGetObject(object_hex_grid, qi, ri, "DomeInterior") then
 			return true
 		end
 		local xi, yi = HexToWorld(qi, ri)
-		px, py = GetPassablePointNearby(xi, yi, pfclass, hex_radius)
+		px, py = realm:GetPassablePointNearby(xi, yi, pfclass, hex_radius)
 		if not px then
 			return true
 		end
@@ -596,7 +607,7 @@ function CargoShuttle:LeaveColonist(colonist)
 			return
 		end
 	end
-	local x, y = FindDropPos(x0, y0, colonist.pfclass, 64*guim)
+	local x, y = FindDropPos(self:GetMapID(), x0, y0, colonist.pfclass, 64*guim)
 	colonist:Detach()
 	colonist:SetPos(x, y, const.InvalidZ)
 	colonist:UpdateOutside()
@@ -1125,7 +1136,8 @@ function CargoShuttle:TryRebase()
 		found = (cls or "CargoShuttle") == o.shuttle_class and o:CanHaveMoreShuttles()
 		return found
 	end
-	local objs = MapGet(true, "ShuttleHub", filter)
+	local realm = GetRealm(self)
+	local objs = realm:MapGet(true, "ShuttleHub", filter)
 	if #objs > 0 then
 		local nh = objs[1]
 		local my_i = self.info_obj
@@ -1165,11 +1177,12 @@ function CargoShuttle:Idle()
 	if working and has_fuel or has_storage then
 		--we got fuel we can do stuffs, or we got stuffs to deliver and we cant go home yet.
 		local capacity = self.max_shared_storage
+		local lr_manager = GetLRManager(self)
 		if has_storage then	--we are already carrying sumthing, get dest only
 			assert(not self.is_colonist_transport_task)
 			
 			if not self.is_colonist_transport_task then --if colo, should disembark in destros
-				local task = LRManagerInstance:FindTransportTask(self, true, self.carried_resource_type, capacity)
+				local task = lr_manager:FindTransportTask(self, true, self.carried_resource_type, capacity)
 				if task then
 					self:SetTransportTask(task)
 					self:SetCommand("Transport")
@@ -1177,13 +1190,15 @@ function CargoShuttle:Idle()
 				else
 					--noone wants this..dump it and go home? thats what i'd do.
 					local a = self:GetStoredAmount(self.carried_resource_type)
-					PlaceResourceStockpile_Instant(self:GetPos():SetTerrainZ(), self.carried_resource_type, a, self:GetAngle(), true)
+					local game_map = GetGameMap(self)
+					local snapped_pos = game_map.realm:SnapToTerrain(self:GetPos())
+					PlaceResourceStockpile_InstantIn(game_map.map_id, snapped_pos, self.carried_resource_type, a, self:GetAngle(), true)
 					self:SetCarriedResource(self.carried_resource_type, -a)
 				end
 			end
 		else
 			--check for full transport tasks.
-			local task = LRManagerInstance:FindTransportTask(self, nil, nil, capacity, self.hub.transport_mode)
+			local task = lr_manager:FindTransportTask(self, nil, nil, capacity, self.hub.transport_mode)
 			if task then
 				self:SetTransportTask(task)
 				self:SetCommand("Transport")
@@ -1680,7 +1695,7 @@ end
 
 function GetMaxCargoShuttleCapacity()
 	local cap = CargoShuttle.max_shared_storage
-	local modifiers = UICity.label_modifiers.CargoShuttle
+	local modifiers = UIColony.city_labels.label_modifiers.CargoShuttle
 	local modification = { amount = 0, percent = 100 }
 	if modifiers then
 		for id, mod in pairs(modifiers) do
@@ -1697,12 +1712,13 @@ end
 
 function ShuttleHub:SendOutShuttles()
 	--check if we have available shuttles
-	if not LRManagerInstance or IsValid(self.launched) then
+	local lr_manager = GetLRManager(self)
+	if not lr_manager or IsValid(self.launched) then
 		return
 	end
 	for _, s_i in pairs(self.shuttle_infos) do
 		if s_i:CanLaunch() then
-			local task = LRManagerInstance:FindTransportTask(self, nil, nil, GetMaxCargoShuttleCapacity(), self.transport_mode)
+			local task = lr_manager:FindTransportTask(self, nil, nil, GetMaxCargoShuttleCapacity(), self.transport_mode)
 			if task then
 				--we got shuttles and tasks!
 				self.launched = s_i:CreateShuttle(task)
@@ -1796,7 +1812,8 @@ end
 
 function ShuttleHub:GetGlobalLoad()
 	local shuttles = 0
-	local tasks = LRManagerInstance and LRManagerInstance:EstimateTaskCount()
+	local lr_manager = GetLRManager(self)
+	local tasks = lr_manager and lr_manager:EstimateTaskCount()
 	if tasks then
 		for _, hub in ipairs(self.city.labels.ShuttleHub or empty_table) do
 			if hub.working or hub.suspended then
@@ -1839,26 +1856,9 @@ end)
 function ShuttleHub:UpdateHeavyLoadNotification()
 	local shuttle_load = self:GetGlobalLoad()
 	if shuttle_load > 2 then
-		table.insert_unique(g_HeavyLoadShuttleHubs, self)
+		RequestNewObjsNotif(g_HeavyLoadShuttleHubs, self, self:GetMapID())
 	else
-		table.remove_entry(g_HeavyLoadShuttleHubs, self)
-	end
-end
-
-local ShowFlightsToggle = false
-function ShuttleHub:CheatShowFlights()
-	DbgClearVectors()
-	if ShowFlightsToggle == self.handle then
-		ShowFlightsToggle = false
-		return
-	end
-	ShowFlightsToggle = self.handle
-	local infos = self.shuttle_infos
-	for i = 1, #infos do
-		local obj = infos[i].shuttle_obj
-		if obj and obj.current_path then
-			Flight_DrawTraject(obj.current_path)
-		end
+		DiscardNewObjsNotif(g_HeavyLoadShuttleHubs, self, self:GetMapID())
 	end
 end
 
@@ -1872,9 +1872,9 @@ end)
 
 function ShuttleHub:UpdateNoFuelNotification()
 	if self.consumption_stored_resources == 0 and self.ui_working then
-		table.insert_unique(g_NoFuelShuttleHubs, self)
+		RequestNewObjsNotif(g_NoFuelShuttleHubs, self, self:GetMapID())
 	else
-		table.remove_entry(g_NoFuelShuttleHubs, self)
+		DiscardNewObjsNotif(g_NoFuelShuttleHubs, self, self:GetMapID())
 	end
 end
 
@@ -1910,4 +1910,8 @@ if Platform.developer then
 			end
 		end
 	end
+end
+
+function ShuttleHub:CheatSpawnShuttle()
+	self:SpawnShuttle()
 end

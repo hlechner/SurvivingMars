@@ -59,7 +59,7 @@ end
 
 function ForeignAidRocket:UpdateStatus(status)
 	if status ~= "on earth" then
-		SupplyRocket.UpdateStatus(self, status)
+		RocketBase.UpdateStatus(self, status)
 	end
 end
 

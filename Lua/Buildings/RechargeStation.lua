@@ -18,19 +18,19 @@ end
 
 function RechargeStationBase:GameInit()
 	self.city = self.city or UICity
-	if self.city:IsTechResearched("WirelessPower") then
+	if self.city.colony:IsTechResearched("WirelessPower") then
 		self:StartAoePulse()
 	end
 end
 
 GlobalVar("g_WirelessPower", false)
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "WirelessPower" then
 		g_WirelessPower = true
-		city:ForEachLabelObject("RechargeStation", "StartAoePulse")
+		UIColony:ForEachLabelObject("RechargeStation", "StartAoePulse")
 		
-		local container_hubs = UICity.labels.DroneHub
+		local container_hubs = UIColony:GetCityLabels("DroneHub")
 		for i = 1, #(container_hubs or empty_table) do
 			local hub = container_hubs[i]
 			for j = 1, #(hub.charging_stations or empty_table) do
@@ -92,7 +92,8 @@ function RechargerAoePulse(self)
 	Sleep(AsyncRand(recharger_pulse_tick))
 	while IsValid(self) and self.working do
 		recharger_started = false
-		MapForEach(self, "hex", TechDef.WirelessPower.param1, "Drone", recharger_proc, self)
+		local realm = GetRealm(self)
+		realm:MapForEach(self, "hex", TechDef.WirelessPower.param1, "Drone", recharger_proc, self)
 		if recharger_started then
 			PlayFX("DroneRechargePulse", "start", self)
 		end
@@ -114,7 +115,8 @@ function RechargeStationBase:NotifyDronesOnRechargeStationFree()
 					(IsValid(drone.going_to_recharger) and 
 					drone.going_to_recharger:GetDist2D(drone) > 2 * notifying_recharger:GetDist2D(drone)))
 		end
-		local drone = MapFindNearest(self, self, drone_notification_range, "Drone", filter)
+		local realm = GetRealm(self)
+		local drone = realm:MapFindNearest(self, self, drone_notification_range, "Drone", filter)
 		notifying_recharger = false
 		if drone then
 			drone:ResetEmergencyPowerCommand(self)
@@ -139,7 +141,11 @@ end
 
 function RechargeStation:SetPlatformState(state)
 	self.platform:SetState(state)
-	self.platform:NightLightEnable()
+	if state == "chargingEnd" then
+		self.platform:NightLightDisable()
+	else
+		self.platform:NightLightEnable()
+	end
 end
 
 function RechargeStation:LeadIn(drone)

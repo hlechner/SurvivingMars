@@ -6,7 +6,7 @@ local wait_dome_turned_off = const.ColonistMaxWaitInDomeTurnedOff
 
 DefineClass.Colonist =
 {
-	__parents = { "Unit", "CityObject", "PinnableObject", "Shapeshifter", "InfopanelObj", "CycleMember" },
+	__parents = { "Unit", "CityObject", "PinnableObject", "Shapeshifter", "InfopanelObj", "InteractionController", "CycleMember" },
 	SelectionClass = "Colonist",
 	display_name_pl = T(12089, "Colonists"),
 	entity = "Male",
@@ -81,7 +81,7 @@ DefineClass.Colonist =
 
 	avoid_workplace = false, -- last workplace , avoid when choose new workplace and reset when new workplace is set
 	avoid_workplace_start = false,
-	fulfill_workshift_boost = false,-- workshop boost is get if the laast time when the unit was in work the workplace is working
+	fulfill_workshift_boost = false,-- workshop boost is get if the last time when the unit was in work the workplace is working
 
 	work_spot_task = "Workdrone",
 	direction_arrow_scale = 50,
@@ -99,9 +99,11 @@ DefineClass.Colonist =
 	stat_sanity = max_stat/2,
 	stat_comfort = max_stat/2,
 	stat_morale = 0, -- value is not clamped between 0 and stat_scale
+	stat_satisfaction = 0,
 	log_health = false,
 	log_sanity = false,
 	log_comfort = false,
+	log_satisfaction = false,
 	last_meal = 0,
 	last_rest = 0,
 	intercept_params = false,
@@ -127,7 +129,7 @@ DefineClass.Colonist =
 GlobalVar("ColonistHeavyUpdateTime", 0)
 GlobalVar("g_TotalColonistComfort", 0)
 
-ColonistStatList = { "Health", "Sanity", "Comfort", "Morale" }
+ColonistStatList = { "Health", "Sanity", "Comfort", "Morale", "Satisfaction" }
 ColonistStat = 
 {
 	Health = {value = "Health", text = T(4291, "Health"), log = "log_health",
@@ -142,6 +144,9 @@ ColonistStat =
 	Morale = {value = "Morale", text = T(4297, "Morale"),
 		description = T(4298, "Represents overall happiness, optimism and loyalty. All other stats affect Morale. Influences the Colonist’s job performance. Colonists with low Morale may become Renegades."),  
 		icon = "UI/Icons/Sections/morale.tga"},
+	Satisfaction = {value = "Satisfaction", text = T(12760, "Satisfaction"), log = "log_satisfaction",
+		description = T(12761, "Represents customer satisfaction and how much the Tourist enjoys their holiday, which determines the rewards when they go home. High Health, Sanity, Comfort and Morale improve Satisfaction. Certain residential and visited buildings also improve Satisfaction."),
+		icon = "UI/Icons/Sections/satisfaction.tga"},
 }
 
 function StatCombo()
@@ -150,7 +155,8 @@ function StatCombo()
 			ColonistStat.Health,
 			ColonistStat.Sanity,
 			ColonistStat.Comfort,
-			ColonistStat.Morale
+			ColonistStat.Morale,
+			ColonistStat.Satisfaction,
 		}
 	end
 end
@@ -165,6 +171,7 @@ function Colonist:Init()
 	self.log_health = {}
 	self.log_sanity = {}
 	self.log_comfort = {}
+	self.log_satisfaction = {}
 	self.status_effects = {}
 	self:SetBase("base_morale", 50*stat_scale + g_Consts.MoraleInitRange/2 - self:Random(g_Consts.MoraleInitRange))
 	self:ChangeSanity(50*stat_scale)
@@ -262,7 +269,16 @@ function Colonist:AddToLabels()
 	self.city:AddToLabel(self.specialist, self)
 end
 
+function Colonist:DetachFromRealm()
+	self:SetDome(false)
+	self:UnassignFromService()
+end
+
 function Colonist:SetDome(dome)
+	if (dome and dome:GetMapID() ~= self:GetMapID()) then
+		dome = false
+	end
+	
 	dome = dome or false
 	local prev_dome = self.dome
 	self.dome = dome
@@ -273,7 +289,7 @@ function Colonist:SetDome(dome)
 		prev_dome:RemoveFromLabel("Unemployed", self)
 		prev_dome:RemoveFromLabel("DeadColonist", self)
 		for trait_id, _ in pairs(self.traits) do
-			prev_dome:RemoveFromLabel(trait_id,self)
+			prev_dome:RemoveFromLabel(trait_id, self)
 			local trait = TraitPresets[trait_id]
 			if trait and trait.modify_target == "dome colonists" then
 				trait:RemoveDomeColonistsModifier(self, trait.modify_trait)
@@ -287,7 +303,7 @@ function Colonist:SetDome(dome)
 	if IsValid(dome) then
 		dome:AddToLabel("Colonist", self)
 		for trait_id, _ in pairs(self.traits) do
-			dome:AddToLabel(trait_id,self)
+			dome:AddToLabel(trait_id, self)
 			local trait = TraitPresets[trait_id]
 			if trait and trait.modify_target == "dome colonists" then
 				trait:AddDomeColonistsModifier(self, trait.modify_trait)
@@ -326,6 +342,14 @@ function Colonist:AddTrait(trait_id, init)
 	if trait and (not has_trait or init) then 
 		trait:Apply(self, init) 
 		Notify(self, "UpdateMorale")
+		
+		if self.traits.Tourist and not init then
+			if trait.group == "Positive" then
+				self:ChangeSatisfaction(g_Consts.SatisfactionGainPerk, "gain perk")
+			elseif trait.group == "Negative" then
+				self:ChangeSatisfaction(-g_Consts.SatisfactionGainFlaw, "gain flaw")
+			end
+		end
 	end	
 	Msg("ColonistAddTrait", self, trait_id, init)
 end
@@ -341,6 +365,12 @@ function Colonist:RemoveTrait(trait_id)
 	if trait then 
 		trait:UnApply(self) 
 		Notify(self, "UpdateMorale")
+		
+		if self.traits.Tourist then
+			if trait.group == "Negative" then
+				self:ChangeSatisfaction(g_Consts.SatisfactionLoseFlaw, "lose flaw")
+			end
+		end
 	end
 	Msg("ColonistRemoveTrait", self, trait_id)
 end
@@ -432,11 +462,26 @@ function Colonist:DailyUpdate()
 		end
 	end
 
-	local time = self.city.day - cutoff_time
+	local time = UIColony.day - cutoff_time
 	self:LogStatClear(self.log_health, time)
 	self:LogStatClear(self.log_sanity, time)
 	self:LogStatClear(self.log_comfort, time)
-
+	self:LogStatClear(self.log_satisfaction, time)
+	
+	-- penalty if tourist is overstaying his visit
+	if self.traits.Tourist and self.sols == g_Consts.TouristSolsOnMarsMax then
+		self:ChangeSatisfaction(-g_Consts.SatisfactionOverstay, "overstay")
+		RequestNewObjsNotif(g_OverstayingTourists, self, self:GetMapID(), true)
+		if HintsEnabled then
+			HintTrigger("HintOverstayingTourists")
+		end
+	end
+	
+	-- penalty for residing underground
+	if IsDlcAccessible("picard") then
+		self:CheckLackOfLight()
+	end
+	
 	-- penalty if yesterday's interest was not visited
 	local interest = self.daily_interest
 	local fail = self.daily_interest_fail
@@ -538,6 +583,14 @@ function Colonist:GetUIWarning()
 	end
 end
 
+function Colonist:ClearDetrimentalStatusEffects()
+	self:Affect("StatusEffect_Starving", false)
+	self:Affect("StatusEffect_Suffocating", false)
+	self:Affect("StatusEffect_Suffocating_Outside", false)
+	self:Affect("StatusEffect_Dehydrated", false)
+	self:Affect("StatusEffect_Dehydrated_Outside", false)
+end
+
 function GetDetrimentalStatusColonists(city, return_first)
 	local objs = {}
 	local detrimental_status_effects = GetDetrimentalStatusEffects()
@@ -572,24 +625,46 @@ function Colonist:ExitBuilding(building, target, entrance_type, spot_name)
 	return Unit.ExitBuilding(self, building, target, entrance_type, spot_name)
 end
 
+function Colonist:FindExit(rocket)
+	return rocket
+end
+
 function Colonist:LeavingMars(rocket)
+	local function CleanupLeavingColonist(colonist)
+		SelectionRemove(colonist) --deselect this colonist (mantis:0130871)
+		DiscardNewObjsNotif(g_OverstayingTourists, colonist, colonist:GetMapID())
+		--@@@msg ColonistLeavingMars, colonist, rocket - fired when any colonist is leaving Mars
+		Msg("ColonistLeavingMars", colonist, rocket)
+		RebuildInfopanel(colonist)
+		DoneObject(colonist)
+	end
+	
 	self.leaving = true
 	self:SetDome(false)
+	self:ClearDetrimentalStatusEffects()
 	self:ClearTransportRequest()
 	table.insert(rocket.departures, self)
 	
-	local reached
 	self:PushDestructor(function(self)
 		assert(self.command == "Die", "unexpected command (" .. self.command .. ") breaking colonist boarding sequence")
 		self.leaving = false
 		table.remove_entry(rocket.departures, self)
 	end)
 	
-	if not self:GotoBuildingSpot(rocket, rocket.drone_entry_spot) -- the colonist cannot reach the rocket, don't try to pass through objects, mountains or walk above ground...
+	local exit = self:FindExit(rocket)
+	local reached_exit = self:GotoBuildingSpot(exit, "Dronein")	
+	if not reached_exit -- the colonist cannot reach the rocket, don't try to pass through objects, mountains or walk above ground...
 		or not IsValid(rocket) or not rocket:IsBoardingAllowed() then -- rocket already left
 		self:PopDestructor()
 		self.leaving = false
 		table.remove_entry(rocket.departures, self)
+		
+		if self.traits.Tourist then
+			table.insert(rocket.boarded, self)
+			DiscardNewObjsNotif(g_OverstayingTourists, self, self:GetMapID())
+		end
+		Msg("ColonistLeavingMars", self, rocket)
+		DoneObject(self)
 		return
 	end
 	
@@ -599,33 +674,38 @@ function Colonist:LeavingMars(rocket)
 		table.remove_entry(rocket.departures, self)
 		table.insert(rocket.boarding, self)
 		
-		rocket:LeadIn(self, rocket.waypoint_chains.rocket_entrance[1])		
+		exit:LeadIn(self, exit.waypoint_chains.rocket_entrance[1])		
 
 		-- remove from boarding list
 		table.remove_entry(rocket.boarding, self)
+		table.insert(rocket.boarded, self)
 
-		SelectionRemove(self) --deselect this colonist (mantis:0130871)
-		if self.traits.Tourist then
-			local tourist1 = GenerateApplicant(false, self.city)
-			tourist1.traits.Tourist = true
-			local tourist2 = GenerateApplicant(false, self.city)
-			tourist2.traits.Tourist = true
-		end	
-		DoneObject(self)
-		--@@@msg ColonistLeavingMars, colonist, rocket - fired when any colonist is leaving Mars
-		Msg("ColonistLeavingMars", self, rocket)
-		RebuildInfopanel(self)
+		CleanupLeavingColonist(self)
 	end)
 	self:PopAndCallDestructor()
 end
 
 GlobalVar("g_RecentlyDeadCitizens", {})
 GlobalVar("g_InfectedDeadCitizens", {})
-GlobalVar("DeadCitizensNotif", false)
+GlobalVar("DeadCitizensNotif", {})
 GlobalVar("UnnaturalDeaths", 0)
 GlobalGameTimeThread("InfectedDeadColonistNotif", function()
 	HandleNewObjsNotif(g_InfectedDeadCitizens, "Mystery8DeathInfection")
 end)
+
+function SavegameFixups.DeadCitizensNotifPerMap()
+	if DeadCitizensNotif and type(DeadCitizensNotif) == "thread" then
+		local notif_thread = DeadCitizensNotif
+		DeadCitizensNotif = {}
+		DeadCitizensNotif[ActiveMapID] = notif_thread
+	end
+end
+
+function SavegameFixups.DeadCitizensNotifPerMap1()
+	if not DeadCitizensNotif then
+		DeadCitizensNotif = {}
+	end
+end
 
 function Colonist:Erase()
 	self:PushDestructor(function(self)
@@ -674,6 +754,7 @@ function Colonist:Die(reason)
 		self:SetState("layDying")
 		self:ProjectPhoenixEffect()
 		local is_infected = self.traits.Infected
+		local map_id = self:GetMapID()
 		if not NaturalDeathReasons[reason] then
 			UnnaturalDeaths = (UnnaturalDeaths or 0) + 1
 			local applicants = #g_ApplicantPool
@@ -683,32 +764,37 @@ function Colonist:Die(reason)
 				applicants = applicants -1
 				i = i + 1
 			end
-			g_RecentlyDeadCitizens[#g_RecentlyDeadCitizens + 1] = self
+			g_RecentlyDeadCitizens[map_id] = g_RecentlyDeadCitizens[map_id] or {}
+			g_RecentlyDeadCitizens[map_id][#g_RecentlyDeadCitizens[map_id] + 1] = self
 			if is_infected then
-				g_InfectedDeadCitizens[#(g_InfectedDeadCitizens or {})+ 1] = self
+				RequestNewObjsNotif(g_InfectedDeadCitizens, self, map_id, true)
 				if IsOnScreenNotificationShown("DeadCitizens") then
-					AddOnScreenNotification("DeadCitizens", nil, {count = #g_RecentlyDeadCitizens}, g_RecentlyDeadCitizens)
+					AddOnScreenNotification("DeadCitizens", nil, {count = #g_RecentlyDeadCitizens[map_id]}, g_RecentlyDeadCitizens, map_id)
 				end
 			else
-				AddOnScreenNotification("DeadCitizens", nil, {count = #g_RecentlyDeadCitizens}, g_RecentlyDeadCitizens)
+				AddOnScreenNotification("DeadCitizens", nil, {count = #g_RecentlyDeadCitizens[map_id]}, g_RecentlyDeadCitizens[map_id], map_id)
 			end
-			DeleteThread(DeadCitizensNotif)
-			DeadCitizensNotif = CreateGameTimeThread(function()
+			if DeadCitizensNotif and DeadCitizensNotif[map_id] then
+				DeleteThread(DeadCitizensNotif[map_id])
+			end
+			DeadCitizensNotif[map_id] = CreateGameTimeThread(function(map_id)
 				Sleep(60000)
-				g_RecentlyDeadCitizens = {}
-				RemoveOnScreenNotification("DeadCitizens")
-			end)
+				g_RecentlyDeadCitizens[map_id] = {}
+				RemoveOnScreenNotification("DeadCitizens", map_id)
+			end, map_id)
 		end
-		local pt = GetPassablePointNearby(self) or self:GetPos()
+
+		local realm = GetRealm(self)
+		local pt = realm:GetPassablePointNearby(self) or self:GetNavigationPos()
 		Sleep(Random(const.HourDuration, const.DayDuration))
+		if is_infected then
+			DiscardNewObjsNotif(g_InfectedDeadCitizens, self, self:GetMapID())
+		end
+		if self.city.colony:IsTechResearched("SoylentGreen") then
+			PlaceResourcePile(pt, "Food", 1*const.ResourceScale, map_id)
+		end
 		if IsValid(self) then
 			DoneObject(self)
-		end
-		if is_infected then
-			table.remove_entry(g_InfectedDeadCitizens,self)
-		end
-		if self.city:IsTechResearched("SoylentGreen") then
-			PlaceResourcePile(pt, "Food", 1*const.ResourceScale)
 		end
 	end)
 	self:PopAndCallDestructor()
@@ -741,7 +827,7 @@ end
 
 function Colonist:ProjectPhoenixEffect()
 	local traits = self.traits
-	if self.city:IsTechResearched("ProjectPhoenix") and not traits.Android and self:Random(100) < TechDef.ProjectPhoenix.param1 then
+	if self.city.colony:IsTechResearched("ProjectPhoenix") and not traits.Android and self:Random(100) < TechDef.ProjectPhoenix.param1 then
 		local dome = self.dome or IsUnitInDome(self) or self.city:LabelRand("Dome")
 		if not dome then
 			return
@@ -761,7 +847,7 @@ function Colonist:ProjectPhoenixEffect()
 		end
 		heir.serial = self.serial + 1
 		heir.name = T{4301, "<name> <roman(serial)>", name = heir.progenitor_name, serial = heir.serial}
-		local colonist = Colonist:new(heir)
+		local colonist = Colonist:new(heir, self:GetMapID())
 		colonist:AddTrait(self.specialist)
 		dome:RandPlaceColonist(colonist)
 		--@@@msg ColonistBorn,colonist, event- fired when a colonist has been born/cloned/reborn/spawned/...
@@ -810,11 +896,15 @@ function Colonist:Abandoned()
 			end
 		end
 	end
-	if dome and self:EnterBuilding(dome) then
+	if dome then
 		self:SetDome(dome)
-		local sanity_change = 30 * stat_scale - self.stat_sanity
-		if sanity_change > 0 then --only if we aint actually reducing sanity
-			self:ChangeSanity(sanity_change, "survived outside") --add the rest in player visible way
+		if self:EnterBuilding(dome) then
+			local sanity_change = 30 * stat_scale - self.stat_sanity
+			if sanity_change > 0 then --only if we aint actually reducing sanity
+				self:ChangeSanity(sanity_change, "survived outside") --add the rest in player visible way
+			end
+		else
+			self:SetDome(false)
 		end
 		return
 	end
@@ -835,12 +925,21 @@ end
 
 function Colonist:Roam(duration)
 	local tEnd = GameTime() + duration
-	self:ExitBuilding()
-	while tEnd - GameTime() > 0 do
-		if self.dome then
-			self:GoToRandomPosInDome(self.dome, "roam")
+	if self.dome and self.dome == self.residence then
+		if IsValid(self.residence) and self.holder ~= self.residence then
+			self:EnterBuilding(self.residence)
 		end
-		self:PlayState("idle", -1000)
+
+		self:SetState("idle")
+		Sleep(1000)
+	else
+		self:ExitBuilding()
+		while tEnd - GameTime() > 0 do
+			if self.dome then
+				self:GoToRandomPosInDome(self.dome, "roam")
+			end
+			self:PlayState("idle", -1000)
+		end
 	end
 end
 
@@ -850,6 +949,7 @@ GlobalGameTimeThread("PsychoticBreakCitizensNotif", function()
 end)
 
 function Colonist:Affect(status_effect, bApply, now, force)
+	if bApply and not self:IsAffectedByStatusEffects() then return end
 	local status_effects = self.status_effects
 	local class = rawget(_G,status_effect)
 	if not class then return end
@@ -872,9 +972,13 @@ function Colonist:Affect(status_effect, bApply, now, force)
 	Msg("ColonistStatusEffect", self, status_effect, bApply, now)
 end
 
+function Colonist:IsAffectedByStatusEffects()
+	return self.command ~= "LeavingMars"
+end
+
 function Colonist:Suicide()
 	-- add notification	
-	AddOnScreenNotification("ColonistSuicide",nil,{name = self:GetDisplayName()},{self})
+	AddOnScreenNotification("ColonistSuicide", nil, {name = self:GetDisplayName()}, {self}, self:GetMapID())
 	self:SetCommand("Die", "suicide")
 end
 
@@ -943,9 +1047,6 @@ end
 
 function Colonist:OnArrival()
 	assert(self.holder or self:IsValidPos())
-	if self.traits.Tourist then
-		self.city:ChangeFunding(g_Consts.FundingFromTourist*1000000, "Tourist")
-	end
 	self.arriving = nil
 	self:UpdateHomelessLabels()	
 	self:UpdateEmploymentLabels()
@@ -1020,7 +1121,7 @@ function Colonist:SetWorkplace(building, shift)
 	end
 	
 	local refresh = not building and old_workplace or not old_workplace and building
-	if old_workplace then
+	if old_workplace and IsValid(old_workplace) then
 		--remove overtime from daily routine
 		old_workplace:RemoveWorker(self)
 	end
@@ -1036,6 +1137,7 @@ function Colonist:SetWorkplace(building, shift)
 		self.avoid_workplace = false -- last workplace , avoid when choose new workplace and reset when new workplace is set
 		self.avoid_workplace_start = false
 	end
+
 	--@@@msg ColonistChangeWorkplace,colonist, new_workplace, old_workplace - fired when any colonist changes its workplace and the new and old are different
 	Msg("ColonistChangeWorkplace",self, building, old_workplace, self.workplace_shift, old_shift)
 	 
@@ -1055,25 +1157,26 @@ end
 
 GlobalVar("g_SeniorsCanWork", false)
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "NocturnalAdaptation" then
 		g_NocturnalAdaptation = TechDef[tech_id]
-		city:ForEachLabelObject("Colonist", "ChangeWorkplacePerformance")
-		city:ForEachLabelObject("Workplace", "UpdatePerformance")
+		UIColony:ForEachLabelObject("Colonist", "ChangeWorkplacePerformance")
+		UIColony:ForEachLabelObject("Workplace", "UpdatePerformance")
 	elseif 
 		tech_id == "GeneralTraining" 
 		or tech_id == "ProductivityTraining" 
 		or tech_id == "EmergencyTraining" 
 		or tech_id == "SystematicTraining" 
 	then
-		city:ForEachLabelObject("Colonist", "ChangeWorkplacePerformance")
-		city:ForEachLabelObject("Workplace", "UpdatePerformance")
+		UIColony:ForEachLabelObject("Colonist", "ChangeWorkplacePerformance")
+		UIColony:ForEachLabelObject("Workplace", "UpdatePerformance")
 	elseif tech_id == "ForeverYoung" then
 		g_SeniorsCanWork = true
 	elseif tech_id == "MartianbornIngenuity" then
 		local amount = TechDef[tech_id].param1
 		local display_text = T(7587, "<green>Martianborn Ingenuity <amount></color>")
-		for _, dome in ipairs(city.labels.Dome) do
+		local domes = UIColony:GetCityLabels("Dome")
+		for _, dome in ipairs(domes) do
 			for _, colonist in ipairs(dome.labels.Martianborn or empty_table) do
 				colonist:SetModifier("performance", "MartianbornIngenuity", amount, 0, display_text)
 			end
@@ -1090,6 +1193,7 @@ function Colonist:UpdateWorkplace()
 		self:SetWorkplace(false)
 		return
 	end
+
 	-- check first forced workplace
 	local to_kick
 	local workplace, shift = self:CheckForcedWorkplace()
@@ -1108,9 +1212,7 @@ function Colonist:UpdateWorkplace()
 			return
 		end
 		self.user_forced_workplace[2] = shift
-	end
-	
-	if not workplace then
+	else
 		local current_workplace = self.workplace
 		if current_workplace then
 			if not ValidateBuilding(current_workplace) or not current_workplace:IsSuitable(self) then
@@ -1119,51 +1221,29 @@ function Colonist:UpdateWorkplace()
 				return
 			end
 		end
+
 		if self:CanTrain() then
-			 -- try train buidings
-			workplace, shift = ChooseTraining(self)
-			if not workplace and my_dome.allow_work_in_connected and my_dome.accept_colonists then
-				for dome in pairs(my_dome:GetConnectedDomes()) do
-					if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then
-						workplace, shift = ChooseTraining(self, dome.labels.TrainingBuilding, workplace, shift)
-					end
-				end
-			end
+			workplace, shift = my_dome:ChooseTraining(self)
 		end
-		local work_bld, work_shift, work_to_kick
+
 		if self:CanWork() and (not workplace or workplace.priority < max_priority) then
-			-- try workplaces buidings
-			local lst = my_dome.labels.Workplace
-			local lst1
-			if my_dome.allow_work_in_connected and my_dome.accept_colonists then
-				for dome in pairs(my_dome:GetConnectedDomes()) do
-					if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then
-						lst1 = lst1 or {}
-						table.insert(lst1, dome.labels.Workplace)
-					end
-				end
+			local work_bld, work_shift, work_to_kick = my_dome:ChooseWorkplace(self)			
+			if work_bld and (not workplace or work_bld.priority > workplace.priority) then
+				-- workplace is prefered over training only if having higher priority
+				workplace, shift, to_kick = work_bld, work_shift, work_to_kick
 			end
-			if lst1 then 
-				table.insert(lst1, lst) 
-			end
-			
-			work_bld, work_shift, work_to_kick = ChooseWorkplace(self, lst1 or lst, true)
-		end
-		if work_bld and (not workplace or work_bld.priority > workplace.priority) then
-			-- workplace is prefered over training only if having higher priority
-			workplace, shift, to_kick = work_bld, work_shift, work_to_kick
 		end
 	end
 	
-	if not workplace and not self.workplace
-	or workplace == self.workplace and shift == self.workplace_shift then
+	if not workplace and not self.workplace	or workplace == self.workplace and shift == self.workplace_shift then
 		return
 	end
 
-	--Print("workplace",workplace and workplace.class, workplace and workplace.specialist	)
+	--Print("workplace",workplace and workplace.class, workplace and workplace.specialist)
 	if to_kick then 
 		to_kick:SetWorkplace(false)
-	end	
+	end
+
 	self:SetWorkplace(workplace, shift)
 	--Print(self.name, self.specialist, "set workplace")
 	if to_kick then 
@@ -1176,9 +1256,9 @@ function Colonist:GetFired()
 	if not self.workplace then
 		return
 	end
-	self:SetWorkplace(false)
 	self.avoid_workplace = self.workplace
-	self.avoid_workplace_start = self.city.day
+	self.avoid_workplace_start = UIColony.day
+	self:SetWorkplace(false)
 	self:ChangeWorkplacePerformance()
 end
 
@@ -1203,7 +1283,7 @@ function Colonist:TryToEmigrate(current_dome)
 	
 	if walking then --git goin
 		local passage_path
-		local min_dist = BreathableAtmosphere and dome_passage_dist or dome_walk_dist
+		local min_dist = GetAtmosphereBreathable(self:GetMapID()) and dome_passage_dist or dome_walk_dist
 		if dist > min_dist then
 			-- try to lead the colonist through the dome passages if the domes are in the same network
 			passage_path = GetDomesPassagePath(current_dome, dest_dome)
@@ -1262,6 +1342,20 @@ function Colonist:TryVisit(need, ...)
 		return
 	end
 	local building, fail = dome:GetService(need, self, ...)
+	if not building and need == "interestSafari" then
+		-- Safaris are outside the dome so they get special treatment
+		-- Find all RC Safaris with a route and pick one we haven't visited yet.
+		local safari_vehicles = GetRealm(self):MapGet("map", "RCSafari")
+		table.sort(safari_vehicles, function(a, b) return HexAxialDistance(self, a) < HexAxialDistance(self, b) end)
+		for _,vehicle in ipairs(safari_vehicles) do
+			if self:IsCloser2D(vehicle:GetPos(), 99*guim) and vehicle:CanBeUsedBy(self) then
+				building = vehicle
+				fail = false
+				break
+			end
+		end
+	end
+	
 	if building then
 		self:AssignToService(building)
 		self:SetCommand("VisitService", building, need)
@@ -1326,6 +1420,19 @@ function Colonist:IsShocked()
 	end
 end
 
+function Colonist:UpdateAgeTrait()
+	local cur_trait_idx = table.find(const.ColonistAges, self.age_trait)
+	local next_age_trait = cur_trait_idx and const.ColonistAges[cur_trait_idx + 1]
+	if not self.traits.Android and next_age_trait and self.age >= self[min_age_names[next_age_trait]] then
+		self:RemoveTrait(self.age_trait)
+		self.age_trait = next_age_trait
+		self:AddTrait(next_age_trait)
+		if next_age_trait == "Youth" then
+			Msg("ColonistBecameYouth", self)
+		end
+	end
+end
+
 function Colonist:Idle()
 	assert(not self:IsDying())
 	if self:IsDying() then 
@@ -1341,29 +1448,20 @@ function Colonist:Idle()
 		self:SetCommand("Arrive")
 		return
 	end
-	if not (self.holder or self:IsValidPos() or terrain.IsPassable(self)) then
+	if not (self.holder or self:IsValidPos() or GetTerrain(self):IsPassable(self)) then
 		Sleep(2000)
 		local dome = IsUnitInDome(self) or self.dome
 		if dome then
 			dome:RandPlaceColonist(self)
 		end
 	end
-	
+
+	self:UpdateAgeTrait()
+
 	local traits = self.traits
 	local g_Consts = g_Consts
 	local const = const
-
-	local cur_trait_idx = table.find(const.ColonistAges, self.age_trait)
-	local next_age_trait = cur_trait_idx and const.ColonistAges[cur_trait_idx + 1]
-	if not traits.Android and next_age_trait and self.age >= self[min_age_names[next_age_trait]] then
-		self:RemoveTrait(self.age_trait)
-		self.age_trait = next_age_trait
-		self:AddTrait(next_age_trait)
-		if next_age_trait == "Youth" then
-			Msg("ColonistBecameYouth", self)
-		end
-	end
-
+	
 	local transport = self.transport_task
 	local dest_dome = transport and transport.shuttle and transport.shuttle.dest_dome
 	if dest_dome then
@@ -1376,7 +1474,7 @@ function Colonist:Idle()
 	
 	local status_effects = self.status_effects
 	if self.stat_sanity == 0 then
-		if self.city:IsTechResearched("SafeMode") then
+		if self.city.colony:IsTechResearched("SafeMode") then
 			self:SetCommand("SafeMode")
 		else
 			if not self.traits.Religious and self:Random(100) < g_Consts.LowSanitySuicideChance then 
@@ -1388,6 +1486,7 @@ function Colonist:Idle()
 				end
 			end
 			self:Affect("StatusEffect_StressedOut", "start")
+			self:ChangeSatisfaction(-g_Consts.SatisfactionSanityBreakdown, "breakdown")
 			Msg("SanityBreakdown", self)
 		end
 	end
@@ -1462,7 +1561,7 @@ function Colonist:Idle()
 	end
 	
 	if self.workplace then
-		local hour = self.city.hour
+		local hour = UIColony.hour
 		local workshift_start = const.DefaultWorkshifts[self.workplace_shift][1]
 		if hour >= (workshift_start - 1) and hour <= (workshift_start + 3) then
 			if not self.workplace:IsSuitable(self) then
@@ -1486,23 +1585,29 @@ function Colonist:Idle()
 		self:TryVisit("needFood", not "starving")
 	end
 	
-	if time - self.last_rest > const.HourDuration * 10 and IsDarkHour(self.city.hour) then
+	if time - self.last_rest > const.HourDuration * 10 and IsDarkHour(UIColony.hour) then
 		self:SetCommand("Rest")
 	end
-	
+
 	self:Roam(const.HourDuration)
 end
 
 function Colonist:AssignToService(service, force, ...)
-	if self.assigned_to_service and not force then
-		self.assigned_to_service:Unassign(self, ...)
-		self.assigned_to_service = false
+	if not force then
+		self:UnassignFromService(...)
 	end
 	if service and self.assigned_to_service~=service then
 		self.assigned_to_service = service
 		service:Assign(self)
 	end
 end
+
+function Colonist:UnassignFromService(...)
+	if self.assigned_to_service then
+		self.assigned_to_service:Unassign(self, ...)
+		self.assigned_to_service = false
+	end
+end	
 
 function Colonist:VisitService(service, need)
 	if not IsValid(service) then --bld can die before cmd boots up.
@@ -1546,15 +1651,20 @@ function Colonist:Rest()
 		Sleep(1000) --inf loop guard
 		return
 	end
+
 	self:PushDestructor(function(self)
-		self:ExitBuilding()
+		if self.dome ~= self.holder then
+			self:ExitBuilding()
+		end
 	end)
+
 	self.last_rest = GameTime()
 	
 	local residence = self.residence
 	local dome = self.dome
+
 	if residence and residence.working then
-		local is_rapid_sleep = self.city:IsTechResearched("RapidSleep") 
+		local is_rapid_sleep = self.city.colony:IsTechResearched("RapidSleep") 
 		local rest_duration = is_rapid_sleep and const.HourDuration or residence.rest_duration
 		residence:Service(self, rest_duration)
 		
@@ -1565,12 +1675,15 @@ function Colonist:Rest()
 		if dome and dome.working then
 			local commander_profile = GetCommanderProfile()
 			local psyho = commander_profile.id=="psychologist" and commander_profile.param1*stat_scale or 0
-			self:ChangeSanity(psyho, "psychologist" )		
-			self:ChangeSanity(dome.DailySanityRecoverDome, "dome" )
+			self:ChangeSanity(psyho, "psychologist" )
+			dome:OnColonistRested(self)
 		end
 	else
 		if not self.traits.Rugged then
 			self:ChangeComfort(-g_Consts.NoHomeComfort,"no home")
+			if self.traits.Tourist then
+				self:ChangeSatisfaction(-g_Consts.SatisfactionNoHomeComfort,"no home")
+			end
 		end
 		self:Roam(const.HourDuration)
 	end
@@ -1590,14 +1703,23 @@ function Colonist:Rest()
 		end
 		if count<5 and self:Random(100)<=g_Consts.ProjectMorphiousPositiveTraitChance then
 			-- add positive trait
-			wonder[1]:AddTrait(self)			
+			wonder[1]:AddTrait(self)
 		end
 	end
+
 	self:PopAndCallDestructor()
 end
 
 function Colonist:IsDying()
 	return not IsValid(self) or self.dying
+end
+
+function Colonist:IsTouristReadyToGoHome()
+	return self.traits.Tourist and self.sols > g_Consts.TouristSolsOnMarsMin
+end
+
+function Colonist:IsTouristOverStaying()
+	return self.traits.Tourist and self.sols > g_Consts.TouristSolsOnMarsMax
 end
 
 -- can change worker command, workplace, residence
@@ -1617,18 +1739,18 @@ function Colonist:IsInWorkCommand()
 	return not self:IsDying() and (self.command == "Work" or self.command == "WorkCycle")
 end
 
-function Colonist:CanTrain()	
+function Colonist:CanTrain()
+	if self.traits.Tourist then return end	
 	return self:CanChangeCommand()
 end
 
 local function _IsWorkStatusOk(traits, status_effects)
-	return 
-
-		(not traits.Senior or g_SeniorsCanWork)
+	return (not traits.Senior or g_SeniorsCanWork)
 		and not traits.Child
 		and not traits.Tourist
 		and not status_effects.StatusEffect_Earthsick
 end
+
 -- can be employed; colonists for which this returns false should quit their jobs
 function Colonist:CanWork()
 	local traits = self.traits
@@ -1688,6 +1810,7 @@ function Colonist:WorkCycle()
 	end
 	workplace:StartWorkCycle(self)
 	self:PushDestructor(function(self)
+		local workplace = self.workplace
 		if IsValid(workplace) then
 			if self.traits.Idiot then
 				if self:Random(100) < TraitPresets.Idiot.param then
@@ -1695,7 +1818,9 @@ function Colonist:WorkCycle()
 				end
 			end
 			workplace:StopWorkCycle(self)
-			self:ExitBuilding(workplace)
+			if self.dome ~= workplace then
+				self:ExitBuilding(workplace)
+			end
 		end
 	end)
 	self:PlayPrg(GetWorkPrg(workplace), g_Consts.WorkingHours * const.HourDuration + self:Random(2*const.MinuteDuration), workplace)
@@ -1795,6 +1920,7 @@ function Colonist:UpdateHomelessLabels()
 end
 
 function Colonist:SetResidence(home)
+	assert(not home or home:GetMapID() == self:GetMapID())
 	home = IsValid(home) and home or false
 	if self.residence == home then 
 		return 
@@ -1815,7 +1941,7 @@ function Colonist:UpdateResidence()
 	if not self:CanChangeCommand() then return end
 	local home = self:CheckForcedResidence() or self.reserved_residence
 	if not IsValid(home) or home.parent_dome ~= self.dome or not home.ui_working or not home:CanReserveResidence(self) then
-		home = ChooseResidence(self)
+		home = self.dome:ChooseResidence(self)
 	end
 	self:SetResidence(home)
 end
@@ -1872,7 +1998,7 @@ end
 ----
 
 function Colonist:SetOutsideVisuals(outside)
-	if outside and BreathableAtmosphere then
+	if outside and GetAtmosphereBreathable(self:GetMapID()) then
 		outside = false
 	end
 	if outside and self:GetEntity() ~= self.inner_entity
@@ -1906,7 +2032,7 @@ function Colonist:SetOutsideEffects(outside)
 end
 
 function Colonist:CalcMoveAnim()
-	if self.outside_start and not BreathableAtmosphere then
+	if self.outside_start and not GetAtmosphereBreathable(self:GetMapID()) then
 		self:SetMoveAnim("movePlanet")
 		return
 	end
@@ -1957,37 +2083,10 @@ function Colonist:SetSpecialization(specialist, init)
 end
 -------------------------------------- Transport -----------------------------------------------
 
-local function HasFreeWorkplacesAround(dome, colonist)
-	for _, b in ipairs(dome.labels.Workplace or empty_table) do
-		if not b.destroyed and b.ui_working and b:CanWorkHere(colonist) and b:HasFreeWorkSlots() then
-			return true
-		end
-	end
-	if dome.allow_work_in_connected then
-		for d in pairs(dome:GetConnectedDomes()) do
-			if d.allow_work_in_connected then
-				for _, b in ipairs(d.labels.Workplace or empty_table) do
-					if not b.destroyed and b.ui_working and b:CanWorkHere(colonist) and b:HasFreeWorkSlots() then
-						return true
-					end
-				end
-			end
-		end
-	end
-end
-
-local function CheckLifeSupportUnbreathable(dome)
-	return dome:HasWater() and dome:HasPower() and dome:HasAir()
-end
-
-local function CheckLifeSupportBreathable(dome)
-	return dome:HasWater()
-end
-
 function Colonist:FindEmigrationDome(current_dome)
 	--check is forced by user to go to any dome
 	local my_dome = self.dome
-	local pos = current_dome or IsUnitInDome(self) or self:GetPos()
+	local pos = current_dome or IsUnitInDome(self) or self:GetNavigationPos()
 	local forced_dome = self:CheckForcedDome()
 	if forced_dome then
 		if forced_dome == my_dome then
@@ -1998,13 +2097,12 @@ function Colonist:FindEmigrationDome(current_dome)
 	end
 	local can_work = self:CanWork()
 	local need_work = can_work and not IsValid(self.workplace) and not self.user_forced_workplace
+	
 	--check if match filters to its dome or any other dome
 	local traits = self.traits
-	local is_child = traits.Child
 	local eval = -1
-	local choosen
+	local chosen
 	local work_available, home_available
-	local CheckLifeSupport = BreathableAtmosphere and CheckLifeSupportBreathable or CheckLifeSupportUnbreathable
 	if my_dome then
 		if not my_dome.accept_colonists then
 			-- quarantine, no one enters or leaves
@@ -2012,14 +2110,14 @@ function Colonist:FindEmigrationDome(current_dome)
 		end
 		-- could stay only if the Dome is switched ON
 		if my_dome.ui_working or GameTime() - my_dome.ui_working_changed < wait_dome_turned_off then
-			eval = TraitFilterColonist(my_dome.traits_filter, traits)
-			home_available = not self:IsHomeless() or my_dome:HasFreeLivingSpace(is_child)
-			work_available = need_work and HasFreeWorkplacesAround(my_dome, self)
+			eval = my_dome:GetScoreFor(traits)
+			home_available = not self:IsHomeless() or my_dome:HasFreeLivingSpaceFor(traits)
+			work_available = need_work and my_dome:HasFreeWorkplacesAround(self)
 		end
 	end
 	local LR_transport_available = IsLRTransportAvailable(self.city)
 	local is_walking, dist
-	local domes = self.city.labels.Dome or false
+	local domes = self.city.labels.Community or false
 	if not domes then
 		return false
 	end
@@ -2033,22 +2131,19 @@ function Colonist:FindEmigrationDome(current_dome)
 		end	
 		local dome = domes[idx]
 		
-		if my_dome ~= dome and not dome.destroyed and not dome.demolishing
-			and dome.accept_colonists and not dome.overpopulated and dome.ui_working
-			and CheckLifeSupport(dome)
-		then
+		if my_dome ~= dome and dome.ui_working and dome.accept_colonists and not dome.overpopulated and not dome.destroyed and not dome.demolishing then
 			-- dome to dome dist is cached, thus IsInWalkingDist is fast
 			local new_is_walking, new_dist = IsInWalkingDistDome(dome, pos)
 			if new_is_walking or LR_transport_available then
-				local new_eval = TraitFilterColonist(dome.traits_filter, traits)
+				local new_eval = dome:GetScoreFor(traits)
 				if new_eval >= Max(eval, 0) then
-					local new_home_available = dome:HasFreeLivingSpace(is_child)
+					local new_home_available = dome:HasFreeLivingSpaceFor(traits)
 					if not home_available or new_home_available then -- if homeless, try changing dome even if doesn't have living space available.
-						local new_work_available = need_work and HasFreeWorkplacesAround(dome, self)
+						local new_work_available = need_work and dome:HasFreeWorkplacesAround(self)
 						if new_eval > eval -- the new dome is a better match for our traits
 						or not home_available and new_home_available -- if homeless, change dome if it has living space regardless of other conditions
 						or need_work and not work_available and new_work_available then -- if unemployed, change dome if it has workplaces
-							choosen = dome
+							chosen = dome
 							eval = new_eval
 							is_walking = new_is_walking
 							dist = new_dist
@@ -2060,7 +2155,7 @@ function Colonist:FindEmigrationDome(current_dome)
 			end
 		end
 	end
-	return choosen, is_walking, dist
+	return chosen, is_walking, dist
 end
 
 function Colonist:Goto(pos, ...)
@@ -2150,7 +2245,8 @@ function Colonist:Transport(dest_dome)
 	self.emigration_dome = dest_dome
 	self:PushDestructor(self.WaitTransport)
 
-	local pickup_pos = GetPassablePointNearby(self.transport_task.source_landing_site[1], self.pfclass)
+	local realm = GetRealm(self)
+	local pickup_pos = realm:GetPassablePointNearby(self.transport_task.source_landing_site[1], self.pfclass)
 	if not self:ExitHolder() or not pickup_pos or not self:Goto(pickup_pos) and not self:IsCloser2D(pickup_pos, 10*guim) then
 		--failed to reach landing site
 		self:PopAndCallDestructor()
@@ -2198,21 +2294,13 @@ function Colonist:OnSelected()
 	SelectionArrowAdd(self)
 end
 
---duplicated with dronebase functionality
 function Colonist:OnInteractionModeChanged(old, new)
 	if old and not new then
 		CloseAllDomes()
 	elseif new and not old then
 		OpenAllDomes()
 	end
-	self.interaction_mode = new
-end
-
-function Colonist:SetInteractionState(val)
-	SetUnitControlInteractionMode(self, val)
-	if val then
-		SetUnitControlFocus(true, self)
-	end
+	InteractionController.OnInteractionModeChanged(self, old, new)
 end
 
 function Colonist:ToggleInteraction()
@@ -2272,6 +2360,9 @@ function Colonist:UIStatUpdate(win, stat)
 		win:SetTitle(renegade and T(4368, "Renegade") or "")
 		win.idBar:SetVisible(not renegade)
 	end
+	if stat == "Satisfaction" then
+		win:SetVisible(self.traits.Tourist)
+	end
 	local v = self:GetProperty(stat)
 	win.idBar:SetProgress(v)
 	local low = g_Consts.LowStatLevel / const.Scale.Stat
@@ -2303,7 +2394,7 @@ function Colonist:UIStatUpdate(win, stat)
 			local high = g_Consts.HighStatLevel / const.Scale.Stat
 			for _, stat in ipairs(ColonistStatList) do 
 				if stat=="Health" and obj:IsDead() then
-				elseif stat ~= "Morale" then
+				elseif stat ~= "Morale" and stat ~= "Satisfaction" then
 					local value = obj:GetProperty(stat)
 					if value < low or value >= high then
 						texts = texts or {def.description, "", T(4370, "Effects:")}
@@ -2323,9 +2414,16 @@ function Colonist:UIStatUpdate(win, stat)
 					end
 				end
 			end
-			if obj.dome and obj.dome:HasSpire() and obj.city:IsTechResearched("InspiringArchitecture") then	
+			local morale_modifiers = obj.dome and obj.dome:GetMoraleModifiers() or empty_table
+			if #morale_modifiers > 0 then
 				texts = texts or {def.description, "", T(4370, "Effects:")}
-				texts[#texts + 1] = T{4371, "<green>Spire in Dome: <spire_name></green>", spire_name = obj.dome.labels.Spire[1]:GetDisplayName()}
+				for _,morale_modifier in pairs(morale_modifiers) do
+					local amount = morale_modifier.amount or morale_modifier.percent
+					texts[#texts + 1] = T{13602, "<color_tag><reason></color_tag>",
+						color_tag = amount >=0 and TLookupTag("<green>") or TLookupTag("<red>"),
+						reason = T{13732, "<text> <amount>", text = morale_modifier.display_text, amount = (amount >=0 and Untranslated("+") or Untranslated("-"))..(amount/const.Scale.Stat)},
+					}
+				end
 			end
 			if IsKindOf(obj.workplace, "Workshop") and obj.fulfill_workshift_boost then	
 				texts = texts or {def.description, "", T(4370, "Effects:")}
@@ -2386,7 +2484,7 @@ function Colonist:UIStatUpdate(win, stat)
 			end
 		else
 			local log = obj[def.log] or empty_table
-			local time = obj.city.day - 3
+			local time = UIColony.day - 3
 			texts = texts or {def.description, ""}	
 			if stat == "Comfort" then
 				local interests = GetInterests(obj)
@@ -2436,6 +2534,8 @@ end
 function Colonist:GetUIWorkplaceLine()
 	if self.workplace or self.last_workplace then
 		return T(4362, "Workplace<right><h SelectWorkplace InfopanelSelect><WorkplaceDisplayName></h>")
+	elseif self.traits["Tourist"] then
+		return T(12762, "Enjoying their holiday (Tourist)")
 	elseif self.traits["Child"] then
 		return T(4364, "Outside the workforce (Child)")
 	elseif self.traits["Senior"] and not g_SeniorsCanWork then
@@ -2453,7 +2553,7 @@ function Colonist:GetUITraitsLine(separator)
 		local trait = TraitPresets[trait_id]
 		if trait and trait.show_in_traits_ui then
 			texts = texts or {}
-			if trait.rare then
+			if trait.rare or trait.id == "Tourist" then
 				texts[#texts + 1] = T{7550, "<em><trait></em>", trait = trait.display_name}
 			else
 				texts[#texts + 1] = trait.display_name
@@ -2492,15 +2592,19 @@ end
 
 function Colonist:CanReachBuilding(bld)
 	local my_dome = self.dome
-	local his_dome = bld.parent_dome
-	his_dome = not his_dome and FindNearestObject(UICity.labels.Dome, self) or his_dome
-	
-	if my_dome ~= his_dome and not IsInWalkingDist(my_dome or self:GetPos(), his_dome) 
-		and (not my_dome or not IsTransportAvailableBetween(my_dome, his_dome)) then
-		return false
+
+	local same_map = self:GetMapID() == bld:GetMapID()
+	if same_map and my_dome ~= bld then
+		local his_dome = bld.parent_dome
+		local communities = self.city.labels.Community or empty_table
+		his_dome = not his_dome and FindNearestObject(communities, self) or his_dome
+
+		if my_dome ~= his_dome and not IsInWalkingDist(my_dome or self:GetNavigationPos(), his_dome)
+			and (not my_dome or not IsTransportAvailableBetween(my_dome, his_dome)) then
+			return false
+		end
 	end
-	
-	return true
+	return same_map
 end
 
 function Colonist:SetForcedDome(dome)
@@ -2514,14 +2618,14 @@ function Colonist:CanInteractWithObject(obj, mode)
 		if IsKindOf(obj, "Building") and ValidateBuilding(obj) then	
 			local can, hint, go_to = obj:ColonistCanInteract(self)
 			if IsKindOfClasses(obj, "TrainingBuilding", "Workplace", "Residence")
-				and can and not IsInWalkingDist(obj, self:GetPos()) 
+				and can and not IsInWalkingDist(obj, self:GetNavigationPos())
 				then
 				return can, hint.."\n"..T(9628, "<em>No Shuttle Available</em>"), go_to 
 			end
 			return can, hint, go_to
 		end
 	end
-	return false, false, true
+	return Unit.CanInteractWithObject(self, obj, mode)
 end
 
 function Colonist:InteractWithObject(obj, mode)
@@ -2631,7 +2735,8 @@ function Colonist:GetStatusEffects()
 end
 
 function Colonist:GetDescription()
-	local description = self.traits and self.traits["Child"] and T(4314, "One of the youngest residents of the Colony") 
+	local description = self.traits and self.traits["Tourist"] and T(12763, "An excited Tourist, looking for a holiday experience that is out of this world.")
+		or self.traits and self.traits["Child"] and T(4314, "One of the youngest residents of the Colony")
 		or GetSpecialization(self.specialist).description
 		or T(3849, "A brave citizen of Mars, ready to tame the final frontier.")
 	if self.dying then 
@@ -2772,10 +2877,10 @@ end
 
 ----
 function GetRareTraitChance(unit)
-	local city = unit and unit.city or UICity
+	local city = unit and unit.city or MainCity
 	local rare_chance_mod
 	
-	if city and city:IsTechResearched("GeneSelection") then
+	if city and city.colony:IsTechResearched("GeneSelection") then
 		local def = TechDef.GeneSelection
 		rare_chance_mod = def.param1
 	end
@@ -2807,7 +2912,7 @@ function GenerateTraits(unit, newborn, max)
 end
 
 function GenerateColonistData(city, age_trait, martianborn, params)
-	city = city or UICity
+	city = city or MainCity
 	-- birthplace and age	
 	martianborn = martianborn or false
 	local newborn = age_trait=="Child"	
@@ -2903,7 +3008,7 @@ local before_start_first_shift = (const.DefaultWorkshifts[1][1] + const.HoursPer
 
 GlobalVar("g_MartianbornStrength", false)
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "MartianbornStrength" then
 		g_MartianbornStrength = true
 	end
@@ -2939,9 +3044,9 @@ function Colonist:HourlyUpdate(t, hour)
 	
 	local coward_factor = traits.Coward and 2 or 1
 	if not (g_MartianbornStrength and traits.Martianborn) then
-		local decrease_percent = self.dome and self.dome:GetSecurityStationDamageDecrease() or 0
+		local decrease_percent = self.dome and self.dome:GetDamageDecrease() or 0
 		
-		if g_ColdWave then
+		if HasColdWave(self:GetMapID()) then
 			local damage = g_Consts.ColdWaveSanityDamage * coward_factor 
 			damage = damage - MulDivRound(damage, decrease_percent, 100)
 			
@@ -2951,7 +3056,7 @@ function Colonist:HourlyUpdate(t, hour)
 			self:ChangeSanity(-damage, decrease_percent>0 and "cold wave with securitystation" or "cold wave")
 		end
 		
-		if g_DustStorm then
+		if HasDustStorm(self:GetMapID()) then
 			local damage = g_Consts.DustStormSanityDamage * coward_factor 
 			damage = damage - MulDivRound(damage, decrease_percent, 100)
 			
@@ -2961,6 +3066,7 @@ function Colonist:HourlyUpdate(t, hour)
 			self:ChangeSanity(-damage, decrease_percent>0 and "dust storm with securitystation" or "dust storm")
 		end
 	end
+
 	if g_MysteryDream and (traits.Dreamer or traits.DreamerPostMystery) then
 		local damage = g_Consts.MysteryDreamSanityDamage * coward_factor
 		self:ChangeSanity(-damage, "dream")			
@@ -2968,7 +3074,7 @@ function Colonist:HourlyUpdate(t, hour)
 	
 	if self.outside_start then
 		local outside_time = t - self.outside_start
-		if outside_time >= g_Consts.OxygenMaxOutsideTime and not BreathableAtmosphere then
+		if outside_time >= g_Consts.OxygenMaxOutsideTime and not GetAtmosphereBreathable(self:GetMapID()) then
 			self:Affect("StatusEffect_Suffocating_Outside", "start", nil, "force")
 		end
 		if outside_time >= g_Consts.WaterMaxOutsideTime then
@@ -3014,7 +3120,7 @@ function Colonist:GetHealth()
 end
 
 function Colonist:AddToLog(log, amount, reason)
-	local sol = self.city.day
+	local sol = UIColony.day
 	for i = #log - 2, 1, -3 do
 		local logsol = log[i]
 		if sol>logsol then
@@ -3052,6 +3158,7 @@ function Colonist:ChangeHealth(amount, reason)
 		self:SetCommand("Die", reason)		
 	else
 		self:UpdateMorale()
+		self:UpdateSatisfaction("health", old_value, new_value, g_Consts.SatisfactionHighStatBonus, g_Consts.SatisfactionPerfectStatBonus)
 	end
 	if reason then
 		self:UpdateEmploymentLabels()-- update unemployed stat
@@ -3078,6 +3185,7 @@ function Colonist:ChangeSanity(amount, reason)
 	self.stat_sanity = new_value
 	self:AddToLog(self.log_sanity, amount, reason)
 	self:UpdateMorale()
+	self:UpdateSatisfaction("sanity", old_value, new_value, g_Consts.SatisfactionHighStatBonus, g_Consts.SatisfactionPerfectStatBonus)
 end
 
 function Colonist:GetComfort()
@@ -3092,6 +3200,7 @@ function Colonist:ChangeComfort(amount, reason)
 	self:AddToLog(self.log_comfort, amount, reason)
 	g_TotalColonistComfort = g_TotalColonistComfort - old_value/stat_scale + new_value/stat_scale
 	self:UpdateMorale()
+	self:UpdateSatisfaction("comfort", old_value, new_value, g_Consts.SatisfactionHighComfortBonus, g_Consts.SatisfactionPerfectComfortBonus)
 	if new_value == 0 then
 		local traits = self.traits
 		if not traits.Martianborn and not traits.Refugee
@@ -3110,8 +3219,35 @@ function Colonist:ChangeComfort(amount, reason)
 	end
 end
 
+-- function Colonist:ChangeMorale() -- Morale is handled through UpdateMorale()
+
 function Colonist:GetMorale()
 	return Clamp(self.stat_morale, 0, max_stat) / stat_scale
+end
+
+function Colonist:ChangeSatisfaction(amount, reason)
+	if amount > 0 then
+		amount = round(amount * self:GetSolsOnMarsSatisfactionScale(), 1)
+	end
+	if amount == 0 then return end
+	local old_value = self.stat_satisfaction
+	local new_value = Clamp(old_value + amount, 0, max_stat)
+	self.stat_satisfaction = new_value
+	self:AddToLog(self.log_satisfaction, amount, reason)
+end
+
+function Colonist:GetSatisfaction()
+	return self.stat_satisfaction / stat_scale
+end
+
+function Colonist:GetSolsOnMarsSatisfactionScale()
+	local scale = 1
+	if self.sols > g_Consts.TouristSolsOnMarsMin and self.sols <= g_Consts.TouristSolsOnMarsMax then
+		scale = 0.5
+	elseif self.sols >= g_Consts.TouristSolsOnMarsMax then
+		scale = 0
+	end
+	return scale
 end
 
 function Colonist:OnModifiableValueChanged(prop)
@@ -3122,7 +3258,7 @@ end
 
 GlobalVar("g_VocationOrientedSociety", false)
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "Vocation-Oriented Society" then
 		g_VocationOrientedSociety = TechDef[tech_id]
 	end
@@ -3137,6 +3273,7 @@ end
 
 function Colonist:UpdateMorale()
 	if self:IsDead() then return end
+	local old_value = self.stat_morale
 	local new_value = self.base_morale
 	local high_stat_threshold = g_Consts.HighStatLevel
 	local low_stat_threshold = g_Consts.LowStatLevel
@@ -3158,15 +3295,16 @@ function Colonist:UpdateMorale()
 		new_value = new_value - low_stat_morale_effect 
 	end
 	
-	if self.dome and self.dome:HasSpire() and self.city:IsTechResearched("InspiringArchitecture") then	
-		new_value = new_value + TechDef.InspiringArchitecture.param1*const.Scale.Stat
+	if self.dome then
+		new_value = new_value + self.dome:GetMoraleBonus(self)
 	end
-	
+
 	if IsKindOf(self.workplace, "Workshop") and self.fulfill_workshift_boost then
 		new_value = new_value + g_Consts.WorkInWorkshopMoraleBoost
 	end
 	
 	self.stat_morale = new_value
+	self:UpdateSatisfaction("morale", old_value, new_value, g_Consts.SatisfactionHighStatBonus, g_Consts.SatisfactionPerfectStatBonus)
 	
 	local performance = 50 + 100*Clamp(new_value, 0, max_stat)/max_stat
 
@@ -3187,11 +3325,40 @@ function Colonist:UpdateMorale()
 	Msg("MoraleChanged", self)
 end
 
+function Colonist:UpdateSatisfaction(stat, old_value, new_value, high_stat_bonus, perfect_stat_bonus)
+	if not self.traits.Tourist or self:IsDead() or old_value == new_value then return end
+	
+	old_value = old_value / stat_scale
+	new_value = new_value / stat_scale
+	local low = g_Consts.LowStatLevel / stat_scale
+	local high = g_Consts.HighStatLevel / stat_scale
+	
+	-- Low stat
+	if new_value >= low and new_value < high and old_value < low then
+		self:ChangeSatisfaction(g_Consts.SatisfactionLowStatPenalty * stat_scale, "+low " .. stat)
+	elseif new_value < low and old_value >= low then
+		self:ChangeSatisfaction(-g_Consts.SatisfactionLowStatPenalty * stat_scale, "-low " .. stat)
+	end
+	-- High stat
+	if new_value >= high and new_value < 100 and old_value < high then
+		self:ChangeSatisfaction(high_stat_bonus * stat_scale, "+high " .. stat)
+	elseif new_value < high and old_value >= high then
+		self:ChangeSatisfaction(-high_stat_bonus * stat_scale, "-high " .. stat)
+	end
+	-- Perfect stat
+	if new_value == 100 and old_value < 100 then
+		self:ChangeSatisfaction(perfect_stat_bonus * stat_scale, "+perfect " .. stat)
+	elseif new_value < 100 and old_value == 100 then
+		self:ChangeSatisfaction(-perfect_stat_bonus * stat_scale, "-perfect " .. stat)
+	end
+end
+
 local ChangeMembers = {
 	Health = "ChangeHealth",
 	Sanity = "ChangeSanity",
 	Comfort = "ChangeComfort",
 --	Morale = "ChangeMorale",   -- intentionally removed from this list, as it is meant to be changed via modifiers or in UpdateMorale only
+	Satisfaction = "ChangeSatisfaction"
 }
 
 local GetMembers = {
@@ -3199,6 +3366,7 @@ local GetMembers = {
 	Sanity = "stat_sanity",
 	Comfort = "stat_comfort",
 	Morale = "stat_morale",
+	Satisfaction = "stat_satisfaction",
 }
 
 function Colonist:GetStat(stat)
@@ -3233,16 +3401,18 @@ end
 Colonist.HourUpdate = empty_func
 
 function Colonist:MysteryDream()
-	self:ExitBuilding()
-	if not IsValid(self) then
-		return
-	end
-	local current_dome = IsUnitInDome(self)
-	if current_dome or self:EnterBuilding(self.dome) then
+	if self.dome ~= self.holder then
+		self:ExitBuilding()
 		if not IsValid(self) then
 			return
 		end
-		self:GoToRandomPosInDome(current_dome or self.dome)
+		local current_dome = IsUnitInDome(self)
+		if current_dome or self:EnterBuilding(self.dome) then
+			if not IsValid(self) then
+				return
+			end
+			self:GoToRandomPosInDome(current_dome or self.dome)
+		end
 	end
 
 	self:PushDestructor(function(self)
@@ -3280,6 +3450,24 @@ function SavegameFixups.FixForcedWorkplace()
 					col.user_forced_workplace = false
 				end
 			end
+		end
+	end)
+end
+
+function SavegameFixups.AddSatisfactionStat()
+	MapForEach(true, "Colonist", function(col)
+		col.stat_satisfaction = 0
+		col.log_satisfaction = {}
+	end)
+end
+
+function SavegameFixups.AddSatisfactionStat2()
+	MapForEach(true, "Colonist", function(col)
+		if not col.stat_satisfaction then
+			col.stat_satisfaction = 0
+		end
+		if not col.log_satisfaction then
+			col.log_satisfaction = {}
 		end
 	end)
 end
@@ -3350,7 +3538,7 @@ function Colonist:BoardExpeditionRocket(rocket)
 end
 
 function Colonist:SetDisembarkAnim(rocket)
-	self:SetAnim(1, BreathableAtmosphere and self:HasState(rocket.disembark_anim_walk) and rocket.disembark_anim_walk or rocket.disembark_anim)
+	self:SetAnim(1, GetAtmosphereBreathable(self:GetMapID()) and self:HasState(rocket.disembark_anim_walk) and rocket.disembark_anim_walk or rocket.disembark_anim)
 end
 
 function Colonist:ReturnFromExpedition(rocket, dome)
@@ -3373,7 +3561,6 @@ function Colonist:ReturnFromExpedition(rocket, dome)
 		self:Detach()
 		self:SetPos(pos)
 		self:SetState("idle")
-		table.remove_value(rocket.expedition.crew, self)
 	end)
 	self:PopAndCallDestructor() -- Disembark uninterruptible
 
@@ -3384,6 +3571,27 @@ function Colonist:ReturnFromExpedition(rocket, dome)
 		self:EnterBuilding(dome)
 	end
 	self:PopAndCallDestructor() -- OnArrival
+end
+
+function Colonist:CheatAddTouristTrait()
+	MakeTourist(self)
+end
+
+function Colonist:CheatMakeEarthsick()
+	self:Affect("StatusEffect_Earthsick", "start")
+end
+
+function Colonist:CheatKill()
+	self:SetCommand("Die")
+end
+
+function Colonist:CheatAddSolOnMars()
+	self.sols = self.sols + 1
+end
+
+function Colonist:CheatAge1Year()
+	self.age = self.age + 1
+	self:UpdateAgeTrait()
 end
 
 --[[

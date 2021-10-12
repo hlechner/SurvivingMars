@@ -132,7 +132,7 @@ PlaceObj('XTemplate', {
 				'ProgressFrameBox', box(4, 0, 4, 0),
 			}),
 			PlaceObj('XTemplateTemplate', {
-				'__condition', function (parent, context) return g_ColdWave end,
+				'__condition', function (parent, context) return HasColdWave(context:GetMapID()) end,
 				'__template', "InfopanelText",
 				'Text', T(544163488314, --[[XTemplate ipDrone Text]] "Using <red><percent(ColdPenalty)></red> more Power due to freezing weather"),
 			}),

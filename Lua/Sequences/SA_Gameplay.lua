@@ -109,37 +109,60 @@ function GetColonistLabels(ret, used)
 	return ret
 end
 
-function GetObjectsByLabel(label)
+function GetObjectsByLabel(city, label)
 	if label == "Working-age" then
 		local ret = {}
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
-			table.iappend(ret, dome.labels.Youth)
-			table.iappend(ret, dome.labels.Adult)
-			table.iappend(ret, dome.labels["Middle Aged"])
+		for _, community in ipairs(city.labels.Community or empty_table) do
+			table.iappend(ret, community.labels.Youth)
+			table.iappend(ret, community.labels.Adult)
+			table.iappend(ret, community.labels["Middle Aged"])
 		end
 		return ret
 	elseif label:starts_with(trait_prefix) then
 		label = label:sub(#trait_prefix + 1)
 		local ret = {}
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
-			table.iappend(ret, dome.labels[label])
+		for _, community in ipairs(city.labels.Community or empty_table) do
+			table.iappend(ret, community.labels[label])
 		end
 		return ret
 	else
-		return UICity.labels[label]
+		return city.labels[label]
 	end
 end
 
-function CountLabel(label)
+function GetObjectByLabelFromEnvironment(seq_player, label, environment)
+	local colonists
+	if environment == "Current" then
+		local city = Cities[seq_player.map_id]
+		colonists = GetObjectsByLabel(city, label)
+	elseif environment == "All" then
+		colonists = {}
+		for _,city in ipairs(Cities) do
+			local col = GetObjectsByLabel(city, label)
+			table.iappend(colonists, col)
+		end
+	else
+		colonists = {}
+		for _,city in ipairs(Cities) do
+			if ActiveMaps[city.map_id].Environment == environment then
+				local col = GetObjectsByLabel(city, label)
+				table.iappend(colonists, col)
+			end
+		end
+	end
+	return colonists
+end
+
+function CountLabel(city, label)
 	if label:starts_with(trait_prefix) then
 		label = label:sub(#trait_prefix + 1)
 		local ret = 0
-		for _, dome in ipairs(UICity.labels.Dome or empty_table) do
-			ret = ret + #(dome.labels[label] or empty_table)
+		for _, community in ipairs(city.labels.Community or empty_table) do
+			ret = ret + #(community.labels[label] or empty_table)
 		end
 		return ret
 	else
-		return #UICity.labels[label]
+		return #city.labels[label]
 	end
 end
 
@@ -170,9 +193,9 @@ function GetDroneHubLabels(ret, used)
 		table.insert(ret, {value = "DroneHub", text = "Drone Hubs"})
 		used["DroneHub"] = true
 	end
-	if not used["RCRover"] then
-		table.insert(ret, {value = "RCRover", text = "Drone Hubs"})
-		used["RCRover"] = true
+	if not used["RCRoverAndChildren"] then
+		table.insert(ret, {value = "RCRoverAndChildren", text = "Drone Hubs"})
+		used["RCRoverAndChildren"] = true
 	end
 	return ret
 end
@@ -237,7 +260,8 @@ function SA_ForEachBuilding:Process(seq_player, registers, building)
 end
 
 function SA_ForEachBuilding:Exec(seq_player, ip, seq, registers)
-	local buildings = UICity.labels[self.Label]
+	local city = Cities[seq_player.map_id]
+	local buildings = city.labels[self.Label]
 	if not buildings or not(next(buildings)) then return end
 	local number = seq_player:Eval("return " .. self.Number, registers)
 	if number == -1 or number >= #buildings then
@@ -249,7 +273,7 @@ function SA_ForEachBuilding:Exec(seq_player, ip, seq, registers)
 		for i=1,number do
 			local r
 			repeat
-				r = 1 + UICity:Random(#buildings)
+				r = 1 + SessionRandom:Random(#buildings)
 			until not affected[r]
 			affected[r] = true
 		end
@@ -323,8 +347,9 @@ end
 
 function SA_AddDrones:Exec(seq_player, ip, seq, registers)
 	local number = seq_player:Eval("return " .. self.Number, registers)
-	local hubs = UICity.labels[self.Label]
-	for _, hub in ipairs(hubs) do
+	local city = Cities[seq_player.map_id]
+	local hubs = city.labels[self.Label]
+	for _, hub in ipairs(hubs or empty_table) do
 		local additional_drones = hub:GetMaxDrones() - #hub.drones
 		if number ~= -1 then
 			additional_drones = Min(additional_drones, number)
@@ -351,30 +376,32 @@ function SA_DamageDrones:ShortDescription()
 end
 
 function SA_DamageDrones:Exec(seq_player, ip, seq, registers)
-	local drones = UICity.labels[self.Label]
+	local city = Cities[seq_player.map_id]
+	local drones = city.labels[self.Label]
 	local affected
-	
-	local number = seq_player:Eval("return " .. self.Number, registers)
-	if number == -1 or number >= #drones then
-		affected = drones
-	else
-		affected = {}
-		for i=1,number do
-			local r
-			repeat
-				r = 1 + UICity:Random(#drones)
-			until not affected[r]
-			affected[r] = drones[r]
+	if drones ~= nil then
+		local number = seq_player:Eval("return " .. self.Number, registers)
+		if number == -1 or number >= #drones then
+			affected = drones
+		else
+			affected = {}
+			for i=1,number do
+				local r
+				repeat
+					r = 1 + SessionRandom:Random(#drones)
+				until not affected[r]
+				affected[r] = drones[r]
+			end
 		end
-	end
-	
-	if self.Destroy then
-		for i,drone in pairs(affected) do
-			DoneObject(drone)
-		end
-	else
-		for i,drone in pairs(affected) do
-			drone:AddDust(drone:GetDustMax())
+		
+		if self.Destroy then
+			for i,drone in pairs(affected) do
+				DoneObject(drone)
+			end
+		else
+			for i,drone in pairs(affected) do
+				drone:AddDust(drone:GetDustMax())
+			end
 		end
 	end
 end
@@ -392,7 +419,8 @@ function SA_AddColonist:ShortDescription()
 end
 
 function SA_AddColonist:Exec(seq_player, ip, seq, registers)
-	local domes = UICity.labels[self.Label]
+	local city = Cities[seq_player.map_id]
+	local domes = city.labels[self.Label]
 	for _, dome in ipairs(domes) do
 		for i=1,self.Number do
 			dome:SpawnColonist()
@@ -404,6 +432,7 @@ DefineClass.SA_ForEachColonist = {
 	__parents = { "SequenceAction" },
 	properties = {
 		{ id = "Label", name = T(3689, "Label"), editor = "dropdownlist", items = function() return GetColonistLabels() end, default = "", help = "If the register property is empty, take colonists from this label" },
+		{ id = "Environment", name = T(13824, "Environment"), editor = "dropdownlist", items = function() return {"Current", "All", "Asteroid", "Surface", "Underground"} end, default = "Current", help = "Maps to use colonists from" },
 		{ id = "Register", name = T(3690, "Register"), editor = "text", default = "", help = "Register to take colonists from; if empty, take colonists from label" },
 		{ id = "Number", name = T(3710, "Number"), help = "-1 for everyone", editor = "text", default = "-1" },
 	},
@@ -436,8 +465,9 @@ function SA_ForEachColonist:Exec(seq_player, ip, seq, registers)
 			colonists = { colonists }
 		end
 	else
-		colonists = GetObjectsByLabel(self.Label)
+		colonists = GetObjectByLabelFromEnvironment(seq_player, self.Label, self.Environment)
 	end
+	
 	if not colonists or not(next(colonists)) then return end
 	local number = seq_player:Eval("return " .. self.Number, registers)
 	if number == -1 or number >= #colonists then
@@ -449,7 +479,7 @@ function SA_ForEachColonist:Exec(seq_player, ip, seq, registers)
 		for i=1,number do
 			local r
 			repeat
-				r = 1 + UICity:Random(#colonists)
+				r = 1 + SessionRandom:Random(#colonists)
 			until not affected[r]
 			affected[r] = true
 		end
@@ -566,7 +596,8 @@ function SA_ForEachDrone:Exec(seq_player, ip, seq, registers)
 			drones = { drones }
 		end
 	else
-		drones = GetObjectsByLabel(self.default_label)
+		local city = Cities[seq_player.map_id]
+		drones = GetObjectsByLabel(city, self.default_label)
 	end	
 	if not drones or not(next(drones)) then return end
 	if self.ExcludeDead then
@@ -592,7 +623,7 @@ function SA_ForEachDrone:Exec(seq_player, ip, seq, registers)
 		for i=1,number do
 			local r
 			repeat
-				r = 1 + UICity:Random(#drones)
+				r = 1 + SessionRandom:Random(#drones)
 			until not affected[r]
 			affected[r] = true
 		end
@@ -640,7 +671,7 @@ end
 DefineClass.SA_AddTrait = {
 	__parents = {"SA_ForEachColonist"},
 	properties = {
-		{ id = "Trait", name = T(3720, "Trait"), editor = "dropdownlist", default = "", items = function() return TraitsCombo(nil, nil, "no specializations") end},
+		{ id = "Trait", name = T(3720, "Trait"), editor = "dropdownlist", default = "", items = function() return TraitsCombo(nil, "no specializations") end},
 	},
 	MenuName = "Add Trait",
 }
@@ -659,7 +690,7 @@ end
 DefineClass.SA_RemoveTrait = {
 	__parents = {"SA_ForEachColonist"},
 	properties = {
-		{ id = "Trait", name = T(3720, "Trait"), editor = "dropdownlist", default = "", items = function()return TraitsCombo(nil, nil, "nospecializations") end},
+		{ id = "Trait", name = T(3720, "Trait"), editor = "dropdownlist", default = "", items = function()return TraitsCombo(nil, "nospecializations") end},
 	},
 	MenuName = "Remove Trait",
 }
@@ -752,6 +783,7 @@ DefineClass.SA_GrantResearchPts = {
 		{ id = "Field",    name = T(3721, "Field"),      editor = "dropdownlist", default = "", items = ResearchFieldsCombo },
 		{ id = "Research", name = T(311, "Research"),    editor = "dropdownlist", default = "", items = ResearchTechsCombo },
 		{ id = "Percent",  name = T(1000099, "Percent"), editor = "number",       default = 0, help = "Takes priority over 'Amount'" },
+		{ id = "Absolute", name = T(13658, "Absolute"), editor = "bool", default = false, help = "Apply the above percents points as absolute instead of based on the remaining percents points to unlock the tech" },
 	},
 	
 	Menu = "Research",
@@ -761,7 +793,11 @@ DefineClass.SA_GrantResearchPts = {
 function SA_GrantResearchPts:ShortDescription()
 	local tech_id = self.Research ~= "" and self.Research or "current"
 	if self.Percent ~= 0 then
-		return string.format("Grant %d%% from the rest of the points of %s tech", self.Percent, tech_id)
+		if self.Absolute then
+			return string.format("Grant %d%% of the points of %s tech", self.Percent, tech_id)
+		else
+			return string.format("Grant %d%% from the rest of the points of %s tech", self.Percent, tech_id)
+		end
 	else
 		return string.format("Grant %d points to %s tech", self.Amount, tech_id)
 	end
@@ -772,10 +808,14 @@ function SA_GrantResearchPts:Exec(seq_player, ip, seq, registers)
 	local tech_id = self.Research ~= "" and self.Research
 	if self.Percent ~= 0 then
 		local points, max_points
-		tech_id, points, max_points = UICity:GetResearchInfo(tech_id)
-		amount = MulDivRound(max_points - points, self.Percent, 100)
+		tech_id, points, max_points = UIColony:GetResearchInfo(tech_id)
+		if self.Absolute then
+			amount = MulDivRound(max_points, self.Percent, 100)
+		else
+			amount = MulDivRound(max_points - points, self.Percent, 100)
+		end
 	end
-	UICity:AddResearchPoints(amount, tech_id)
+	UIColony:AddResearchPoints(amount, tech_id)
 end
 
 --
@@ -796,19 +836,19 @@ function SA_GrantTech:ShortDescription()
 end
 
 function SA_GrantTech:Exec(seq_player, ip, seq, registers)
-	UICity:SetTechResearched(self.Research, "notify")
+	UIColony:SetTechResearched(self.Research, "notify")
 end
 
 --
 
 function GrantWonderTech()
-	local city = UICity
+	local research = UIColony
 	local wonder_techs = {}
 	for i=1,#BuildingWonders do
 		local techs = BuildingTechRequirements[BuildingWonders[i]] or empty_table
 		for j=1,#techs do
 			local tech = techs[j].tech
-			if not city:IsTechResearched(tech) then
+			if not research:IsTechResearched(tech) then
 				wonder_techs[tech] = true
 			end
 		end
@@ -818,16 +858,16 @@ function GrantWonderTech()
 		local all_techs = Presets.TechPreset.Breakthroughs or ""
 		for i = 1, #all_techs do
 			local id = all_techs[i].id
-			if not city:IsTechResearched(id) then
+			if not research:IsTechResearched(id) then
 				techs_list[#techs_list + 1] = id
 			end
 		end
 	end
-	local tech_id = city:TableRand(techs_list)
+	local tech_id = SessionRandom:TableRand(techs_list)
 	if not tech_id then
 		return
 	end
-	city:SetTechResearched(tech_id, "notify")
+	research:SetTechResearched(tech_id, "notify")
 	return tech_id
 end
 
@@ -852,13 +892,13 @@ end
 function SA_GrantTechBoost:Exec(seq_player, ip, seq, registers)
 	if self.Field == "All Fields" then
 		for field in pairs(TechFields) do
-			UICity.TechBoostPerField[field] = (UICity.TechBoostPerField[field] or 0) + self.Amount
+			UIColony.TechBoostPerField[field] = (UIColony.TechBoostPerField[field] or 0) + self.Amount
 		end
 	else
 		if self.Research == "" then
-			UICity.TechBoostPerField[self.Field] = (UICity.TechBoostPerField[self.Field] or 0) + self.Amount
+			UIColony.TechBoostPerField[self.Field] = (UIColony.TechBoostPerField[self.Field] or 0) + self.Amount
 		else
-			UICity.TechBoostPerTech[self.Research] = (UICity.TechBoostPerTech[self.Research] or 0) + self.Amount
+			UIColony.TechBoostPerTech[self.Research] = (UIColony.TechBoostPerTech[self.Research] or 0) + self.Amount
 		end
 	end
 end
@@ -880,9 +920,9 @@ DefineClass.SA_WaitResearch = {
 
 function SA_WaitResearch:StopWait()
 	if self.State == "Available" then
-		return UICity:IsTechDiscovered(self.Research) and not UICity:IsTechResearched(self.Research)
+		return UIColony:IsTechDiscovered(self.Research) and not UIColony:IsTechResearched(self.Research)
 	else
-		return UICity:IsTechResearched(self.Research) or (self.State == "In Progress" and UICity:GetResearchInfo() == self.Research)
+		return UIColony:IsTechResearched(self.Research) or (self.State == "In Progress" and UIColony:GetResearchInfo() == self.Research)
 	end
 end
 
@@ -923,9 +963,9 @@ DefineClass.SA_CheckResearch = {
 
 function SA_CheckResearch:TestCondition(sequence_player, ip, seq, registers)
 	if self.State == "Available" then
-		return UICity:IsTechDiscovered(self.Research) and not UICity:IsTechResearched(self.Research)
+		return UIColony:IsTechDiscovered(self.Research) and not UIColony:IsTechResearched(self.Research)
 	else
-		return UICity:IsTechResearched(self.Research)
+		return UIColony:IsTechResearched(self.Research)
 	end
 end
 
@@ -973,7 +1013,7 @@ function SA_AppendToLog:Exec(seq_player, ip, seq, registers)
 		registers[self.register] = {}
 	end
 	local log = registers[self.register]
-	local sol = UICity and UICity.day or 0
+	local sol = UIColony.day
 	log[#log+1] = T{7799, "<em>Sol <sol>:</em> <text>", text = self.text, sol = sol}
 	if self.trim_log ~= 0 then
 		while #log > self.trim_log do
@@ -1050,27 +1090,25 @@ function SA_CustomNotification:UpdateNotification(seq_player, ip, seq, registers
 	
 	local pos = self.pos_reg ~= "" and registers[self.pos_reg] or nil
 	expiration = expiration ~= 0 and expiration or nil
-	local dismissable = GetOnScreenNotificationDismissable(self.id)
+	local map_id = seq_player.map_id
+	local dismissable = GetOnScreenNotificationDismissable(self.id, map_id)
 	if self.dismissable ~= "no change" then
 		dismissable = self.dismissable == "dismissable"
 	end
-	local params = { reg_param1 = reg_param1, reg_param2 = reg_param2, value = value, override_text = text, expiration = expiration, override_popup_text = popup_text,dismissable = dismissable }
-	AddOnScreenNotification(self.id, nil, params, pos and {pos} or nil)
+	local params = { reg_param1 = reg_param1, reg_param2 = reg_param2, value = value, override_text = text, expiration = expiration, override_popup_text = popup_text, dismissable = dismissable }
+	AddOnScreenNotification(self.id, nil, params, pos and {pos} or nil, map_id)
 end
 
 function SA_CustomNotification:Exec(seq_player, ip, seq, registers)
 	self:UpdateNotification(seq_player, ip, seq, registers)
+	local map_id = seq_player.map_id
 	if self.autoupdate and self.interval ~= -1 then
 		CreateGameTimeThread(function()
 			while true do
 				Sleep(self.interval*1000)
-			
-				--Get the controller dialog
-				local dlg = GetDialog("OnScreenNotificationsDlg")
-				if not dlg then break end
-				
+
 				--Check if notification still exists
-				local notif = dlg:GetNotificationById(self.id)
+				local notif = GetOnScreenNotification(self.id, map_id)
 				if not notif then break end
 				
 				--Update expiration time
@@ -1109,7 +1147,7 @@ end
 
 function SA_ModifyConstructionCost:Exec(seq_player, ip, seq, registers)
 	local percent = seq_player:Eval("return " .. self.percent, registers)
-	UICity:ModifyConstructionCost("add", self.building, self.resource, percent)
+	UIColony.construction_cost:ModifyConstructionCost("add", self.building, self.resource, percent)
 end
 
 --TODO  : remove
@@ -1135,8 +1173,9 @@ function SA_SetMystery:ShortDescription()
 end
 
 function SA_SetMystery:Exec(seq_player, ip, seq, registers)
-	if not UICity.mystery then
-		g_Classes[self.mystery]:new{city = UICity}
+	if not UIColony.mystery then
+		local city = Cities[seq_player.map_id]
+		g_Classes[self.mystery]:new{city = city}
 	elseif Platform.developer then
 		print("SA_SetMystery: Mystery already set!")
 	end
@@ -1185,9 +1224,9 @@ function SA_BumpTechDiscover:Exec(seq_player, ip, seq, registers)
 	if self.field == "" or self.count < 1 then
 		return
 	end
-	local city = UICity
+	local research = UIColony
 	for i=1,self.count do
-		if not city:DiscoverTechInField(self.field) then
+		if not research:DiscoverTechInField(self.field) then
 			return
 		end
 	end
@@ -1237,29 +1276,29 @@ function SA_RevealTech:ShortDescription()
 end
 
 function SA_RevealTech:Exec(seq_player, ip, seq, registers)
-	local city = UICity
+	local research = UIColony
 	local tech_id = self.tech
 	if tech_id == "" then
 		local not_revealed_techs = {}
 		local all_techs = Presets.TechPreset.Breakthroughs or ""
 		for i = 1, #all_techs do
 			local id = all_techs[i].id
-			if not city:IsTechDiscovered(id) then
+			if not research:IsTechDiscovered(id) then
 				not_revealed_techs[#not_revealed_techs + 1] = id
 			end
 		end
-		tech_id = city:TableRand(not_revealed_techs)
+		tech_id = SessionRandom:TableRand(not_revealed_techs)
 		if not tech_id then
 			seq_player:Error(self, "All techs revealed, no tech to reveal!")
 			return
 		end
 	end
-	if not city:SetTechDiscovered(tech_id) then
+	if not research:SetTechDiscovered(tech_id) then
 		seq_player:Error(self, "Failed to discover tech '%s'", tech_id)
 		return
 	end
 	if self.cost ~= -1 then
-		city:ChangeResearchCost(tech_id, self.cost)
+		research:ChangeResearchCost(tech_id, self.cost)
 	end
 end
 
@@ -1312,8 +1351,9 @@ DefineClass.PositionFinder = {
 		{ id = "check_buildable", name = T(3739, "Check buildable?"), editor = "bool", default = false, },
 		{ id = "check_playable", name = T(3740, "Check playable?"), editor = "bool", default = false, },
 		{ id = "check_dome", name = T(3741, "Check Dome"), editor = "dropdownlist", default = false, items = CheckDomeCombo},
-		{ id = "check_terran_deposit", name = T(3742, "Check Terran Deposit"), editor = "bool", default = false},
+		{ id = "check_terran_deposit", name = T(3742, "Check Terrain Deposit"), editor = "bool", default = false},
 		{ id = "check_exploration", name = T(8901, "Check Exploration"), editor = "dropdownlist", default = false, items = CheckExplorationCombo},
+		{ id = "check_subsurface_deposit", name = T(13833, "Check Subsurface Deposit"), editor = "bool", default = false},
 		{ id = "exclude_class_name", name = T(3743, "Exclude class in buildable checks"), editor = "dropdownlist", default = false, items = ExcludeClassNameCombo, help = "The class selected here will be excluded when doing build checks. Whats more objects of this type found in the hex shape during placement will be destroyed.", },
 		{ id = "random_pos_label", name = T(3744, "Random pos is near label"), editor = "combo", default = false, items = RandomPosLabelCombo, },
 		{ id = "random_pos_label_dist", name = T(3745, "Random pos label max distance"), editor = "number", default = 0, scale = guim,},
@@ -1322,28 +1362,41 @@ DefineClass.PositionFinder = {
 
 local hex_edges
 local classes = {"Unit", "ResourceStockpileBase", "SurfaceDeposit"}
-function PositionFinder:TestPos(pt_pos, q, r, angle, class_def, building_shape, building_other_shape)
-	if self.check_playable and not IsBuildableZone(pt_pos) then
+function PositionFinder:TestPos(pt_pos, map_id, q, r, angle, class_def, building_shape, building_other_shape)
+	local game_map = GameMaps[map_id]
+	if self.check_playable and not IsInMapPlayableArea(map_id, pt_pos) then
+		return
+	end	
+
+	local buildable_grid = game_map.buildable
+	if self.check_playable and not buildable_grid:IsBuildableZone(pt_pos:x(), pt_pos:y()) then
 		return
 	end
 	
 	local classes_excluded_in_build_checks = self.exclude_class_name
 	local check_terran_deposit = self.check_terran_deposit
+	local check_subsurface_deposit = self.check_subsurface_deposit
 	local check_exploration = self.check_exploration
 	local check_for_buildable = self.check_buildable
 	local check_for_passable = self.check_passability
 	local check_dome = self.check_dome
+
+	local object_hex_grid = game_map.object_hex_grid
+	local terrain = game_map.terrain
+	local realm = game_map.realm
+	local city = Cities[map_id]
+
 	if check_dome then
-		if check_dome == "inside" and not GetDomeAtPoint(pt_pos)
-		or check_dome == "outside" and GetDomeAtPoint(pt_pos) then
+		if check_dome == "inside" and not GetDomeAtPoint(object_hex_grid, pt_pos)
+		or check_dome == "outside" and GetDomeAtPoint(object_hex_grid, pt_pos) then
 			return
 		end
 	end
-	if check_for_passable and not terrain.IsPassable(pt_pos) then
+	if check_for_passable and not terrain:IsPassable(pt_pos) then
 		return
 	end
 	if check_exploration then
-		local sector = GetMapSector(pt_pos)
+		local sector = GetMapSector(city, pt_pos)
 		local status = sector and (sector.blocked_status or sector.status)
 		if check_exploration == "explored" and status == "unexplored"
 		or check_exploration == "unexplored" and status ~= "unexplored" then
@@ -1364,7 +1417,7 @@ function PositionFinder:TestPos(pt_pos, q, r, angle, class_def, building_shape, 
 		end
 		for i = 1, building_other_shape and 2 or 1 do
 			local shape_data = i == 1 and building_shape or building_other_shape
-			if check_for_buildable and not ConstructionController.IsTerrainFlatForPlacement(nil, shape_data, pt_pos, angle * 60) then
+			if check_for_buildable and not IsTerrainFlatForPlacement(buildable_grid, shape_data, pt_pos, angle * 60) then
 				return
 			end
 			for _, shape_pt in ipairs(shape_data) do
@@ -1372,46 +1425,44 @@ function PositionFinder:TestPos(pt_pos, q, r, angle, class_def, building_shape, 
 				x, y = HexRotate(x, y, dir)
 				x, y = x + q, y + r
 				if check_terran_deposit then
-					local t_d = MapGet(x, y, MaxTerrainDepositRadius, "TerrainDeposit")
+					local t_d = realm:MapGet(x, y, MaxTerrainDepositRadius, "TerrainDeposit")
 					if #t_d > 0 then
 						return
 					end
 				end
+				if check_subsurface_deposit then
+					local deposits = realm:MapGet(x, y, const.HexSize, "SubsurfaceDeposit")
+					if #deposits > 0 then
+						return
+					end
+				end
 				if check_for_buildable then
-					local blds = HexGridGetObjects(ObjectGrid, x, y, nil, nil, function(o)
-						if IsKindOfClasses(o, "DoesNotObstructConstruction", classes_excluded_in_build_checks) then
-							return false
-						end
-						if not is_tall and IsKindOf(o, "LifeSupportGridElement") and not o.pillar then
-							return false
-						end
-						return "break"
-					end)
+					local blds = object_hex_grid:GetBuildObstructions(x, y, is_tall, classes_excluded_in_build_checks)
 					if #blds > 0 then 
 						return
 					end
 				end
 				local pt_x, pt_y = HexToWorld(x, y)
 				if check_for_passable then
-					if not terrain.IsPassable(pt_x, pt_y) then
+					if not terrain:IsPassable(pt_x, pt_y) then
 						return
 					end
 					for j = 1, 6 do
 						local dx, dy = hex_edges[j]:xy()
-						if not terrain.IsPassable(pt_x + dx, pt_y + dy) then
+						if not terrain:IsPassable(pt_x + dx, pt_y + dy) then
 							return
 						end
 					end
 				end
 				if check_dome then
-					local dome, interior = GetDomeAtHex(WorldToHex(pt_x, pt_y))
+					local dome, interior = GetDomeAtHex(object_hex_grid, WorldToHex(pt_x, pt_y))
 					if check_dome == "inside" and not interior
 					or check_dome == "outside" and dome then
 						return
 					end
 				end
 				if check_exploration then
-					local sector = GetMapSector(pt_x, pt_y)
+					local sector = GetMapSector(city, pt_x, pt_y)
 					local status = sector and (sector.blocked_status or sector.status)
 					if check_exploration == "explored" and status == "unexplored"
 					or check_exploration == "unexplored" and status ~= "unexplored" then
@@ -1435,7 +1486,7 @@ function PositionFinder:TestPos(pt_pos, q, r, angle, class_def, building_shape, 
 			end
 			return true
 		end
-		if HexGetUnits(nil, class_def:GetEntity(), pt_pos, angle * 60, true, filter_func, classes, force_extend_bb ~= 0 and force_extend_bb) then
+		if HexGetUnits(realm, nil, class_def:GetEntity(), pt_pos, angle * 60, true, filter_func, classes, force_extend_bb ~= 0 and force_extend_bb) then
 			return
 		end
 	end
@@ -1443,8 +1494,9 @@ function PositionFinder:TestPos(pt_pos, q, r, angle, class_def, building_shape, 
 	return true
 end
 
-function PositionFinder:TryFindRandomPos(class_def, building_shape, building_other_shape)
-	local w, h = terrain.GetMapSize()
+function PositionFinder:TryFindRandomPos(class_def, map_id, building_shape, building_other_shape)
+	local terrain = GetTerrainByID(map_id)
+	local w, h = terrain:GetMapSize()
 	local r_w, r_h, q, r, angle, all_clear
 	local random_pos_label, random_pos_max_dist_from_label
 	if self.random_pos_label and self.random_pos_label_dist > 0 then --both must be set to make sense
@@ -1454,7 +1506,7 @@ function PositionFinder:TryFindRandomPos(class_def, building_shape, building_oth
 	
 	local pt_hex_center
 	local tries = 0
-	local city = UICity
+	local city = Cities[map_id]
 	local check_dome = self.check_dome
 	local check_exploration = self.check_exploration
 	local valid_objs
@@ -1491,7 +1543,7 @@ function PositionFinder:TryFindRandomPos(class_def, building_shape, building_oth
 			r_w, r_h = RotateRadius(r_l, a, dome:GetPos(), true)
 		elseif check_exploration then
 			local filtered = {}
-			local sectors = g_MapSectors
+			local sectors = city.MapSectors
 			for x = 1, const.SectorCount do
 				local sectors = sectors[x]
 				for y = 1, const.SectorCount do
@@ -1521,7 +1573,7 @@ function PositionFinder:TryFindRandomPos(class_def, building_shape, building_oth
 		local angle_0 = city:Random(6) * 60
 		angle = angle_0
 		while angle - angle_0 < 360 do
-			all_clear = self:TestPos(pt_hex_center, q, r, angle, class_def, building_shape, building_other_shape)
+			all_clear = self:TestPos(pt_hex_center, map_id, q, r, angle, class_def, building_shape, building_other_shape)
 			if not all_clear and #building_shape > 1 then
 				angle = angle + 60
 			else
@@ -1582,7 +1634,8 @@ function SA_PlaceObject:WarningsCheck(seq_player, seq, registers)
 	end
 	
 	if not self.use_random_pos then
-		if self.register_placement_pos == "" and not terrain.IsPointInBounds(self.placement_pos) then
+		local terrain = GetTerrainByID(seq_player.map_id)
+		if self.register_placement_pos == "" and not terrain:IsPointInBounds(self.placement_pos) then
 			seq_player:Error(self, "Specified placement pos outside of terrain bounds!")
 		end
 	end
@@ -1660,7 +1713,7 @@ local function CleanupExcludedObjects(class_def, q, r, angle, building_shape, bu
 		local shape_data = i == 1 and building_shape or building_other_shape
 		for _, shape_pt in ipairs(shape_data) do
 			local x, y = HexRotate(shape_pt:x(), shape_pt:y(), dir)
-			local remove = HexGridGetObjects(ObjectGrid, x + q, y + r, nil, nil, function(o)
+			local remove = GetActiveObjectHexGrid():GetObjects(x + q, y + r, nil, nil, function(o)
 				return IsKindOfClasses(o, excl_class_name)
 			end)
 			for j=1,#remove do
@@ -1693,7 +1746,13 @@ function SA_PlaceObject:Exec(seq_player, ip, seq, registers)
 	local class_def = is_building and ClassTemplates.Building[self.class_name] or g_Classes[self.class_name]
 	local outline, interior = GetEntityHexShapes(is_building and ClassTemplates.Building[self.class_name].entity or class_def:GetEntity())
 	local q, r, angle
-	
+
+	local map_id = seq_player.map_id
+	local city = Cities[map_id]
+	local game_map = GameMaps[map_id]	
+	local terrain = game_map.terrain
+	local object_hex_grid = game_map.object_hex_grid
+
 	if self.is_construction_site and not is_building then
 		seq_player:Error(self, "Cannot place construction site of a non building object!")
 		return
@@ -1714,7 +1773,7 @@ function SA_PlaceObject:Exec(seq_player, ip, seq, registers)
 					return
 				end
 				
-				if not terrain.IsPointInBounds(pos) then
+				if not terrain:IsPointInBounds(pos) then
 					seq_player:Error(self, string.format("Point in register %s is out of terrain bounds!", self.register_placement_pos))
 					return
 				end
@@ -1724,18 +1783,18 @@ function SA_PlaceObject:Exec(seq_player, ip, seq, registers)
 			q, r = WorldToHex(pos)
 			angle = 0
 			--todo : test more angles?
-			if self:TestPos(pos, q, r, angle, class_def, outline, interior) then
+			if self:TestPos(pos, map_id, q, r, angle, class_def, outline, interior) then
 				if self.exclude_class_name then
 					CleanupExcludedObjects(class_def, q, r, angle, outline, interior, {self.exclude_class_name})
 				end
 				if self.is_construction_site or is_building then
-					UICity:SetCableCascadeDeletion(false, "SA_PlaceObject")
-					obj = CityConstruction[UICity]:Place(self.class_name, HexGetNearestCenter(pos), angle * 60, self:GetParamTable(), not self.is_construction_site and is_building)
-					UICity:SetCableCascadeDeletion(true, "SA_PlaceObject")
+					city:SetCableCascadeDeletion(false, "SA_PlaceObject")
+					obj = GetDefaultConstructionController(city):Place(self.class_name, HexGetNearestCenter(pos), angle * 60, self:GetParamTable(), not self.is_construction_site and is_building)
+					city:SetCableCascadeDeletion(true, "SA_PlaceObject")
 				else
-					obj = PlaceObject(self.class_name, self:GetParamTable())
+					obj = PlaceObjectIn(self.class_name, map_id, self:GetParamTable())
 					if self.force_z_terrain_relative ~= 0 then
-						pos = pos:SetZ(terrain.GetHeight(pos) + self.force_z_terrain_relative)
+						pos = pos:SetZ(terrain:GetHeight(pos) + self.force_z_terrain_relative)
 					end
 					obj:SetPos(pos)
 				end
@@ -1744,18 +1803,18 @@ function SA_PlaceObject:Exec(seq_player, ip, seq, registers)
 			end
 		else
 			local rez, x, y
-			rez, x, y, q, r, angle = self:TryFindRandomPos(class_def, outline, interior)
+			rez, x, y, q, r, angle = self:TryFindRandomPos(class_def, map_id, outline, interior)
 			if rez then
 				if self.exclude_class_name then
 					CleanupExcludedObjects(class_def, q, r, angle, outline, interior, {self.exclude_class_name})
 				end
 				if self.is_construction_site or is_building then
-					UICity:SetCableCascadeDeletion(false, "SA_PlaceObject")
-					obj = CityConstruction[UICity]:Place(self.class_name, point(x, y), angle * 60, self:GetParamTable(), not self.is_construction_site and is_building)
-					UICity:SetCableCascadeDeletion(true, "SA_PlaceObject")
+					city:SetCableCascadeDeletion(false, "SA_PlaceObject")
+					obj = GetDefaultConstructionController(city):Place(self.class_name, point(x, y), angle * 60, self:GetParamTable(), not self.is_construction_site and is_building)
+					city:SetCableCascadeDeletion(true, "SA_PlaceObject")
 				else
-					obj = PlaceObject(self.class_name, self:GetParamTable())
-					obj:SetPos(point(x, y, self.force_z_terrain_relative ~= 0 and (terrain.GetHeight(x, y) + self.force_z_terrain_relative) or nil))
+					obj = PlaceObjectIn(self.class_name, map_id, self:GetParamTable())
+					obj:SetPos(point(x, y, self.force_z_terrain_relative ~= 0 and (terrain:GetHeight(x, y) + self.force_z_terrain_relative) or nil))
 					obj:SetAngle(angle * 60)
 				end
 			else
@@ -1767,13 +1826,13 @@ function SA_PlaceObject:Exec(seq_player, ip, seq, registers)
 	if not self.skip_cable_cleanup and obj and IsKindOf(obj, "GridObject") and not
 		(self.is_construction_site or is_building) then --clean cables n such if we are not placing a building/constr site
 		--check for cables and such
-		UICity:SetCableCascadeDeletion(false, "SA_PlaceObject")
+		city:SetCableCascadeDeletion(false, "SA_PlaceObject")
 		local dir = HexAngleToDirection(angle * 60)
 		for i = 1, 2 do
 			local shape_data = i == 1 and outline or interior
 			for _, shape_pt in ipairs(shape_data) do
 				local x, y = HexRotate(shape_pt:x(), shape_pt:y(), dir)
-				local remove = HexGridGetObjects(ObjectGrid, x + q, y + r, "DoesNotObstructConstruction", nil, function(o)
+				local remove = object_hex_grid:GetObjects(x + q, y + r, "DoesNotObstructConstruction", nil, function(o)
 					return not IsKindOfClasses(o, "LifeSupportGridElement", "DomeInterior")
 				end)
 				for j=1,#remove do
@@ -1782,10 +1841,9 @@ function SA_PlaceObject:Exec(seq_player, ip, seq, registers)
 			end
 		end
 			
-		UICity:SetCableCascadeDeletion(true, "SA_PlaceObject")
+		city:SetCableCascadeDeletion(true, "SA_PlaceObject")
 	end
-	
-	
+
 	if self.store_pos ~= "" and obj then
 		if self.store_pos_spot_name ~= "" then
 			if obj:HasSpot(self.store_pos_spot_name) then
@@ -1814,7 +1872,7 @@ function SA_PlaceObject:Exec(seq_player, ip, seq, registers)
 		end
 	end
 	
-	if self.show_me_spawned_obj and obj then
+	if Platform.developer and self.show_me_spawned_obj and obj then
 		ShowMe(obj)
 	end
 end
@@ -1861,7 +1919,7 @@ function SA_DestroyObjects:ReturnResources(obj)
 end
 
 function SA_DestroyObjects:Exec(seq_player, ip, seq, registers)
-	local city = UICity
+	local city = Cities[seq_player.map_id]
 	local objects = self:GatherObjects(seq_player, ip, seq, registers)
 	local fx_func = self.fx_action ~= "" and self.fx_moment ~= "" and SA_DestroyObjects.PlayFX or empty_func
 	
@@ -1909,8 +1967,8 @@ local function obj_label_combo()
 	return t
 end
 
-function IsInRangeOfLabel(obj, label_name, radius, ...)
-	local label = IsValid(obj) and UICity.labels[label_name] or empty_table
+function IsInRangeOfLabel(city, obj, label_name, radius, ...)
+	local label = IsValid(obj) and city.labels[label_name] or empty_table
 	if type(radius) == "string" then
 		for j = 1, #label do
 			local el = label[j]
@@ -1945,7 +2003,7 @@ DefineClass.SA_PickRandomNoDomeBuilding = {
 }
 
 function SA_PickRandomNoDomeBuilding:GatherObjects(seq_player, ip, seq, registers)
-	local city = UICity
+	local city = Cities[seq_player.map_id]
 	local objects
 
 	if self.obj_label then
@@ -2005,7 +2063,9 @@ function SA_PickRandomObject:ShortDescription()
 end
 
 function SA_PickRandomObject:GatherObjects(seq_player, ip, seq, registers)
-	local city = UICity
+	local map_id = seq_player.map_id
+	local city = Cities[map_id]
+
 	local objects
 	local copy = true
 
@@ -2024,7 +2084,8 @@ function SA_PickRandomObject:GatherObjects(seq_player, ip, seq, registers)
 			copy = false
 		end
 	elseif self.obj_class then
-		objects = MapGet(true, self.obj_class)
+		local realm = GetRealmByID(map_id)
+		objects = realm:MapGet(true, self.obj_class)
 		copy = false
 	else
 		objects = registers[self.obj_reg] or empty_table
@@ -2047,8 +2108,8 @@ function SA_PickRandomObject:GatherObjects(seq_player, ip, seq, registers)
 end
 
 function SA_PickRandomObject:PickObject(objects)
-	local obj, idx = UICity:TableRand(objects)
-	if not idx then
+	local obj, idx = SessionRandom:TableRand(objects)
+	if not obj then
 		return
 	end
 	table.remove(objects, idx)
@@ -2057,7 +2118,7 @@ end
 
 function SA_PickRandomObject:Exec(seq_player, ip, seq, registers)
 	local objects = self:GatherObjects(seq_player, ip, seq, registers)
-	registers[self.store_obj] = self:PickObject(objects)
+	registers[self.store_obj] = self:PickObject(objects or empty_table)
 end
 
 ----
@@ -2086,7 +2147,8 @@ DefineClass.SA_SpawnObjectAt = {
 
 function SA_SpawnObjectAt:WarningsCheck(seq_player, seq, registers)
 	if not self.use_random_pos then
-		if self.register_placement_pos == "" and self.attach_to_obj_in_reg == "" and not terrain.IsPointInBounds(self.placement_pos) then
+		local terrain = GetTerrainByID(seq_player.map_id)
+		if self.register_placement_pos == "" and self.attach_to_obj_in_reg == "" and not terrain:IsPointInBounds(self.placement_pos) then
 			seq_player:Error(self, "Specified placement pos outside of terrain bounds!")
 		end
 	end
@@ -2097,8 +2159,9 @@ function SA_SpawnObjectAt:Exec(seq_player, ip, seq, registers)
 	local class_def = g_Classes["SubsurfaceAnomaly"]
 	local outline, interior = GetEntityHexShapes(class_def:GetEntity())
 	
+	local map_id = seq_player.map_id
 	if self.attach_to_obj_in_reg == "" then --if we are going to attach, we don't need a pos.
-		if not self.use_random_pos then			
+		if not self.use_random_pos then
 			if self.register_placement_pos ~= "" then
 				pos = registers[self.register_placement_pos]
 				if not pos then
@@ -2111,7 +2174,8 @@ function SA_SpawnObjectAt:Exec(seq_player, ip, seq, registers)
 					return
 				end
 				
-				if not terrain.IsPointInBounds(pos) then
+				local terrain = GetTerrainByID(map_id)
+				if not terrain:IsPointInBounds(pos) then
 					seq_player:Error(self, string.format("Point in register %s is out of terrain bounds!", self.register_placement_pos))
 					return
 				end
@@ -2120,11 +2184,13 @@ function SA_SpawnObjectAt:Exec(seq_player, ip, seq, registers)
 			end
 			q, r = WorldToHex(pos)
 			angle = 0		
-			pos_test_result = self:TestPos(pos, q, r, angle, class_def, outline, interior)
+			pos_test_result = self:TestPos(pos, map_id, q, r, angle, class_def, outline, interior)
 		else
 			local x, y
-			pos_test_result, x, y, q, r, angle = self:TryFindRandomPos(class_def, outline, interior)
-			pos = point(x, y)
+			pos_test_result, x, y, q, r, angle = self:TryFindRandomPos(class_def, map_id, outline, interior)
+			if pos_test_result then
+				pos = point(x, y)
+			end
 		end
 	else
 		attach_to_obj = registers[self.attach_to_obj_in_reg]
@@ -2136,7 +2202,7 @@ function SA_SpawnObjectAt:Exec(seq_player, ip, seq, registers)
 		pos_test_result = true
 	end
 	if pos_test_result then
-		obj = self:SpawnObject()
+		obj = self:SpawnObject(map_id)
 		if obj then
 			if attach_to_obj then
 				local spot_idx = self.attach_obj_spot ~= "" and attach_to_obj:GetSpotBeginIndex(self.attach_obj_spot) or nil
@@ -2164,12 +2230,12 @@ function SA_SpawnObjectAt:Exec(seq_player, ip, seq, registers)
 		registers[reg][#registers[reg]+1] = obj
 	end
 	
-	if self.show_me_spawned_obj and obj then
+	if Platform.developer and self.show_me_spawned_obj and obj then
 		ShowMe(obj)
 	end
 end
 
-function SA_SpawnObjectAt:SpawnObject()
+function SA_SpawnObjectAt:SpawnObject(map_id)
 end
 
 ----
@@ -2187,6 +2253,10 @@ DefineClass.SA_SpawnAnomaly = {
 		{ category = "Anomaly", name = T(3775, "Sequence List"), 				id = "sequence_list", default = "",    editor = "dropdownlist", items = function() return table.map(DataInstances.Scenario, "name") end, },
 		{ category = "Anomaly", name = T(5, "Sequence"),                id = "sequence", editor = "dropdownlist", items = function(self) return self.sequence_list == "" and {} or table.map(DataInstances.Scenario[self.sequence_list], "name") end, default = "", help = "Sequence to start when the anomaly is scanned" },
 		{ category = "Anomaly", name = T(8696, "Expiration Time"),                id = "expiration_time", editor = "number", default = 0, scale = const.HourDuration, help = "If > 0 the anomaly will expire and disappear in this many hours." },
+
+		-- Override default to make sure anomalies do not overlap each other
+		{ id = "check_terran_deposit", name = T(3742, "Check Terrain Deposit"), editor = "bool", default = true},
+		{ id = "check_subsurface_deposit", name = T(13833, "Check Subsurface Deposit"), editor = "bool", default = true},
 	},
 	
 	Menu = "Gameplay",
@@ -2198,8 +2268,8 @@ function SA_SpawnAnomaly:ShortDescription()
 	return string.format("Place anomaly %s at %s%s",_InternalTranslate(self.display_name), SA_PlaceObject.GetPosStr(self), SA_PlaceObject.GetChecksStr(self))
 end
 
-function SA_SpawnAnomaly:SpawnObject()
-	return PlaceAnomaly{
+function SA_SpawnAnomaly:SpawnObject(map_id)
+	return PlaceAnomaly({
 		display_name = self.display_name ~= "" and self.display_name or nil,
 		description = self.description ~= "" and self.description or nil,
 		tech_action = self.is_breakthrough and "breakthrough",
@@ -2207,7 +2277,7 @@ function SA_SpawnAnomaly:SpawnObject()
 		sequence_list = self.sequence_list == "" and seq_player.seq_list.name or self.sequence_list,
 		expiration_time = self.expiration_time,
 		revealed = true,
-	}
+	}, map_id)
 end
 
 ----
@@ -2360,18 +2430,17 @@ end
 
 function SA_WaitMarsTime:StopWait()
 	if self.wait_type == "Specific Hour" then
-		return self.target_hour == UICity.hour or (GameTime() - self.meta.start_time) >= const.DayDuration
+		return self.target_hour == UIColony.hour or (GameTime() - self.meta.start_time) >= const.DayDuration
 	elseif self.wait_type == "Specific Sol" then
-		return self.target_sol <= UICity.day
+		return self.target_sol <= UIColony.day
 	elseif self.wait_type == "Daytime" then
 		if self.wait_subtype == "Next Morning" or self.wait_subtype == "Next Evening" then
-			return self.target_hour == UICity.hour or (GameTime() - self.meta.start_time) >= const.DayDuration
+			return self.target_hour == UIColony.hour or (GameTime() - self.meta.start_time) >= const.DayDuration
 		else
 			return CurrentWorkshift == self.target_workshift or (GameTime() - self.meta.start_time) >= const.DayDuration	
 		end
 	end
-	
-	
+
 	return false
 end
 
@@ -2422,6 +2491,7 @@ function ReplaceAllBuildingsOnMap()
 					local a = bld:GetAngle()
 					local p = bld:GetPos()
 					local t = bld.template_name
+					local map_id = bld:GetMapID()
 					local perma = bld:GetGameFlags(const.gofPermanent) ~= 0
 					
 					local piles = bld:GetAttaches("ResourceStockpileBase")
@@ -2432,7 +2502,7 @@ function ReplaceAllBuildingsOnMap()
 					DoneObject(bld)
 					
 					
-					bld = PlaceBuilding(t)
+					bld = PlaceBuildingIn(t, map_id)
 					bld:SetPos(p)
 					bld:SetAngle(a)
 					if perma then
@@ -2448,6 +2518,7 @@ function ReplaceAllBuildingsOnMap()
 			local a = bld:GetAngle()
 			local p = bld:GetPos()
 			local t = bld.template_name
+			local map_id = bld:GetMapID()
 			local perma = bld:GetGameFlags(const.gofPermanent) ~= 0
 			
 			for i = 1, #bld.drones do --kill all drones
@@ -2456,7 +2527,7 @@ function ReplaceAllBuildingsOnMap()
 			
 			DoneObject(bld)
 			
-			bld = PlaceBuilding(t)
+			bld = PlaceBuildingIn(t, map_id)
 			bld:SetPos(p)
 			bld:SetAngle(a)
 			if perma then
@@ -2474,13 +2545,17 @@ DefineClass.ScenarioPosMarker = {
 
 function ScenarioPosMarker:GameInit()
 	if self.custom_label then
-		UICity:AddToLabel(self.custom_label, self)
+		local map_id = self:GetMapID()
+		local city = Cities[map_id]
+		city:AddToLabel(self.custom_label, self)
 	end
 end
 
 function ScenarioPosMarker:Done()
 	if self.custom_label then
-		UICity:RemoveFromLabel(self.custom_label, self)
+		local map_id = self:GetMapID()
+		local city = Cities[map_id]
+		city:RemoveFromLabel(self.custom_label, self)
 	end
 end
 
@@ -2534,9 +2609,7 @@ function SA_CallTradeRocket:ShortDescription()
 	return string.format("Call trade rocket %s", self.rocket_id)
 end
 
-function SA_CallTradeRocket:Exec(seq_player, ip, seq, registers)
-	local city = UICity
-	
+function SA_CallTradeRocket:Exec(seq_player, ip, seq, registers)	
 	if self.rocket_id == ""  then
 		seq_player:Error(self, "Unspecified object!")
 		return
@@ -2557,7 +2630,10 @@ function SA_CallTradeRocket:Exec(seq_player, ip, seq, registers)
 		return
 	end
 	
-	local rocket = PlaceBuilding("TradeRocket", {city = city, custom_id = self.rocket_id, export_goods = trade_request})	
+	local rocket = PlaceBuildingIn("TradeRocket", MainMapID, {
+		custom_id = self.rocket_id,
+		export_goods = trade_request,
+	})	
 	
 	local cargo = false
 	if self.display_name ~= "" then
@@ -2617,7 +2693,7 @@ function SA_WaitTradeRocket:StopWait()
 		return true -- nothing to wait
 	end
 	
-	local rockets = UICity.labels.TradeRocket or empty_table	
+	local rockets = MainCity.labels.TradeRocket or empty_table
 	local wait_idx = table.find(RocketWaitStatuses, self.wait_status)
 	
 	for _, rocket in ipairs(rockets) do
@@ -2644,11 +2720,11 @@ DefineClass.SA_CallRefugeeRocket = {
 		{ id = "timeout", name = T(8457, "Passenger Orbit Lifetime"), editor = "number", default = -1*const.HourDuration, scale = const.HourDuration, },
 		{ id = "num_refugees", name = T(8083, "Num Refugees"), editor = "number", min = 1, default = 10},
 		{ id = "refugee",  name = T(8084, "Add Refugee Trait"), editor = "bool", default = true },
-		{ id = "trait1", name = T(8085, "Trait 1"), editor = "dropdownlist", items = function() return BaseTraitsCombo(UICity, true) end, default = "", },
+		{ id = "trait1", name = T(8085, "Trait 1"), editor = "dropdownlist", items = function() return BaseTraitsCombo(true) end, default = "", },
 		{ id = "chance1", name = T(8086, "Trait 1 chance"), editor = "number", min = 0, max = 100, default = 0 },
-		{ id = "trait2", name = T(8087, "Trait 2"), editor = "dropdownlist", items = function() return BaseTraitsCombo(UICity, true) end, default = "", },
+		{ id = "trait2", name = T(8087, "Trait 2"), editor = "dropdownlist", items = function() return BaseTraitsCombo(true) end, default = "", },
 		{ id = "chance2", name = T(8088, "Trait 2 chance"), editor = "number", min = 0, max = 100, default = 0 },
-		{ id = "trait3", name = T(8089, "Trait 3"), editor = "dropdownlist", items = function() return BaseTraitsCombo(UICity, true) end, default = "", },
+		{ id = "trait3", name = T(8089, "Trait 3"), editor = "dropdownlist", items = function() return BaseTraitsCombo(true) end, default = "", },
 		{ id = "chance3", name = T(8090, "Trait 3 chance"), editor = "number", min = 0, max = 100, default = 0 },
 	},
 	
@@ -2669,14 +2745,17 @@ function SA_CallRefugeeRocket:ShortDescription()
 end
 
 function SA_CallRefugeeRocket:Exec(seq_player, ip, seq, registers)
-	local city = UICity
+	local map_id = seq_player.map_id
+	local city = Cities[map_id]
 	
 	if self.rocket_id == ""  then
 		seq_player:Error(self, "Unspecified object!")
 		return
 	end
 		
-	local rocket = PlaceBuilding("RefugeeRocket", {city = city, custom_id = self.rocket_id})
+	local rocket = PlaceBuildingIn("RefugeeRocket", map_id, {
+		custom_id = self.rocket_id,
+	})
 	
 	local cargo = {}
 	if self.display_name ~= "" then
@@ -2707,7 +2786,7 @@ function SA_CallRefugeeRocket:Exec(seq_player, ip, seq, registers)
 		for i = 1, 3 do
 			local chance = self["chance"..i]
 			local trait = self["trait"..i]
-			if trait == "" or UICity:Random(100) >= chance then
+			if trait == "" or SessionRandom:Random(100) >= chance then
 				trait = GetRandomTrait(data[j].traits, {}, {}, nil, "base") 			
 			end
 			data[j].traits[trait] = true				
@@ -2748,7 +2827,7 @@ function SA_WaitRefugeeRocket:StopWait()
 		return true -- nothing to wait
 	end
 	
-	local rockets = UICity.labels.RefugeeRocket or empty_table		
+	local rockets = MainCity.labels.RefugeeRocket or empty_table
 	for _, rocket in ipairs(rockets) do
 		if rocket.custom_id == self.rocket_id then
 			return false
@@ -2786,20 +2865,21 @@ function SA_LabelModifier:WarningsCheck(seq_player, seq, registers)
 	end
 end
 
-function SA_LabelModifier:Exec(player, ip, seq, registers)
+function SA_LabelModifier:Exec(seq_player, ip, seq, registers)
 	local label = self.target_label:trim_spaces()
 	local property = self.property:trim_spaces()
 	if property == "" or label == "" then
 		return
 	end
 	-- label modifications are referenced by ID only
-	local id = self.id ~= "" and self.id or string.format("%s.%s", player.seq_list.name, property)
-	UICity:SetLabelModifier(label, id, false)
+	local city = Cities[seq_player.map_id]
+	local id = self.id ~= "" and self.id or string.format("%s.%s", seq_player.seq_list.name, property)
+	city:SetLabelModifier(label, id, false)
 	if self.action == "remove" or self.amount == 0 and self.percent == 0 then
 		return
 	end
 	local scale = ModifiablePropScale[property] or 1
-	UICity:SetLabelModifier(label, id, Modifier:new{
+	city:SetLabelModifier(label, id, Modifier:new{
 		prop = property,
 		amount = self.amount * scale,
 		percent = self.percent,

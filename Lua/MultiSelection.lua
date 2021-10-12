@@ -56,7 +56,7 @@ function GatherObjectsInScreenRect(start_pt, end_pt, obj, selection_class)
 	bottom = bottom + max_step
 	right = right + max_step
 	
-	local rect = box(left, top, terrain.GetHeight(left, top), right, bottom, terrain.GetHeight(right, bottom))
+	local rect = box(left, top, GetActiveTerrain():GetHeight(left, top), right, bottom, GetActiveTerrain():GetHeight(right, bottom))
 	local function IsInsideTrapeze(o)
 		local pt = o:GetVisualPos()
 		return
@@ -230,7 +230,7 @@ function MultiSelectionWrapper:GameInit()
 		mean_y = mean_y + y / cnt
 	end
 	
-	local z = terrain.GetHeight(mean_x, mean_y)
+	local z = GetActiveTerrain():GetHeight(mean_x, mean_y)
 	self:SetPos(mean_x, mean_y, z)
 end
 
@@ -523,7 +523,11 @@ function MultiSelectionWrapper:ToggleReassignInteractionMode_Update(button)
 	button:SetIcon(to_mode and "UI/Icons/IPButtons/reassign.tga" or "UI/Icons/IPButtons/cancel.tga")
 	local tutorial2_enable = not g_Tutorial or ((g_Tutorial.Id == "Tutorial2") and g_Tutorial.DisableReassignButtons and AreAllUnassignedDronesSelected()) or false
 	button:SetEnabled(self:CanBeControlled() and tutorial2_enable)
-	button:SetRolloverText(T(4428, --[[ toggle reassign mode (multiselect) ]] "Assign to target Hub, Commander or Rocket."))
+	if IsDlcAccessible("picard") then
+		button:SetRolloverText(T(13731, --[[ toggle reassign mode (multiselect) ]] "Assign to target Hub, Commander, Rocket or Elevator."))
+	else
+		button:SetRolloverText(T(4428, --[[ toggle reassign mode (multiselect) ]] "Assign to target Hub, Commander or Rocket."))
+	end
 	local shortcuts = GetShortcuts("actionReassignDrone")
 	local hint = ""
 	if shortcuts and (shortcuts[1] or shortcuts[2]) then
@@ -715,6 +719,9 @@ function MultiSelectionWrapper:ToggleWorking_Update(button)
 	end
 end
 
+function MultiSelectionWrapper:GetCursor()
+	return self:CanBeControlled() and const.DefaultRoverCursor or const.DefaultMouseCursor
+end
 
 
 OnMsg.GamepadUIStyleChanged = StopGamepadMultiselectionThread

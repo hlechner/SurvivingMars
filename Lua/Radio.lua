@@ -27,13 +27,13 @@ function PlayTracks(count, track_list, index, silence)
 	return index
 end
 
-local function RadioStationDefaultPlay(station)
+function GetSortedSoundFiles(folder)
 	local blurbs = {}
 	local talks = {}
 	local commercials = {}
 	local music = {}
 	-- list
-	local err, files = AsyncListFiles(station:GetTracksFolder(), "*")
+	local err, files = AsyncListFiles(folder, "*")
 	table.sort(files)
 	local max_blurb, max_talk = 0, 0
 	for _, file in ipairs(files) do
@@ -71,6 +71,13 @@ local function RadioStationDefaultPlay(station)
 	table.permute(music)
 	table.permute(commercials)
 	table.permute(talks)
+	
+	return blurbs, talks, commercials, music
+
+end
+
+function RadioStationDefaultPlay(station)
+	local blurbs, talks, commercials, music = GetSortedSoundFiles(station:GetTracksFolder())
 	
 	PlayFX("RadioStationStarting")
 	
@@ -112,26 +119,30 @@ if FirstLoad then
 	ActiveRadioStationThread = false
 end
 
+function ChangeRadioStation(station)
+	EndRadioSession(ActiveRadioStation)
+	ActiveRadioStation = station
+	DeleteThread(ActiveRadioStationThread)
+	ActiveRadioStationThread = CreateRealTimeThread(function()
+		SetMusicPlaylist("")
+		MusicPlayTrack(false, true)
+		ObjModified(Music)
+		local station = RadioStationPresets[station]
+		if not station then
+			station = RadioStationPresets.NoRadio
+		end
+		if station then
+			local play_func = station.play or RadioStationDefaultPlay
+			play_func(station)
+		end
+		ActiveRadioStationThread = false
+	end)
+end
+
 function StartRadioStation(station)
 	station = station or false
-	if ActiveRadioStation ~= station and mapdata.GameLogic then
-		EndRadioSession(ActiveRadioStation)
-		ActiveRadioStation = station
-		DeleteThread(ActiveRadioStationThread)
-		ActiveRadioStationThread = CreateRealTimeThread(function()
-			SetMusicPlaylist("")
-			MusicPlayTrack(false, true)
-			ObjModified(Music)
-			local station = RadioStationPresets[station]
-			if not station then
-				station = RadioStationPresets.NoRadio
-			end
-			if station then
-				local play_func = station.play or RadioStationDefaultPlay
-				play_func(station)
-			end
-			ActiveRadioStationThread = false
-		end)
+	if ActiveRadioStation ~= station and ActiveMapData.GameLogic and not GeneratingMap then
+		 ChangeRadioStation(station)
 	end
 end
 
@@ -141,12 +152,16 @@ function StopRadioStation()
 	ActiveRadioStationThread = false
 end
 
+function GetStoredRadioStation()
+	return AccountStorage and AccountStorage.Options and AccountStorage.Options.RadioStation or "SurvivingMars"
+end
+
 function OnMsg.LoadGame()
-	StartRadioStation(AccountStorage and AccountStorage.Options and AccountStorage.Options.RadioStation or "SurvivingMars")
+	StartRadioStation(GetStoredRadioStation())
 end
 
 function OnMsg.NewMapLoaded()
-	StartRadioStation(AccountStorage and AccountStorage.Options and AccountStorage.Options.RadioStation or "SurvivingMars")
+	StartRadioStation(GetStoredRadioStation())
 end
 
 function OnMsg.ClassesBuilt()

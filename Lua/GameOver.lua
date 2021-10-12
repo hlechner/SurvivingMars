@@ -11,7 +11,13 @@ function OnMsg.ColonistLeavingMars(colonist)
 end
 
 function IsGameOver(last_colonist)
-	if #UICity.labels.Colonist == 0 or #UICity.labels.Colonist == 1 and UICity.labels.Colonist[1] == last_colonist then
+	if #UIColony.city_labels.labels.Colonist == 0 or #UIColony.city_labels.labels.Colonist == 1 and UIColony.city_labels.labels.Colonist[1] == last_colonist then
+		-- Check if any rockets are currently transporting colonists to asteroids (or back to mars)
+		for _, rocket in ipairs(UIColony.city_labels.labels.AllRockets) do
+			if rocket:IsKindOf("LanderRocketBase") and #(rocket.crew or empty_table) > 0 then
+				return false
+			end
+		end
 		return true
 	end
 	return false

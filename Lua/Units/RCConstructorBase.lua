@@ -53,7 +53,8 @@ function RCConstructorBase:OnWaitingResourcesTick(construction, should_do_anothe
 end
 
 function RCConstructorBase:FindResourceSource(res, qamount)
-	return MapFindNearest(self, self, self.resource_search_radius, "ResourceStockpile", "ResourcePile", "SurfaceDeposit", "StorageDepot", ResourceSources_func, res, qamount, self:GetUnreachableObjectsTable())
+	local realm = GetRealm(self)
+	return realm:MapFindNearest(self, self, self.resource_search_radius, "ResourceStockpile", "ResourcePile", "SurfaceDeposit", "StorageDepot", ResourceSources_func, res, qamount, self:GetUnreachableObjectsTable())
 end
 
 function RCConstructorBase:GatheringResourcesHook()
@@ -163,7 +164,7 @@ function RCConstructorBase:Construct(construction)
 	self:DoneGatheringResourcesHook()
 	
 	-- approach the construction
-	if not construction:DroneApproach(self, "construct") then
+	if IsValid(construction) and not construction:DroneApproach(self, "construct") then
 		self:DoneApproachHook()
 		self:PopAndCallDestructor()
 		return

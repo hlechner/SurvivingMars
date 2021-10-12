@@ -4,7 +4,7 @@ PlaceObj('XTemplate', {
 	group = "Infopanel Sections",
 	id = "sectionStorage",
 	PlaceObj('XTemplateTemplate', {
-		'__condition', function (parent, context) return (IsKindOf(context, "UniversalStorageDepot") or IsKindOf(context, "MechanizedDepot")) and not context:IsKindOf("SupplyRocket") and not IsKindOf(context, "SpaceElevator") end,
+		'__condition', function (parent, context) return (IsKindOf(context, "UniversalStorageDepot") or IsKindOf(context, "MechanizedDepot")) and not context:IsKindOf("RocketBase") and not IsKindOf(context, "SpaceElevator") end,
 		'__template', "InfopanelSection",
 		'RolloverText', T(10461, --[[XTemplate sectionStorage RolloverText]] "Drones and Shuttles will attempt to stockpile at least <DesiredAmountUI> of each resources stored here."),
 		'RolloverHint', T(116367034467, --[[XTemplate sectionStorage RolloverHint]] "<left_click> Set Desired Amount <newline><em>Ctrl + <left_click></em> Set Desired Amount in all <display_name_pl>"),
@@ -18,7 +18,7 @@ PlaceObj('XTemplate', {
 		}),
 		}),
 	PlaceObj('XTemplateGroup', {
-		'__condition', function (parent, context) return (IsKindOf(context, "UniversalStorageDepot") or IsKindOf(context, "MechanizedDepot")) and not context:IsKindOf("SupplyRocket") and not IsKindOf(context, "SpaceElevator") end,
+		'__condition', function (parent, context) return (IsKindOf(context, "UniversalStorageDepot") or IsKindOf(context, "MechanizedDepot")) and not context:IsKindOf("RocketBase") and not IsKindOf(context, "SpaceElevator") end,
 	}, {
 		PlaceObj('XTemplateTemplate', {
 			'__condition', function (parent, context) return context:DoesAcceptResource("Metals") or context:DoesAcceptResource("Concrete") or context:DoesAcceptResource("Food") or context:DoesAcceptResource("PreciousMetals") end,
@@ -70,14 +70,14 @@ PlaceObj('XTemplate', {
 			'TitleHAlign', "stretch",
 		}),
 		PlaceObj('XTemplateTemplate', {
-			'__context', function (parent, context) return SubContext(context, {res = "Electronics"}) end,
+			'__context', function (parent, context) return SubContext(context, {res = "MachineParts"}) end,
 			'__template', "sectionStorageRow",
 			'Title', T(615073837286, --[[XTemplate sectionStorage Title]] "<resource(res)><right><resource(GetStoredAmount(res),GetMaxStorage(res),res)>"),
 			'Icon', "UI/Icons/Sections/workshifts_active.tga",
 			'TitleHAlign', "stretch",
 		}),
 		PlaceObj('XTemplateTemplate', {
-			'__context', function (parent, context) return SubContext(context, {res = "MachineParts"}) end,
+			'__context', function (parent, context) return SubContext(context, {res = "Electronics"}) end,
 			'__template', "sectionStorageRow",
 			'Title', T(615073837286, --[[XTemplate sectionStorage Title]] "<resource(res)><right><resource(GetStoredAmount(res),GetMaxStorage(res),res)>"),
 			'Icon', "UI/Icons/Sections/workshifts_active.tga",
@@ -101,11 +101,25 @@ PlaceObj('XTemplate', {
 			'__condition', function (parent, context) return context:DoesAcceptResource("Seeds") end,
 			'__template', "InfopanelSection",
 			'RelativeFocusOrder', "",
-			'Title', T(11719, --[[XTemplate sectionStorage Title]] "Terraforming"),
+			'Title', T(12809, --[[XTemplate sectionStorage Title]] "Terraforming"),
 			'Icon', "",
 		}),
 		PlaceObj('XTemplateTemplate', {
 			'__context', function (parent, context) return SubContext(context, {res = "Seeds"}) end,
+			'__template', "sectionStorageRow",
+			'Title', T(615073837286, --[[XTemplate sectionStorage Title]] "<resource(res)><right><resource(GetStoredAmount(res),GetMaxStorage(res),res)>"),
+			'Icon', "UI/Icons/Sections/workshifts_active.tga",
+			'TitleHAlign', "stretch",
+		}),
+		PlaceObj('XTemplateTemplate', {
+			'__condition', function (parent, context) return context:DoesAcceptResource("PreciousMinerals") end,
+			'__template', "InfopanelSection",
+			'RelativeFocusOrder', "",
+			'Title', T(583134961529, --[[XTemplate sectionStorage Title]] "Recon & Expansion"),
+			'Icon', "",
+		}),
+		PlaceObj('XTemplateTemplate', {
+			'__context', function (parent, context) return SubContext(context, {res = "PreciousMinerals"}) end,
 			'__template', "sectionStorageRow",
 			'Title', T(615073837286, --[[XTemplate sectionStorage Title]] "<resource(res)><right><resource(GetStoredAmount(res),GetMaxStorage(res),res)>"),
 			'Icon', "UI/Icons/Sections/workshifts_active.tga",

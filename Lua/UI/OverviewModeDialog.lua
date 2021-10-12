@@ -16,7 +16,15 @@ DefineClass.OverviewModeDialog = {
 	scan_mode = false,
 	dpad_last_sector_change = 0, --used to fix jumping of the sector selection
 	rollover_context_cache = false,
+	map_id_owner = false,
 }
+
+function SavegameFixups.OverviewModeDialog_AssignMapIdOwner()
+	local igi = GetInGameInterface()
+	if igi and igi.mode == "overview" and not igi.map_id_owner then
+		igi.map_id_owner = ActiveMapID
+	end
+end
 
 function OverviewModeDialog:GetRolloverTemplate()
 	return "PinRollover"
@@ -26,19 +34,23 @@ function OverviewModeDialog:GetRolloverText()
 	return T{""}
 end
 
-function CalcOverviewCameraPos(angle)
+function CalcOverviewCameraPos(angle, map_id)
+	map_id = map_id or ActiveMapID
+	local map_data = ActiveMaps[map_id]
+
 	if not angle then
 		local igi = GetInGameInterface()
 		angle = igi and igi.mode == "overview" and igi.mode_dialog and igi.mode_dialog.overview_angle or 45*60
 	end
 
-	assert(terrain.GetMapWidth() == terrain.GetMapHeight()) -- assumed for simplicity and confirmed by designer
-	local size = terrain.GetMapWidth()
+	local terrain = GetTerrainByID(map_id)
+	assert(terrain:GetMapWidth() == terrain:GetMapHeight()) -- assumed for simplicity and confirmed by designer
+	local size = terrain:GetMapWidth()
 	local center = point(size/2, size/2, 0)
 
-	local ov_pos = (mapdata.OverviewPos ~= InvalidPos()) and mapdata.OverviewPos or const.OverviewCamPos
-	local ov_lookat = (mapdata.OverviewLookAt ~= InvalidPos()) and mapdata.OverviewLookAt or const.OverviewCamLookAt
-	local ov_angle = mapdata.OverviewOrientation * 60
+	local ov_pos = (map_data.OverviewPos ~= InvalidPos()) and map_data.OverviewPos or const.OverviewCamPos
+	local ov_lookat = (map_data.OverviewLookAt ~= InvalidPos()) and map_data.OverviewLookAt or const.OverviewCamLookAt
+	local ov_angle = map_data.OverviewOrientation * 60
 	
 	local lookat = MulDivRound(ov_lookat, size, 100) - center
 	local pos = MulDivRound(ov_pos, size, 100) - center
@@ -54,7 +66,7 @@ function CalcOverviewCameraPos(angle)
 end
 
 function CalcOverviewCurtainsSize(pos, lookat, screen_w, screen_h)
-	local mapx, mapy = terrain.GetMapSize()
+	local mapx, mapy = GetActiveTerrain():GetMapSize()
 	local border = 50*guim
 	local p = { GameToScreenFromView(pos, lookat, screen_w, screen_h,
 		point(border,border):SetTerrainZ(),
@@ -103,61 +115,119 @@ function OnMsg.DoneMap()
 	ShowOverviewMapCurtains(false, true)
 end
 
-function OverviewModeDialog:Init()
-	-- transition camera from current to overview
-
-	CameraTransitionThread = CreateMapRealTimeThread(function(self, prev_thread)
-		if IsValidThread(prev_thread) then
-			WaitMsg("CameraTransitionEnd")
+local function HUDSetToggledOverview()
+	local hud = GetHUD()
+	if hud then
+		if hud:HasMember("idOverview") then
+			local is_toggled = hud.idOverview:GetToggled()
+			hud.idOverview:SetToggled(not is_toggled)
 		end
+	end
+end
 
-		local old_pos = cameraRTS.GetEye()
-		local old_lookat = cameraRTS.GetLookAt()
-		local old_eye = old_lookat + MulDivRound(old_pos - old_lookat, 1000, cameraRTS.GetZoom())
-		self.saved_camera = { eye = old_eye, lookat = old_lookat }
+function OverviewModeDialog:EnsureSectorObjPresent()
+	if IsValid(self.sector_obj) and self.sector_obj:GetMapID() ~= ActiveMapID then
+		DoneObject(self.sector_obj)
+	end
+	if not IsValid(self.sector_obj) then
+		self.sector_obj = PlaceObjectIn("SectorRadius", ActiveMapID)
+		self.sector_obj:ClearEnumFlags(const.efVisible)
+		DeleteOnLoadSavegame(self.sector_obj)
+	end
+end
+
+local function GetCurrentCamera(transition_time)
+	local pos, lookat
+	if transition_time > 0 then
+		pos = cameraRTS.GetEye()
+		lookat = cameraRTS.GetLookAt()
+	else
+		pos, lookat = cameraRTS.GetPosLookAt()
+	end
+	return pos, lookat
+end
+
+local function StoreView(self, transition_time)
+	assert(self.map_id_owner == ActiveMapID, "OverviewModeDialog is supposed to be used on single map")
+
+	local old_pos, old_lookat = GetCurrentCamera(transition_time)
+	local old_eye = old_lookat + MulDivRound(old_pos - old_lookat, 1000, cameraRTS.GetZoom())
+	self.saved_camera = { eye = old_eye, lookat = old_lookat }
+	self.overview_angle = 45*60
+	if transition_time > 0 then
 		self.saved_dist = old_eye:Dist(old_lookat)
 		self.saved_angle = asin(MulDivRound(4096, old_eye:z() - old_lookat:z(), self.saved_dist))
+	else
+		self.saved_dist = nil
+		self.saved_angle = nil
+	end
 
-		if not (Platform.developer and IsEditorActive()) then
-			LockCamera("overview")
-		end
-		MapForEach("map", "RangeHexRadius", function(o) o:SetVisible(false) end)
+	if not (Platform.developer and IsEditorActive()) then
+		LockCamera("overview")
+	end
+	GetRealmByID(ActiveMapID):MapForEach("map", "RangeHexRadius", function(o) o:SetVisible(false) end)
 
-		local transition_time = self.camera_transition_time
-		self.overview_angle = 45*60 --CalcOrientation(old_pos, old_lookat) - 45*60
-		local pos, lookat = CalcOverviewCameraPos(self.overview_angle)
-		pos = lookat + MulDivRound(pos - lookat, 1000, cameraRTS.GetZoom())
-		cameraRTS.SetCamera(pos, lookat, transition_time)
-		table.change(hr, "overview", {
-			FarZ = 1500000,
-			ShadowRangeOverride = 1500000,
-			ShadowFadeOutRangePercent = 0
-		})
-		ShowExploration(transition_time)
-		hr.CameraFovEasing = "QuinticOut"
-		camera.SetAutoFovX(1, transition_time, const.Camera.OverviewFovX_4_3, 4, 3, const.Camera.OverviewFovX_16_9, 16, 9)
-		ShowOverviewMapCurtains(true)
-		self:ScaleSmallObjects(transition_time, "up")
-		hr.NearZ = 1000
-		Sleep(transition_time)
-		hr.CameraFovEasing = "Linear"
-		SetSubsurfaceDepositsVisible(true)
-		self.sector_id = nil
+	local pos, lookat = CalcOverviewCameraPos(self.overview_angle)
+	pos = lookat + MulDivRound(pos - lookat, 1000, cameraRTS.GetZoom())
+	cameraRTS.SetCamera(pos, lookat, transition_time)
+	table.change(hr, "overview", {
+		FarZ = 1500000,
+		ShadowRangeOverride = 1500000,
+		ShadowFadeOutRangePercent = 0
+	})
+	if IsExplorationAvailable_Sectors(UICity) then
+		ShowExploration_Sectors(UICity, transition_time)
 		if self.parent then -- might be already switched to a different mode
 			self:SelectSectorAtPoint()
 		end
-		Msg("CameraTransitionEnd")
-		if CameraTransitionThread == CurrentThread() then
-			CameraTransitionThread = false
-		end
-		if GetUIStyleGamepad() then
-			self:SelectSector(self.current_sector)
-		end
-	end, self, CameraTransitionThread)
+	end
+	if IsExplorationAvailable_Queue(UICity) then
+		ShowExploration_Queue(UICity, true)
+	end
+	hr.CameraFovEasing = "QuinticOut"
+	camera.SetAutoFovX(1, transition_time, const.Camera.OverviewFovX_4_3, 4, 3, const.Camera.OverviewFovX_16_9, 16, 9)
+	ShowOverviewMapCurtains(true)
+	self:ScaleSmallObjects(transition_time, "up")
+	hr.NearZ = 1000
+	if transition_time > 0 then
+		Sleep(transition_time)
+	end
+	hr.CameraFovEasing = "Linear"
+	SetSubsurfaceDepositsVisible(true)
+	self.sector_id = nil
+	Msg("CameraTransitionEnd")
+	if CameraTransitionThread == CurrentThread() then
+		CameraTransitionThread = false
+	end
+	if GetUIStyleGamepad() and IsExplorationAvailable_Sectors(UICity) then
+		self:SelectSector(self.current_sector)
+	end
+end
 
-	self.sector_obj = PlaceObject("SectorRadius")
-	self.sector_obj:ClearEnumFlags(const.efVisible)
-	DeleteOnLoadSavegame(self.sector_obj)
+function OverviewModeDialog:GetCameraTransitionTime()
+	local transition_time = self.camera_transition_time
+	if self.context and self.context.no_camera_transition_time_once then
+		transition_time = 0
+		self.context.no_camera_transition_time_once = false
+	end
+	return transition_time
+end	
+
+function OverviewModeDialog:Init()
+	self.map_id_owner = ActiveMapID
+	local transition_time = self:GetCameraTransitionTime()
+	if transition_time == 0 then
+		StoreView(self, transition_time)
+	else
+		CameraTransitionThread = CreateMapRealTimeThread(function(self, prev_thread)
+			if IsValidThread(prev_thread) then
+				WaitMsg("CameraTransitionEnd")
+			end
+			StoreView(self, transition_time)
+		end, self, CameraTransitionThread)
+	end
+
+	self:EnsureSectorObjPresent()
 
 	HideGamepadCursor("overview")
 	ShowResourceIcons("overview")
@@ -175,27 +245,20 @@ end
 function OverviewModeDialog:Open(...)
 	UnitDirectionModeDialog.Open(self, ...)
 	if GetUIStyleGamepad() then
-		local sector = GetMapSector(GetTerrainGamepadCursor())
-		
-		local probes = UICity.labels.OrbitalProbe or empty_table
+		local city = UICity
+		local sector = GetMapSector(city, GetTerrainGamepadCursor())
+		local probes = city.labels.OrbitalProbe or empty_table
 		
 		if #probes > 0 and #probes[1].scan_pattern > 1 then
 			self.sector_objs = {}
 			for i = 1, #probes[1].scan_pattern - 1 do
-				self.sector_objs[i] = PlaceObject("SectorRadius")
+				self.sector_objs[i] = PlaceObjectIn("SectorRadius", ActiveMapID)
 			end
 		end		
 		
 		self:SelectSector(sector, nil, "forced")
 	end
-	
-	local hud = GetHUD()
-	if hud then
-		local overview_btn = hud.idOverview
-		if overview_btn then
-			overview_btn:SetToggled(true)
-		end
-	end
+	HUDSetToggledOverview()
 end
 
 function OverviewModeDialog:OnMouseLeft()
@@ -207,93 +270,115 @@ function OverviewModeDialog:DoneMap()
 	self.camera_transition_time = 0
 end
 
+function OnMsg.PostSwitchMap(map_id)
+	local igi = GetInGameInterface()
+	if igi and igi.mode == "overview" then
+		local dlg = igi.mode_dialog
+		dlg:EnsureSectorObjPresent()
+	end
+end
+
+local function RestoreCamera(self, transition_time)
+	local cpos, clookat = GetCurrentCamera(transition_time)
+	local cinvdir = (cpos - clookat):SetZ(0)
+	local last_lookat = self.saved_camera and self.saved_camera.lookat
+	local target = self.target_obj
+	if IsPoint(target) or IsValid(target) then
+		local la = IsPoint(target) and target or target:HasMember("GetLogicalPos") and target:GetLogicalPos() or target:GetVisualPos()
+		target = (la ~= InvalidPos()) and la
+	else
+		target = false
+	end
+	local lookat = self.exit_to or last_lookat or target or GetTerrainCursor()
+
+	-- clamp to the map borders
+	local min_border = cameraRTS.GetBorder()
+	local max_border = GetActiveTerrain():GetMapWidth() - min_border
+	local dx, dy = 0, 0
+	if lookat:x() < min_border then dx = min_border - lookat:x() end
+	if lookat:x() > max_border then dx = max_border - lookat:x() end
+	if lookat:y() < min_border then dy = min_border - lookat:y() end
+	if lookat:y() > max_border then dy = max_border - lookat:y() end
+	
+	lookat = point(lookat:x() + dx, lookat:y() + dy):SetStepZ()
+	local invdir = SetLen(cinvdir, guim)
+	local axis = SetLen(point(invdir:y(), -invdir:x(), 0), guim)
+	self.saved_dist = self.saved_dist or const.DefaultCameraRTS.MaxDistBetweenEyeAndLookAt * guim
+	self.saved_angle = self.saved_angle or const.DefaultCameraRTS.DefaultAngle * guim
+	invdir = RotateAxis(invdir, axis, self.saved_angle)
+	local offset = SetLen(invdir, self.saved_dist)
+	local eye = lookat + offset
+
+	cameraRTS.SetCamera(eye, lookat, transition_time)
+	Msg("CameraTransitionStart", eye, lookat, transition_time)
+	hr.CameraFovEasing = "SinIn"
+	camera.SetAutoFovX(1, transition_time, const.Camera.DefaultFovX_16_9, 16, 9)
+	local curains_fade_time = OverviewMapCurtains.FadeOutTime
+	if transition_time > 0 then
+		Sleep(transition_time - curains_fade_time)
+		Sleep(curains_fade_time)
+	end
+	hr.NearZ = 100
+	hr.CameraFovEasing = "Linear"
+
+	--hr.RenderTerrainFog = 0
+	while cameraRTS.IsMoving() do
+		WaitMsg("OnRender")
+	end
+	self.saved_camera = nil
+	self.target_obj = nil
+	Msg("CameraTransitionEnd")
+end
+
+local function RestoreView(self, transition_time)
+	assert(self.map_id_owner == ActiveMapID, "OverviewModeDialog is supposed to be used on single map")
+
+	ShowGamepadCursor("overview")
+	HideResourceIcons("overview")
+
+	self:ScaleSmallObjects(transition_time, "down")
+	SetSubsurfaceDepositsVisible(false)
+	SetSubsurfaceDepositsVisibleExpiration(const.OverlaysVisibleDuration)
+	HideExploration_Sectors(UICity, transition_time)
+	HideExploration_Queue(UICity)
+	ShowOverviewMapCurtains(false)
+
+	RestoreCamera(self, transition_time)
+	UnlockCamera("overview")
+	
+	if IsValid(self.sector_obj) then
+		DoneObject(self.sector_obj)
+	end
+	for _, obj in ipairs(self.sector_objs or empty_table) do
+		DoneObject(obj)
+	end
+
+	table.restore(hr, "overview")
+	GetRealmByID(ActiveMapID):MapForEach("map", "RangeHexRadius", function(o) o:SetVisible(true) end)
+end
+
 function OverviewModeDialog:Close(...)
+	assert(self.map_id_owner == ActiveMapID, "OverviewModeDialog is supposed to be closed during map switches")
+	
+	local transition_time = self:GetCameraTransitionTime()
+
 	UnitDirectionModeDialog.Close(self, ...)
 	self:DeleteThread("SectorInfoRefresh")
-
-	-- transition camera from current to normal
-	CameraTransitionThread = CreateMapRealTimeThread(function(self, prev_thread)
-		if IsValidThread(prev_thread) then
-			WaitMsg("CameraTransitionEnd")
-		end
-
-		ShowGamepadCursor("overview")
-		HideResourceIcons("overview")
-
-		local transition_time = self.camera_transition_time
-		self:ScaleSmallObjects(transition_time, "down")
-		SetSubsurfaceDepositsVisible(false)
-		SetSubsurfaceDepositsVisibleExpiration(const.OverlaysVisibleDuration)
-		local cpos, clookat = cameraRTS.GetEye(), cameraRTS.GetLookAt()
-		local cinvdir = (cpos - clookat):SetZ(0)
-		local last_lookat = self.saved_camera and self.saved_camera.lookat
-		local target = self.target_obj
-		if IsPoint(target) or IsValid(target) then
-			local la = IsPoint(target) and target or target:HasMember("GetLogicalPos") and target:GetLogicalPos() or target:GetVisualPos()
-			target = (la ~= InvalidPos()) and la
-		else
-			target = false
-		end
-		local lookat = self.exit_to or last_lookat or target or GetTerrainCursor()
-		
-		-- clamp to the map borders
-		local min_border = cameraRTS.GetBorder()
-		local max_border = terrain.GetMapWidth() - min_border
-		local dx, dy = 0, 0
-		if lookat:x() < min_border then dx = min_border - lookat:x() end
-		if lookat:x() > max_border then dx = max_border - lookat:x() end
-		if lookat:y() < min_border then dy = min_border - lookat:y() end
-		if lookat:y() > max_border then dy = max_border - lookat:y() end
-		
-		lookat = point(lookat:x() + dx, lookat:y() + dy):SetStepZ()
-		local invdir = SetLen(cinvdir, guim)
-		local axis = SetLen(point(invdir:y(), -invdir:x(), 0), guim)
-		invdir = RotateAxis(invdir, axis, self.saved_angle)
-		local offset = SetLen(invdir, self.saved_dist)
-		local eye = lookat + offset
-
-		cameraRTS.SetCamera(eye, lookat, transition_time)
-		Msg("CameraTransitionStart", eye, lookat, transition_time)
-		HideExploration(transition_time)
-		hr.CameraFovEasing = "SinIn"
-		camera.SetAutoFovX(1, transition_time, const.Camera.DefaultFovX_16_9, 16, 9)
-		local curains_fade_time = OverviewMapCurtains.FadeOutTime
-		Sleep(transition_time - curains_fade_time)
-		ShowOverviewMapCurtains(false)
-		Sleep(curains_fade_time)
-		hr.NearZ = 100
-		hr.CameraFovEasing = "Linear"
-
-		--hr.RenderTerrainFog = 0
-		while cameraRTS.IsMoving() do
-			WaitMsg("OnRender")
-		end
-		UnlockCamera("overview")
-		
-		if IsValid(self.sector_obj) then
-			DoneObject(self.sector_obj)
-		end
-		for _, obj in ipairs(self.sector_objs or empty_table) do
-			DoneObject(obj)
-		end
-
-		table.restore(hr, "overview")
-		self.saved_camera = nil
-		self.target_obj = nil
-		Msg("CameraTransitionEnd")
-		if CameraTransitionThread == CurrentThread() then
-			CameraTransitionThread = false
-		end
-		MapForEach("map", "RangeHexRadius", function(o) o:SetVisible(true) end)
-	end, self, CameraTransitionThread)
-
-	local hud = GetHUD()
-	if hud then
-		local overview_btn = hud.idOverview
-		if overview_btn then
-			overview_btn:SetToggled(false)
-		end
+	
+	if transition_time == 0 then
+		RestoreView(self, transition_time)
+	else
+		CameraTransitionThread = CreateMapRealTimeThread(function(self, prev_thread)
+			if IsValidThread(prev_thread) then
+				WaitMsg("CameraTransitionEnd")
+			end
+			RestoreView(self, transition_time)
+			if CameraTransitionThread == CurrentThread() then
+				CameraTransitionThread = false
+			end
+		end, self, CameraTransitionThread)
 	end
+	HUDSetToggledOverview()
 end
 
 function OverviewModeDialog:SetScan(mode)
@@ -309,13 +394,13 @@ function OverviewModeDialog:SetScan(mode)
 	end
 	self.sector_objs = nil
 	
-	self.sector_obj = mode and PlaceObject("SectorTarget") or PlaceObject("SectorRadius")	
+	self.sector_obj = mode and PlaceObjectIn("SectorTarget", ActiveMapID) or PlaceObjectIn("SectorRadius", ActiveMapID)	
 	local probes = UICity.labels.OrbitalProbe or empty_table
 	
 	if mode and #probes > 0 and #probes[1].scan_pattern > 1 then
 		self.sector_objs = {}
 		for i = 1, #probes[1].scan_pattern - 1 do
-			self.sector_objs[i] = PlaceObject("SectorTarget")
+			self.sector_objs[i] = PlaceObjectIn("SectorTarget", ActiveMapID)
 		end
 	end
 	self.sector_id = nil
@@ -324,15 +409,14 @@ end
 
 function OverviewModeDialog:DeployProbe()
 	local probes = UICity.labels.OrbitalProbe or empty_table
-	local sector = self.current_sector
 	
+	local sector = self.current_sector
 	if #probes == 0 or not sector or sector:HasBlockers() then
 		return
 	end
 	
-	local deep_probe = UICity:IsTechResearched("AdaptedProbes")
-	
-	if sector.status == "unexplored" or (sector.status == "scanned" and deep_probe) then
+	local deep_probe = UIColony:IsTechResearched("AdaptedProbes")
+	if sector and (sector.status == "unexplored" or (sector.status == "scanned" and deep_probe)) then
 		probes[1]:ScanSector(sector)
 		self:SetScan(false)
 		self:UpdateSectorRollover(sector)
@@ -346,8 +430,29 @@ function OverviewModeDialog:CreateRolloverWindow(gamepad, context, pos)
 	return XWindow.CreateRolloverWindow(self, gamepad, context, pos)
 end
 
+function UpdateSectorsPattern(city, sector, pattern)
+	if pattern and #pattern > 0 then
+		local list = city.labels.OrbitalProbe[1]:GetAffectedSectors(sector)
+		local i = 1
+		local pt = sector.area:Center()
+		for idx = 2, #list do
+			local s = list[idx]
+			pattern[i]:SetPos(s.area:Center())
+			pattern[i]:SetEnumFlags(const.efVisible)
+			pattern[i]:SetScale(MulDivRound(s.area:sizex(), 100, 100*guim))
+			i = i + 1
+		end
+		for j = i, #pattern do
+			pattern[j]:ClearEnumFlags(const.efVisible)
+		end
+	end
+end
+
 function OverviewModeDialog:SelectSector(sector, rollover_pos, forced)
 	if not self.sector_obj then return end
+
+	if not IsExplorationAvailable_Sectors(UICity) then return end
+
 	if sector and (forced or not CameraTransitionThread) then
 		if self.sector_id ~= sector.id then -- only refresh when a new sector is hovered
 			PlayFX("SectorHover", "start") --for sound
@@ -359,40 +464,9 @@ function OverviewModeDialog:SelectSector(sector, rollover_pos, forced)
 			self.sector_obj:SetEnumFlags(const.efVisible)
 			self.sector_obj:SetScale(MulDivRound(sector.area:sizex(), 100, 100*guim))
 			
-			local pattern = self.sector_objs
-			
-			if pattern and #pattern > 0 then
-				local list = UICity.labels.OrbitalProbe[1]:GetAffectedSectors(sector)
-				local i = 1
-				local pt = sector.area:Center()
-				for idx = 2, #list do
-					local s = list[idx]
-					pattern[i]:SetPos(s.area:Center())
-					pattern[i]:SetEnumFlags(const.efVisible)
-					pattern[i]:SetScale(MulDivRound(s.area:sizex(), 100, 100*guim))
-					i = i + 1
-				end
-				for j = i, #pattern do
-					pattern[j]:ClearEnumFlags(const.efVisible)
-				end
-			end
-
-			--Don't show the rollover if there's a notification displayed right now
-			if not GetDialog("PopupNotification") then
-				local rollover_context = self:GenerateSectorRolloverContext(sector, forced)
-				
-				-- rollover position might be given before hand - if not -> take the center of the sector
-				if not rollover_pos then
-					local center, success = sector.area:Center(), false
-					success, rollover_pos = GameToScreen(center:SetZ(terrain.GetHeight(center)))
-					if not success then
-						rollover_pos = point20
-					end
-				end
-				local x, y = rollover_pos:xy()
-				rollover_context.anchor = sizebox(x, y, 1, 1)
-				
-				local rollover = XCreateRolloverWindow(self, UseGamepadUI(), "immediate", rollover_context)
+			if IsExplorationAvailable_Queue(UICity) then
+				UpdateSectorsPattern(UICity, sector, self.sector_objs)
+				self:CreateSectorRollover(sector, rollover_pos, forced)
 			end
 		end
 	else
@@ -416,13 +490,33 @@ function OverviewModeDialog:SelectSectorAtPoint(terrain_point, rollover_position
 		rollover_position = rollover_position or terminal.GetMousePos()
 	end
 	
-	local sector = GetMapSector(terrain_point)
+	local sector = GetMapSector(UICity, terrain_point)
 	self:SelectSector(sector, rollover_position)
 end
 
 function OverviewModeDialog:OnMousePos(pt)
 	self:SelectSectorAtPoint(GetTerrainCursor(), pt)
 	UnitDirectionModeDialog.OnMousePos(self, pt)
+end
+
+function OverviewModeDialog:CreateSectorRollover(sector, rollover_pos, forced)
+	--Don't show the rollover if there's a notification displayed right now
+	if not GetDialog("PopupNotification") then
+		local rollover_context = self:GenerateSectorRolloverContext(sector, forced)
+		
+		-- rollover position might be given before hand - if not -> take the center of the sector
+		if not rollover_pos then
+			local center, success = sector.area:Center(), false
+			success, rollover_pos = GameToScreen(center:SetZ(GetActiveTerrain():GetHeight(center)))
+			if not success then
+				rollover_pos = point20
+			end
+		end
+		local x, y = rollover_pos:xy()
+		rollover_context.anchor = sizebox(x, y, 1, 1)
+		
+		local rollover = XCreateRolloverWindow(self, UseGamepadUI(), "immediate", rollover_context)
+	end
 end
 
 function OverviewModeDialog:GenerateSectorRolloverContext(sector, forced)
@@ -435,7 +529,7 @@ function OverviewModeDialog:GenerateSectorRolloverContext(sector, forced)
 	local scanned = sector.status ~= "unexplored"
 	local deep_scanned = sector.status == "deep scanned"
 	
-	if g_ExplorationQueue[1] ~= sector then
+	if UICity.ExplorationQueue[1] ~= sector then
 		local status = sector.status
 		if deep and scanned and not deep_scanned then
 			status = "deep available"
@@ -455,10 +549,10 @@ function OverviewModeDialog:GenerateSectorRolloverContext(sector, forced)
 				
 	local exp_shown = {}
 				
-	sector:GatherResourceTexts(texts)
+	sector:GatherDiscoveredDepositsTexts(texts)
 	
 	local hint, hint_gamepad
-	local deep_probes = UICity:IsTechResearched("AdaptedProbes")
+	local deep_probes = UIColony:IsTechResearched("AdaptedProbes")
 	local has_probes = (not scanned or deep_probes) and #(UICity.labels.OrbitalProbe or empty_table) > 0
 								
 	if sector:CanBeScanned() or ((self.scan_mode and not scanned) or GetUIStyleGamepad()) then
@@ -496,8 +590,8 @@ function OverviewModeDialog:GenerateSectorRolloverContext(sector, forced)
 		end
 
 		local max = const.ExplorationQueueMaxSize
-		local queued = #g_ExplorationQueue 
-		local queue_idx = table.find(g_ExplorationQueue, sector)
+		local queued = #UICity.ExplorationQueue 
+		local queue_idx = table.find(UICity.ExplorationQueue, sector)
 		if not scanned or (deep and not deep_scanned) then
 			local texts = {}
 			if queue_idx  or  queued < max then
@@ -569,36 +663,40 @@ function OverviewModeDialog:GenerateSectorRolloverContext(sector, forced)
 	
 	return self.rollover_context_cache, old_rollover_context
 end
-
+		
 function OverviewModeDialog:UpdateSectorRollover(sector)
 	if not RolloverWin or RolloverControl ~= self or sector ~= self.current_sector then
 		return
 	end
 	
-	local context, old_context = self:GenerateSectorRolloverContext(self.current_sector)
-	if context then
-		context.anchor = old_context and old_context.anchor or nil
-		XCreateRolloverWindow(self, UseGamepadUI(), "immediate", context)
-	else
-		XDestroyRolloverWindow()
+	if IsExplorationAvailable_Queue(UICity) then
+		local context, old_context = self:GenerateSectorRolloverContext(self.current_sector)
+		if context then
+			context.anchor = old_context and old_context.anchor or nil
+			XCreateRolloverWindow(self, UseGamepadUI(), "immediate", context)
+		else
+			XDestroyRolloverWindow()
+		end
 	end
 end
 
 function OverviewModeDialog:OnMouseButtonDown(pt, button)
 	local result = UnitDirectionModeDialog.OnMouseButtonDown(self, pt, button)
+	local city = UICity
+	if not IsExplorationAvailable_Queue(city) then return end
 	if button == "L" then
 		if result ~= "break" then
-			local sector = GetMapSector(GetTerrainCursor())
+			local sector = GetMapSector(city, GetTerrainCursor())
 			if not sector then
 				return
 			end
 			
 			if self.scan_mode and not sector:HasBlockers() then
-				local deep_probe = UICity:IsTechResearched("AdaptedProbes")
+				local deep_probe = UIColony:IsTechResearched("AdaptedProbes")
 				if sector.status == "unexplored" or (sector.status == "scanned" and deep_probe) then
-					local probes = #(UICity.labels.OrbitalProbe or empty_table)
+					local probes = #(city.labels.OrbitalProbe or empty_table)
 					assert(probes > 0)
-					UICity.labels.OrbitalProbe[1]:ScanSector(sector)
+					city.labels.OrbitalProbe[1]:ScanSector(sector)
 					if probes <= 1 then
 						self:SetScan(false)
 					end
@@ -618,7 +716,7 @@ function OverviewModeDialog:OnMouseButtonDown(pt, button)
 				return "break"
 			end
 
-			local sector = GetMapSector(GetTerrainCursor())
+			local sector = GetMapSector(city, GetTerrainCursor())
 			if not sector then return end
 			
 			if sector:RemoveFromExplorationQueue() then
@@ -684,15 +782,17 @@ function OverviewModeDialog:OnShortcut(shortcut, source)
 		--toggle sector in scan queue
 		if shortcut == "RightTrigger-ButtonY" then
 			local sector = self.current_sector
-			if sector:QueueForExploration("add first") then
+			if sector and sector:QueueForExploration("add first") then
 				self:UpdateSectorRollover(sector)
 			end	
 		elseif shortcut == "ButtonY" then
 			local sector = self.current_sector
-			if sector:QueueForExploration() then
-				self:UpdateSectorRollover(sector)
-			elseif sector:RemoveFromExplorationQueue() then
-				self:UpdateSectorRollover(sector)
+			if sector then
+				if sector:QueueForExploration() then
+					self:UpdateSectorRollover(sector)
+				elseif sector:RemoveFromExplorationQueue() then
+					self:UpdateSectorRollover(sector)
+				end
 			end
 			return "break"
 		end
@@ -700,9 +800,12 @@ function OverviewModeDialog:OnShortcut(shortcut, source)
 		--sector selection change
 		if gamepad_directional_buttons[shortcut] then
 			shortcut = XInput.LeftThumbToDirection[shortcut] or shortcut
+			local city = UICity
 			if not self.current_sector then
-				local sector = GetMapSector(GetTerrainGamepadCursor())
+				local sector = GetMapSector(city, GetTerrainGamepadCursor())
 				self:SelectSector(sector, nil, "forced")
+				-- If we still don't have a sector we're not allowed to select one right now so return.
+				if not self.current_sector then return "break" end
 			end
 			
 			--sector change with gamepad must not happen twice in some time X to avoid jumps of the selection
@@ -721,14 +824,15 @@ function OverviewModeDialog:OnShortcut(shortcut, source)
 				if shortcut == "LeftThumbUpLeft"    then dpad_dir = -135 end
 				
 				if dpad_dir then
+					local exploration = city
 					--correct for camera rotation
 					local sin, cos = sincos(camera.GetYaw() - dpad_dir*60)
 					local dx, dy = divround(-cos, 4096), divround(-sin, 4096)
 
 					--select new sector
-					local col = Clamp(self.current_sector.col + dx, 1, #g_MapSectors)
-					local row = Clamp(self.current_sector.row + dy, 1, #g_MapSectors[col])
-					local sector = g_MapSectors[col][row]
+					local col = Clamp(self.current_sector.col + dx, 1, #exploration.MapSectors)
+					local row = Clamp(self.current_sector.row + dy, 1, #exploration.MapSectors[col])
+					local sector = exploration.MapSectors[col][row]
 					self:SelectSector(sector, nil)
 				end
 			end
@@ -775,9 +879,10 @@ end
 
 function OverviewModeDialog:ScaleSmallObjects(time, direction)
 	CreateRealTimeThread( function()
-		local signs = MapGet(true, "SubsurfaceDeposit", "TerrainDeposit")
-		local arrows = MapGet(true, "ArrowTutorialBase")
-		local ropes = MapGet("map", "SpaceElevatorRope")
+		local realm = GetActiveRealm()
+		local signs = realm:MapGet(true, "SubsurfaceDeposit", "TerrainDeposit")
+		local arrows = realm:MapGet(true, "ArrowTutorialBase")
+		local ropes = realm:MapGet("map", "SpaceElevatorRope")
 		local up = direction == "up"
 		 
 		g_CurrentDepositScale = up and const.SignsOverviewCameraScaleUp or const.SignsOverviewCameraScaleDown
@@ -789,7 +894,7 @@ function OverviewModeDialog:ScaleSmallObjects(time, direction)
 		local ropes_scale = not up and const.ElevatorRopesOverviewCameraScaleUp or const.ElevatorRopesOverviewCameraScaleDown
 		for _, sign in ipairs(signs) do
 			if IsValid(sign) then
-				sign:SetVisible(sings_visible)
+				sign:SetVisible(sings_visible and sign.revealed)
 				sign:SetOpacity(sings_opacity)
 				sign:SetScale(sings_scale)
 			end
@@ -858,12 +963,4 @@ function OverviewModeDialog:ScaleSmallObjects(time, direction)
 		end
 		
 	end )
-end
-
-function SavegameFixups.UpdateSectorNumberTextStyle()
-	for i = 2, #g_ExplorationQueue do
-		if g_ExplorationQueue[i].queue_text then
-			g_ExplorationQueue[i].queue_text:SetTextStyle("ExplorationSector")
-		end
-	end
 end

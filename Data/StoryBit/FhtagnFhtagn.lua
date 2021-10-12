@@ -6,9 +6,14 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/05_mysterious_stranger.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('HasTrait', {
 			'Trait', "Saint",
+		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
 		}),
 	},
 	ScriptDone = true,
@@ -20,6 +25,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(650471133221, --[[voice:narrator]] "Something sinister happened in the mind and soul of one of our holiest of colonists who lost all faith."),
 	group = "Sanity Breakdown",
 	id = "FhtagnFhtagn",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625148024,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(284485601937, --[[StoryBit FhtagnFhtagn Text]] "Expel the false prophet!"),
 		'OutcomeText', "custom",

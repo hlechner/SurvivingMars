@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/hints.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('IsTechId', {
 			'Field', "Physics",
@@ -17,6 +18,10 @@ PlaceObj('StoryBit', {
 			'Condition', ">=",
 			'Amount', 1,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Underground",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(466520787161, --[[StoryBit Prototype_Scrubber Text]] "Our recent discovery of the “Triboelectric Scrubbing” technology has inspired our research team and they want to try to build a prototype Triboelectric Scrubber.\n\nThere are some concerns that our other scientific endeavors will suffer due to the distraction and a positive result is not guaranteed."),
@@ -27,6 +32,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(185973322594, --[[voice:narrator]] "Excited and nervous, the group of Scientists in your office can do little to hide their excitement. They want to build a prototype of a new kind of structure. "),
 	group = "Buildings",
 	id = "Prototype_Scrubber",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143876,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamPercent', {
 		'Name', "rp_reduction",
 		'Value', -30,

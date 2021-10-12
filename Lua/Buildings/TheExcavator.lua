@@ -47,7 +47,7 @@ function TheExcavator:GameInit()
 	self.belt = self:GetAttach("ExcavatorBelt")
 	self.belt:SetFrameAnimationSpeed(0)
 	
-	self.rope = PlaceObj("ExcavatorRope")
+	self.rope = PlaceObjIn("ExcavatorRope", self:GetMapID())
 	self.tower:Attach(self.rope, self.tower:GetSpotBeginIndex("Rope2"))
 	self.rope:SetAxis(axis_y)
 	
@@ -181,7 +181,7 @@ function TheExcavator:ForEachDigPoint(fn, ...)
 	local arm_normal_x, arm_normal_y = arm_normal:xy()
 	
 	--normal distance (sideways offset)
-	--depends on swipe direction (speed's sign) to optimize the number of terrain.SetHeight() calls
+	--depends on swipe direction (speed's sign) to optimize the number of GetTerrain(self):SetHeight() calls
 	local ndist = self.swipe_speed > 0 and -arm_width/2 or arm_width/2
 	local noffset_x = MulDivRound(arm_normal_x, ndist, 4096) --component-wise offsets
 	local noffset_y = MulDivRound(arm_normal_y, ndist, 4096) --component-wise offsets
@@ -196,12 +196,14 @@ function TheExcavator:ForEachDigPoint(fn, ...)
 end
 
 function TheExcavator:DoDigAndPaint(dig_point)
-	terrain.SetHeightCircle(dig_point, guim, guim, dig_point:z(), const.hsMin)
-	terrain.SetTypeCircle(dig_point, guim, self.terrain_type_idx)
+	local terrain = GetTerrain(self)
+	terrain:SetHeightCircle(dig_point, guim, guim, dig_point:z(), const.hsMin)
+	terrain:SetTypeCircle(dig_point, guim, self.terrain_type_idx)
 end
 
 function TheExcavator:DoDigOnly(dig_point)
-	terrain.SetHeightCircle(dig_point, guim, guim, dig_point:z(), const.hsMin)
+	local terrain = GetTerrain(self)
+	terrain:SetHeightCircle(dig_point, guim, guim, dig_point:z(), const.hsMin)
 end
 
 function TheExcavator:UpdateRopeVisuals()

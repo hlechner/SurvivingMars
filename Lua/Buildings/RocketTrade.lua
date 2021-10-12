@@ -54,21 +54,21 @@ end
 
 function TradeRocket:UpdateStatus(status)
 	if status ~= "on earth" then
-		SupplyRocket.UpdateStatus(self, status)
+		RocketBase.UpdateStatus(self, status)
 	end
 end
 
 function TradeRocket:FlyToEarth()
 	local export_funding = (self.story_bit_on_launch_funding or 0)
 	if export_funding > 0 then
-		self.city:ChangeFunding(export_funding, "Export")
+		UIColony.funds:ChangeFunding(export_funding, "Export")
 	end
 	DoneObject(self)
 end
 
 function TradeRocket:OnModifiableValueChanged(prop, ...)
 	if prop ~= "max_export_storage" then -- filter out changes to export storage for trade rockets
-		SupplyRocket.OnModifiableValueChanged(self, prop, ...)
+		RocketBase.OnModifiableValueChanged(self, prop, ...)
 	end
 end
 

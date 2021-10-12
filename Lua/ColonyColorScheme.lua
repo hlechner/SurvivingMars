@@ -12,7 +12,7 @@ function OverrideColonyColorScheme(id)
 	ReapplyPalettes()
 end
 
-function OnMsg.NewMapLoaded()
+function OnMsg.PostNewGame()
 	g_CurrentCCS = ColonyColorSchemes[GetMissionSponsor().colony_color_scheme or "default"]
 	ReapplyPalettes()
 end
@@ -34,7 +34,7 @@ function OnMsg.DlcsLoaded()
 	old_rocket_palettes.ArcPod = rawget(_G, "ArkPod") and ArkPod:HasMember("rocket_palette") and ArkPod.rocket_palette
 	old_rocket_palettes.DragonRocket = rawget(_G, "DragonRocket") and DragonRocket:HasMember("rocket_palette") and DragonRocket.rocket_palette
 	old_rocket_palettes.DropPod = rawget(_G, "DropPod") and DropPod:HasMember("rocket_palette") and DropPod.rocket_palette
-	old_rocket_palettes.RocketStandard = rawget(_G, "SupplyRocket") and SupplyRocket:HasMember("rocket_palette") and SupplyRocket.rocket_palette
+	old_rocket_palettes.RocketStandard = rawget(_G, "RocketBase") and RocketBase:HasMember("rocket_palette") and RocketBase.rocket_palette
 	old_rocket_palettes.RocketTrade = rawget(_G, "TradeRocket") and TradeRocket:HasMember("rocket_palette") and TradeRocket.rocket_palette
 	old_rocket_palettes.SupplyPod = rawget(_G, "SupplyPod") and SupplyPod:HasMember("rocket_palette") and SupplyPod.rocket_palette
 	old_rocket_palettes.ZeusRocket = rawget(_G, "ZeusRocket") and ZeusRocket:HasMember("rocket_palette") and ZeusRocket.rocket_palette
@@ -86,20 +86,20 @@ end
 
 function ReapplyPalettes()
 	local ccs = GetCurrentColonyColorScheme()
-	MapForEach("map", "BaseRover", "CargoShuttle" , SetPaletteFromClassMember)
-	MapForEach("map", "Building", function(obj)
-		if not obj:IsKindOfClasses("ElectricityGridElement", "LifeSupportGridElement", "ConstructionSite", "SupplyRocket") then
+	MapsForEach("map", "BaseRover", "CargoShuttle" , SetPaletteFromClassMember)
+	MapsForEach("map", "Building", function(obj)
+		if not obj:IsKindOfClasses("ElectricityGridElement", "LifeSupportGridElement", "ConstructionSite", "RocketBase") then
 			local skin, palette = obj:GetCurrentSkin()
 			obj:SetPalette(DecodePalette(palette, ccs))
 		end
 	end)
-	MapForEach(true, "SupplyRocket", function(obj)
+	MapsForEach(true, "RocketBase", function(obj)
 		if not obj:IsKindOfClasses("ForeignTradeRocket", "ForeignAidRocket", "TradeRocket", "RefugeeRocket") then
 			obj:SetPalette(DecodePalette(obj:GetRocketPalette(ccs), ccs))
 		end
 	end)
 	local ccm1, ccm2, ccm3, ccm4 = GetCablesPalette()
-	MapForEach("map", "ElectricityGridElement", SetObjectPaletteRecursive, ccm1, ccm2, ccm3, ccm4)
+	MapsForEach("map", "ElectricityGridElement", SetObjectPaletteRecursive, ccm1, ccm2, ccm3, ccm4)
 	local pcm1, pcm2, pcm3, pcm4 = GetPipesPalette()
-	MapForEach("map", "LifeSupportGridElement", SetObjectPaletteRecursive, pcm1, pcm2, pcm3, pcm4)
+	MapsForEach("map", "LifeSupportGridElement", SetObjectPaletteRecursive, pcm1, pcm2, pcm3, pcm4)
 end

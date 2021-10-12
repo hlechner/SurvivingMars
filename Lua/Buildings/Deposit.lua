@@ -1,5 +1,3 @@
-
-
 DefineClass.Deposit = {
 	__parents = { "EditorObject", "PinnableObject", "InfopanelObj" },
 	flags = { efMarker = true },
@@ -32,17 +30,13 @@ end
 
 function Deposit:AddToCitiesLabel()
 	if self.city_label then
-		for i = 1, #Cities do --deps should be in all cities ?
-			Cities[i]:AddToLabel(self.city_label, self)
-		end
+		GetCity(self):AddToLabel(self.city_label, self)
 	end
 end
 
 function Deposit:RemoveFromCitiesLabel()
 	if self.city_label then
-		for i = 1, #Cities do --deps should be in all cities ?
-			Cities[i]:RemoveFromLabel(self.city_label, self)
-		end
+		GetCity(self):RemoveFromLabel(self.city_label, self)
 	end
 end
 
@@ -71,7 +65,12 @@ function Deposit:GetResourceName()
 end
 
 function Deposit:GetDepositMarker()
-	return self.marker or MapGet("map", "DepositMarker", function(marker, deposit) return marker.placed_obj == deposit end, self)[1]
+	local marker = self.marker
+	if not marker then
+		local realm = GetRealm(self)
+		marker = realm:MapGet("map", "DepositMarker", function(marker, deposit) return marker.placed_obj == deposit end, self)[1]
+	end
+	return marker
 end
 
 function Deposit:IsExplorationBlocked()
@@ -108,10 +107,11 @@ end
 
 local UnbuildableZ = buildUnbuildableZ()
 
-function CalcDepositZ(...)
-	local q, r = WorldToHex(...)
-	local z = HexMaxHeight(q, r)
-	local bz = GetBuildableZ(q, r)
+local function CalcDepositZ(object)
+	local q, r = WorldToHex(object)
+	local game_map = GetGameMap(object)
+	local z = game_map.realm:HexMaxHeight(q, r)
+	local bz = game_map.buildable:GetZ(q, r)
 	if bz ~= UnbuildableZ then
 		z = Max(z, bz) 
 	end
@@ -135,124 +135,6 @@ end
 
 ----
 
-DefineClass.DepositMarker = {
-	__parents = { "EditorMarker" },
-	entity = "Hex1_Placeholder",
-	resource = "",
-	properties = {
-		{ category = "Debug", name = T(8927, "Deposit"),      id = "Deposit",     editor = "object", default = false, developer = true, read_only = true, dont_save = true},
-		{ category = "Debug", name = T(635, "Feature"), id = "dbg_feature", editor = "object", default = false, developer = true},
-		{ category = "Debug", name = T(636, "Cluster"), id = "dbg_cluster", editor = "number", default = -1, developer = true},
-		{ category = "Debug", name = T(637, "Prefab"),  id = "dbg_prefab",  editor = "text", default = "", developer = true},
-	},
-	is_placed = false,
-	placed_obj = false, -- can still be false if is_placed = true, means the placement was obstructed and the deposit is lost
-	depth_layer = 0,
-	new_pos_if_obstruct = true,
-}
-
-function DepositMarker:Init()
-	self:SetScale(110)
-	if UICity then
-		UICity:AddToLabel(self.class, self)
-	end
-end
-
-function DepositMarker:Done()
-	if UICity then
-		UICity:RemoveFromLabel(self.class, self)
-	end
-end
-
-function DepositMarker:GetDeposit()
-	return self.placed_obj
-end
-
-function DepositMarker:GetObstructionRadius()
-	return const.DepositObstructMaxRadius
-end
-
-function DepositMarker:EditorGetText()
-	return self.class .. " " .. self.resource
-end
-
-function DepositMarker:GetDepthClass()
-	return "surface"
-end
-
-function DepositMarker:PlaceDeposit(dont_move_if_obstruct)
-	assert(g_MapArea)
-	if not self.is_placed then
-		-- check for buildings on the required position, don't place surface deposits if buildings are in the way
-		local mx, my = self:GetVisualPosXYZ()
-		local radius = self:GetObstructionRadius()
-		local IsDepositObstructed = IsDepositObstructed
-		local GetMapSectorXY = GetMapSectorXY
-		local obstructed = IsDepositObstructed(mx, my, radius)
-		if obstructed and self.new_pos_if_obstruct and not dont_move_if_obstruct then
-			local IsPassable = terrain.IsPassable 
-			local sector = GetMapSectorXY(mx, my)
-			local sx, sy
-			local x, y = FindBuildableAround(mx, my, {
-				max_depth = GetMapSectorTile() / const.GridSpacing,
-				wrong_value = "wrong",
-				continue_check = function(qi, ri)
-					local xi, yi = HexToWorld(qi, ri)
-					if IsDepositObstructed(xi, yi, radius) then
-						return true -- would continue searching in that directon
-					end
-					if GetMapSectorXY(xi, yi) ~= sector then
-						if not sx then
-							sx, sy = xi, yi
-						end
-						return "wrong" -- would stop searching in that directon
-					end
-				end,
-			})
-			if not x then
-				if sx then
-					x, y = sx, sy
-					StoreErrorSource(self, "Failed to find a new place in the same sector!")
-				else
-					StoreErrorSource(self, "Failed to find a new place on the map!")
-				end
-			end
-			if x then
-				obstructed = false
-				self:SetPos(x, y, const.InvalidZ)
-				print("Obstructed", self.class, "moved to", x, y)
-				mx, my = x, y
-			end
-		end
-		self.placed_obj = not obstructed and self:SpawnDeposit()
-		self.is_placed = true
-		local sector = GetMapSectorXY(mx, my)
-		if sector then
-			sector:RegisterDeposit(self) -- for deposits which got spawned later by means other than exploration
-		end
-		if IsValid(self.placed_obj) then
-			self.placed_obj.marker = self
-			self.placed_obj:SetPos(mx, my, const.InvalidZ)
-			if IsKindOf(self.placed_obj, "SubsurfaceDeposit") then
-				self.placed_obj:SetAngle(mapdata and (mapdata.OverviewOrientation * 60) or 0)
-			else
-				self.placed_obj:SetAngle(self:GetAngle())
-			end
-		end
-	end
-	return self.placed_obj
-end
-
-function DepositMarker:SpawnDeposit() -- override this for the actual code which spawns the deposit
-end
-
-function DepositMarker:GetEstimatedAmount()
-	return 0
-end
-
-----
-
-
 GlobalVar("g_ResourceIconsTurnedOff", false)
 GlobalVar("g_ResourceIconsVisible", true)
 GlobalVar("ShowResourceIconReasons",  {})
@@ -261,10 +143,16 @@ function SetResourceIconsVisible(visible)
 	if visible and not g_SignsVisible then return end
 	if not visible and not g_ResourceIconsTurnedOff then return end
 	local action = visible and "SetEnumFlags" or "ClearEnumFlags"
-	if visible then
-		MapSetEnumFlags(const.efVisible, "map","TerrainDeposit","SubsurfaceDeposit" )
-	else
-		MapClearEnumFlags(const.efVisible, "map","TerrainDeposit","SubsurfaceDeposit" )
+	
+	local realm = GetActiveRealm()
+	local deposits = realm:MapGet("map", "TerrainDeposit", "SubsurfaceDeposit")
+	deposits = table.ifilter(deposits, function(index, obj) return obj.revealed end)
+	for _,deposit in ipairs(deposits) do
+		if visible then
+			deposit:SetEnumFlags(const.efVisible)
+		else
+			deposit:ClearEnumFlags(const.efVisible)
+		end
 	end
 	g_ResourceIconsVisible = visible
 end

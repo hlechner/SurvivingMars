@@ -1,28 +1,25 @@
 function CheatsEnabled()
-	return mapdata.GameLogic
+	return not CanUnlockAchievement() or IsDevelopmentSandbox()
 end
 
 function CheatMapExplore(status)
-	if #g_MapSectors == 0 then
+	if #UICity.MapSectors == 0 then
 		return
 	end
 	SuspendPassEdits("CheatMapExplore")
-	local old = IsDepositObstructed
-	IsDepositObstructed = empty_func
 	if status == "scan queued" then
-		while #g_ExplorationQueue > 0 do
-			local sector = g_ExplorationQueue[1]
+		while #UICity.ExplorationQueue > 0 do
+			local sector = UICity.ExplorationQueue[1]
 			sector.scan_progress = sector.scan_progress + sector.scan_time
 			UICity:ExplorationTick()
 		end
 	else
 		for x = 1, const.SectorCount do
 			for y = 1, const.SectorCount do
-				g_MapSectors[x][y]:Scan(status)
+				UICity.MapSectors[x][y]:Scan(status)
 			end
 		end
 	end
-	IsDepositObstructed = old
 	ResumePassEdits("CheatMapExplore")
 end
 
@@ -30,7 +27,7 @@ function CheatSpawnPlanetaryAnomalies()
 	local lat, long
 	for i = 1, 20 do
 		lat, long = GenerateMarsScreenPoI("anomaly")
-		local obj = PlaceObject("PlanetaryAnomaly", {
+		local obj = PlaceObjectIn("PlanetaryAnomaly", MainMapID, {
 			display_name = T(11234, "Planetary Anomaly"),
 			longitude = long,
 			latitude = lat,            
@@ -39,21 +36,22 @@ function CheatSpawnPlanetaryAnomalies()
 end
 
 function CheatBatchSpawnPlanetaryAnomalies()
-	UICity:BatchSpawnPlanetaryAnomalies()
+	UIColony.planetary_anomalies:BatchSpawnPlanetaryAnomalies()
 end
 
 local function GetCameraLookAtPassable()
 	local _, lookat = GetCamera()
-	return terrain.IsPassable(lookat) and lookat or GetRandomPassableAround(lookat, 100 * guim)
+	return GetActiveTerrain():IsPassable(lookat) and lookat or GetRandomPassableAroundOnMap(ActiveMapID, lookat, 100 * guim)
 end
 
 function CheatDustDevil(major, setting)
 	local pos = GetCameraLookAtPassable()
 	if pos then
-		setting = setting or mapdata.MapSettings_DustDevils
+		local map_data = ActiveMaps[MainMapID]
+		setting = setting or map_data.MapSettings_DustDevils
 		local data = DataInstances.MapSettings_DustDevils
 		local descr = setting ~= "disabled" and data[setting] or data["DustDevils_VeryLow"]
-		local devil = GenerateDustDevil(pos, descr, nil, major)
+		local devil = GenerateDustDevilIn(pos, MainMapID, descr, nil, major)
 		devil:Start()
 	else
 		print("No passable point around camera look at")
@@ -63,7 +61,8 @@ end
 function CheatMeteors(meteors_type, setting)
 	local pos = GetCameraLookAtPassable()
 	if pos then
-		setting = setting or mapdata.MapSettings_Meteor
+		local map_data = ActiveMaps[MainMapID]
+		setting = setting or map_data.MapSettings_Meteor
 		local data = DataInstances.MapSettings_Meteor
 		local descr = setting ~= "disabled" and data[setting] or data["Meteor_VeryLow"]
 		CreateGameTimeThread(function()
@@ -77,19 +76,21 @@ function CheatStopDisaster()
 end
 
 function CheatResearchAll()
-	if not UICity then return end
-	for filed_id, list in sorted_pairs(UICity.tech_field) do
-		if TechFields[filed_id].discoverable then
-			for i=1,#list do
-				UICity:SetTechResearched(list[i])
+	if not UIColony then return end
+	for field_id, list in sorted_pairs(UIColony.tech_field) do
+		local discoverable = TechFields[field_id].discoverable
+		for i=1,#list do
+			local tech_id = list[i]
+			if discoverable or UIColony:IsTechDiscovered(tech_id) then
+				UIColony:SetTechResearched(tech_id)
 			end
 		end
 	end
 end
 
 function CheatResearchCurrent()
-	if not UICity then return end
-	UICity:SetTechResearched(false, "notify")
+	if not UIColony then return end
+	UIColony:SetTechResearched(false, "notify")
 end
 
 function CheatCompleteAllWiresAndPipes(list)
@@ -124,8 +125,8 @@ end
 
 local l_add_funding = 500000000
 function CheatAddFunding(funding)
-	if UICity then
-		UICity:ChangeFunding(funding or l_add_funding)
+	if UIColony then
+		UIColony.funds:ChangeFunding(funding or l_add_funding)
 	end
 end
 
@@ -144,11 +145,11 @@ function CheatChangeMap(map)
 end
 
 function CheatUnlockAllTech()
-	if not UICity then return end
-	for filed_id, list in sorted_pairs(UICity.tech_field) do
-		if TechFields[filed_id].discoverable then
+	if not UIColony then return end
+	for field_id, list in sorted_pairs(UIColony.tech_field) do
+		if TechFields[field_id].discoverable then
 			for i=1,#list do
-				UICity:SetTechDiscovered(list[i])
+				UIColony:SetTechDiscovered(list[i])
 			end
 		end
 	end
@@ -191,6 +192,52 @@ function CheatClearForcedWorkplaces()
 	end
 end
 
+function CheatRandomColonistData(city)
+	local age_trait = table.rand(const.ColonistAges)
+	return GenerateColonistData(city, age_trait)
+end
+
+function CheatSpawnNColonists(n)
+	local city = UICity
+	if IsKindOf(SelectedObj,"Dome") then
+		for i=1, n do
+			local colonist_table = CheatRandomColonistData(city)
+			SelectedObj:SpawnColonist(colonist_table)
+		end
+	else
+		local domes = city.labels.Dome
+		if #domes>0 then
+			while n>0 do
+				for _, dome in ipairs(domes) do
+					if n>0 then
+						local colonist_table = CheatRandomColonistData(city)
+						dome:SpawnColonist(colonist_table)
+						n = n - 1
+					else 
+						break
+					end
+				end
+			end
+		else--no domes
+			local map_id = city.map_id
+			local w,h  = GetTerrainByID(map_id):GetMapSize()
+			local realm = GetRealmByID(map_id)
+			local center = realm:GetPassablePointNearby(point(w/2, h/2), Colonist.pfclass)
+			if not center then
+				return
+			end
+			for i=1, n do
+				local colonist_table = CheatRandomColonistData(city)
+				local colonist = Colonist:new(colonist_table, map_id)
+				local pos = GetRandomPassableAroundOnMap(map_id, center, w/2*guim, 2*guim)
+				colonist:SetPos(pos or center)
+				colonist:SetOutside(true)
+				Msg("ColonistBorn", colonist)	
+			end
+		end
+	end
+end
+
 function CheatUnlockBreakthroughs()
 	local anomalies = 0
 	local function reveal(anomaly)
@@ -208,33 +255,47 @@ function CheatUnlockBreakthroughs()
 	print(anomalies, "breakthroughs technologies have been unlocked")
 end
 
+function CheatUnlockAllBreakthroughs()
+	if not UIColony then return end
+	local breakthroughs = UIColony.tech_field["Breakthroughs"]
+	for i=1,#breakthroughs do
+		UIColony:SetTechDiscovered(breakthroughs[i])
+	end
+end
+
 function CheatToggleInfopanelCheats()
 	config.BuildingInfopanelCheats = not config.BuildingInfopanelCheats
 	ReopenSelectionXInfopanel()
 end
 
 GamepadCheatsList = {
-	{ display_name = T(7790, "Research Current Tech"),      					func = CheatResearchCurrent },
-	{ display_name = T(7791, "Research all Techs"),         					func = CheatResearchAll },
-	{ display_name = T(7792, "Unlock all Techs"),           					func = CheatUnlockAllTech },
-	{ display_name = T(7793, "Unlock all Breakthroughs"),   					func = CheatUnlockBreakthroughs },
-	{ display_name = T(7794, "Construct all buildings"),    					func = CheatCompleteAllConstructions },
-	{ display_name = T(7795, "Add funding ($500,000,000)"), 					func = CheatAddFunding },
-	{ display_name = T(7796, "Spawn 1 Colonist"),           					func = function() CheatSpawnNColonists(1) end },
-	{ display_name = T(7797, "Spawn 10 Colonists"),         					func = function() CheatSpawnNColonists(10) end },
-	{ display_name = T(7798, "Spawn 100 Colonists"),        					func = function() CheatSpawnNColonists(100) end },
+	{ display_name = T(7790, "Research Current Tech"),      							func = CheatResearchCurrent },
+	{ display_name = T(7791, "Research all Techs"),         							func = CheatResearchAll },
+	{ display_name = T(7792, "Unlock all Techs"),           							func = CheatUnlockAllTech },
+	{ display_name = T(7793, "Unlock all Breakthroughs"),   							func = CheatUnlockBreakthroughs },
+	{ display_name = T(7794, "Construct all buildings"),    							func = CheatCompleteAllConstructions },
+	{ display_name = T(7795, "Add funding ($500,000,000)"), 							func = CheatAddFunding },
+	{ display_name = T(7796, "Spawn 1 Colonist"),           							func = function() CheatSpawnNColonists(1) end },
+	{ display_name = T(7797, "Spawn 10 Colonists"),         							func = function() CheatSpawnNColonists(10) end },
+	{ display_name = T(7798, "Spawn 100 Colonists"),        							func = function() CheatSpawnNColonists(100) end },
 	{ display_name = T(12266, "Stop Disaster"),				        					func = function() CheatStopDisaster() end },
 	{ display_name = T(12267, "Unlock All SponsorBuildings"),		  					func = function() CheatUnlockAllSponsorBuildings() end },
 	{ display_name = T(12268, "Unlock All Buildings"),				  					func = function() CheatUnlockAllBuildings() end },
-	{ display_name = T(12269, "Max All Terraforming Parameters"),	  					func = function() for param in pairs(Terraforming) do SetTerraformParamPct(param, 100) end end },
+	{ display_name = T(12269, "Max All Terraforming Parameters"),	  				func = function() for param in pairs(Terraforming) do SetTerraformParamPct(param, 100) end end },
 	{ display_name = T(12270, "Increase Soil Quality by 25%"),	  					func = function() dbg_ChangeSoilQuality(25) end },
 	{ display_name = T(12271, "Decrease Soil Quality by 25%"),	  					func = function() dbg_ChangeSoilQuality(-25) end },
-	{ display_name = T(12272, "TP Atmosphere +10%"),	  				  					func = function() SetTerraformParamPct("Atmosphere"	, 10 + GetTerraformParamPct("Atmosphere")) end },
+	{ display_name = T(12272, "TP Atmosphere +10%"),	  				  				func = function() SetTerraformParamPct("Atmosphere"	, 10 + GetTerraformParamPct("Atmosphere")) end },
 	{ display_name = T(12273, "TP Water +10%"),	  					  					func = function() SetTerraformParamPct("Water"			, 10 + GetTerraformParamPct("Water")) end },
 	{ display_name = T(12274, "TP Temperature +10%"),	 			  					func = function() SetTerraformParamPct("Temperature"	, 10 + GetTerraformParamPct("Temperature")) end },
-	{ display_name = T(12275, "TP Vegetation +10%"),	  				  					func = function() SetTerraformParamPct("Vegetation"	, 10 + GetTerraformParamPct("Vegetation")) end },
+	{ display_name = T(12275, "TP Vegetation +10%"),	  				  				func = function() SetTerraformParamPct("Vegetation"	, 10 + GetTerraformParamPct("Vegetation")) end },
 	{ display_name = T(12276, "Increase all Terraforming Parameters by 10%"),	   func = function() for param in pairs(Terraforming) do SetTerraformParamPct(param, 10 + GetTerraformParamPct(param))  end end },
-	{ display_name = T(12277, "Decrease all Terraforming Parameters by 10%"),	   func = function() for param in pairs(Terraforming) do SetTerraformParamPct(param, -10 + GetTerraformParamPct(param)) end end },	
+	{ display_name = T(12277, "Decrease all Terraforming Parameters by 10%"),	   func = function() for param in pairs(Terraforming) do SetTerraformParamPct(param, -10 + GetTerraformParamPct(param)) end end },
+	{ display_name = T(13829, "Trigger Underground Marsquake"),	   				func = function() CheatTriggerUndergroundMarsquake() end },
+	{ display_name = T(13830, "Reveal Deposits"),	   								func = function() CheatMapExplore("scanned") end },
+	{ display_name = T(12280, "Deep Scan Map"),		   								func = function() CheatMapExplore("deep scanned") end },
+	{ display_name = T(13831, "Scan Queued Sectors"),	  								func = function() CheatMapExplore("scan queued") end },
+	{ display_name = T(12282, "Unlock Underground"),	  								func = function() UIColony:UnlockUnderground() end },
+	{ display_name = T(13832, "Toggle Infopanel Cheats"),	  							func = function() CheatToggleInfopanelCheats() end },
 	}
 
 function OnMsg.ChangeMap(map)
@@ -242,8 +303,6 @@ function OnMsg.ChangeMap(map)
 		if map == "Mod" then
 			print("Press Enter to execute arbitrary Lua code.")
 			print("Press F9 to clear this log.")
-			ConsoleSetEnabled(true)
-		elseif config.LuaDebugger then
 			ConsoleSetEnabled(true)
 		else
 			ConsoleSetEnabled(false)

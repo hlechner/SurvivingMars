@@ -99,8 +99,6 @@ end
 SavegameFixups.ResetNaniteThreads = dbg_ResetAllNaniteThreads
 
 function ConstructionSite:StopNaniteThread()
-	if not g_ConstructionNanitesResearched then return end
-	
 	if IsValidThread(self.nanite_thread) then
 		DeleteThread(self.nanite_thread)
 	end
@@ -152,7 +150,9 @@ function ConstructionSite:StartNaniteThread()
 					end
 					return false
 				end
-				MapForEach(self, "hex", 30, "ResourceStockpileBase", nanite_func)
+
+				local realm = GetRealm(self)
+				realm:MapForEach(self, "hex", 30, "ResourceStockpileBase", nanite_func)
 				if request then
 					local resource = request:GetResource()
 					local my_req = self.construction_resources[resource]
@@ -227,7 +227,8 @@ function ConstructionSite:AddToCityLabels()
 end
 
 function ConstructionSite:RemoveFromCityLabels()
-	--called by building's destructor, should remove from any label added by Building.AddToCityLabels
+	Building.RemoveFromCityLabels(self) --add to whatever lbls we usually add ourselves to
+
 	local suffix = g_ConstructionSiteLabelSuffix
 	local classdef = self.building_class_proto
 	local template_name = IsKindOf(classdef, "ClassTemplate") and classdef.template_name or ""
@@ -385,7 +386,8 @@ function ConstructionSite:ApplyToGrids()
 	Building.ApplyToGrids(self)
 	local interior = GetEntityInteriorShape(self:GetEntity())
 	if interior and next(interior) then --apply to build grid, so user cant place buildings over the dome construction
-		HexGridShapeAddObject(ObjectGrid, self, interior)
+		local object_hex_grid = GetObjectHexGrid(self)
+		HexGridShapeAddObject(object_hex_grid.grid, self, interior)
 	end
 end
 
@@ -393,7 +395,8 @@ function ConstructionSite:RemoveFromGrids()
 	Building.RemoveFromGrids(self)
 	local interior = GetEntityInteriorShape(self:GetEntity())
 	if interior and next(interior) then
-		HexGridShapeRemoveObject(ObjectGrid, self, interior)
+		local object_hex_grid = GetObjectHexGrid(self)
+		HexGridShapeRemoveObject(object_hex_grid.grid, self, interior)
 	end
 end
 
@@ -671,10 +674,10 @@ function ConstructionSite:SetConstructionSiteEntity()
 	local entity, cm1, cm2, cm3, cm4 = self:PickEntity()
 	self:ChangeEntity(entity)
 	AttachDoors(self, entity)
-	if IsKindOf(self.building_class_proto, "SupplyRocketBuilding") then
+	if IsKindOf(self.building_class_proto, "RocketBuildingBase") then
 		if self:HasSpot("Rocket") then
-			local e = GetConstructionRocketEntity()
-			local a = PlaceObject("Shapeshifter")
+			local e = GetConstructionRocketEntity(self.building_class_proto.construction_rocket_class)
+			local a = PlaceObjectIn("Shapeshifter", self:GetMapID())
 			a:ChangeEntity(e)
 			self:Attach(a, self:GetSpotBeginIndex("Rocket"))
 			cm1, cm2, cm3, cm4 = DecodePalette(GetConstructableRocketPalette())
@@ -691,13 +694,13 @@ end
 function ConstructionSite:GatherConstructionResources()
 	if self.construction_group and self.construction_group[1] ~= self then return end --only main guy from the group distributes requests
 	if self.construction_resources then return end --already created.
-	
-	local mod_o = self.labels_applied and self or GetModifierObject(self.building_class) or self
-	
+
 	self.construction_resources = {}
 	self.construction_costs_at_start = {}
-	if not self.supplied
-	and not IsGameRuleActive("FreeConstruction") then -- Buildings don't require resources to be constructed with Free Construction rule
+
+	if not self.supplied and not IsGameRuleActive("FreeConstruction") then -- Buildings don't require resources to be constructed with Free Construction rule
+		local mod_o = self.labels_applied and self or GetModifierObject(self.building_class) or self
+
 		for _, resource in ipairs(ConstructionResourceList) do
 			local amount = self:GetConstructionCost(resource, mod_o)
 			if amount > 0 then
@@ -716,6 +719,28 @@ function ConstructionSite:GatherConstructionResources()
 	end
 	local drones_requested = Clamp(self:GetConstructionCost("build_points") / 1000, 1, 10)
 	self.construct_request = self:AddWorkRequest("construct", 0, 0, drones_requested)
+end
+
+function ConstructionSite:RefreshConstructionResources()
+	if not self.supplied and not IsGameRuleActive("FreeConstruction") then -- Buildings don't require resources to be constructed with Free Construction rule
+		local mod_o = self.labels_applied and self or GetModifierObject(self.building_class) or self
+		for _, resource in ipairs(ConstructionResourceList) do
+			local construction_resource = self.construction_resources[resource]
+			if construction_resource then
+				local cost = self:GetConstructionCost(resource, mod_o)
+				local old_cost = self.construction_costs_at_start[resource]
+				if cost ~= old_cost then
+					local remaining = construction_resource:GetActualAmount()
+					local delta = cost - old_cost
+					local new_amount = Max(0, remaining + delta)
+					if new_amount ~= old_cost then
+						construction_resource:SetAmount(new_amount)
+						self.construction_costs_at_start[resource] = cost
+					end
+				end
+			end
+		end
+	end
 end
 
 function ConstructionSite:CreateResourceRequests()
@@ -812,11 +837,16 @@ end
 
 local UnbuildableZ = buildUnbuildableZ()
 function ConstructionSite:ComputeConstructionBBox()
+	local game_map = GetGameMap(self)
+	local terrain = game_map.terrain
+	local buildable = game_map.buildable
+
 	local function GetTerrainHeight(pos)
 		local q, r = WorldToHex(pos)
-		local buildable_z = GetBuildableZ(q, r)
-		return buildable_z ~= UnbuildableZ and buildable_z or terrain.GetHeight(pos)
+		local buildable_z = buildable:GetZ(q, r)
+		return buildable_z ~= UnbuildableZ and buildable_z or terrain:GetHeight(pos)
 	end
+
 	local function ClampToBuildableZ(bbox, pos, pad_z)
 		local x1,y1,z1 = bbox:minxyz()
 		local x2,y2,z2 = bbox:maxxyz()
@@ -829,6 +859,7 @@ function ConstructionSite:ComputeConstructionBBox()
 		z2 = Max(z2, z1 + 1)
 		return box(x1, y1, z1, x2, y2, z2)
 	end
+
 	local grp = self.construction_group
 	if grp then
 		if self.per_object_bbox then
@@ -838,7 +869,7 @@ function ConstructionSite:ComputeConstructionBBox()
 				local o = grp[i]
 				PrepareForConstruction(o)
 				bbox[i] = GetConstructionBBox(o)
-				bbox[i] = ClampToBuildableZ(bbox[i], o:GetPos())
+				o.construction_bbox = ClampToBuildableZ(bbox[i], o:GetPos())
 			end
 		else
 			local bbox
@@ -981,7 +1012,10 @@ function ConstructionSite:CreateResourceStockpile()
 		table.insert(storable_resources, r_n)
 	end
 	
-	local stock = PlaceObject("SharedStorageBaseVisualOnly", {storable_resources = storable_resources, count_in_resource_overview = false}, const.cofComponentAttach)
+	local stock = PlaceObjectIn("SharedStorageBaseVisualOnly", self:GetMapID(), {
+		storable_resources = storable_resources,
+		count_in_resource_overview = false
+	}, const.cofComponentAttach)
 	self:Attach(stock, self:GetSpotBeginIndex(self:GetState(), self:HasSpot(self.resource_stockpile_spot) and self.resource_stockpile_spot or "Origin"))
 	self.resource_stockpile = stock
 	
@@ -1028,7 +1062,7 @@ function ConstructionSite:GetConstructionCost(resource, mod_o)
 	if resource == "build_points" then
 		ret = class.instant_build and 0 or class[resource]
 	else
-		ret = UICity:GetConstructionCost(class, resource, mod_o)
+		ret = UIColony.construction_cost:GetConstructionCost(class, resource, mod_o)
 	end
 	
 	return MulDivRound(ret, mod, 100)
@@ -1239,7 +1273,7 @@ function ConstructionSite:DroneWork(drone, request, resource, amount)
 	drone:ContinuousTask(request, amount, g_Consts.DroneConstructBatteryUse, "constructStart", "constructIdle", "constructEnd", "Construct",
 		function(drone)
 			drone.target:UpdateConstructionVisualization()
-		end, IsKindOf(self.building_class_proto, "SupplyRocketBuilding"))
+		end, IsKindOf(self.building_class_proto, "RocketBuildingBase"))
 	drone:PopAndCallDestructor()
 end
 
@@ -1274,6 +1308,10 @@ function ConstructionSite:DroneUnloadResource(drone, request, resource, amount)
 	if request:GetActualAmount() <= 0 and self:StartConstructionPhase() then
 		drone:SetCommand("Work", self.construct_request, "construct", Min(DroneResourceUnits.construct, self.construct_request:GetActualAmount()))
 	end
+end
+
+function ConstructionSite:RoverLoadResource(amount, resource, request)
+	self:AddResource(amount, resource, true)
 end
 
 function ConstructionSite:AddResource(amount, resource)
@@ -1350,11 +1388,12 @@ end
 function ConstructionSite:MoveStockpilesUnderneathOutside(interval)
 	local stockpiles_underneath = self.stockpiles_underneath
 	if stockpiles_underneath then
+		local game_map = GetGameMap(self)
 		for i = #stockpiles_underneath, 1, -1 do
 			local stockpile = stockpiles_underneath[i]
 			local q, r = WorldToHex(self:GetPos())
 			local result
-			result, q, r = TryFindStockpileDumpSpot(q, r, self:GetAngle(), GetEntityPeripheralHexShape(self:GetEntity()))
+			result, q, r = TryFindStockpileDumpSpotIn(game_map, q, r, self:GetAngle(), GetEntityPeripheralHexShape(self:GetEntity()))
 			if result then
 				local x, y = HexToWorld(q, r)
 				if interval then
@@ -1400,13 +1439,14 @@ function ConstructionSite:Complete(quick_build) --quick_build - cheat build
 	
 	--black cube counting
 	if self.construction_costs_at_start and self.construction_costs_at_start.BlackCube then
-		local mystery = self.city.mystery
+		local mystery = self.city.colony.mystery
 		if mystery and mystery.class == "BlackCubeMystery" then
 			mystery.used_cubes = mystery.used_cubes + self.construction_costs_at_start.BlackCube / const.ResourceScale
 		end
 	end
 
-	SuspendPassEdits("ConstructionSite.Complete")
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("ConstructionSite.Complete")
 	SuspendTerrainInvalidations("ConstructionSite.Complete")
 
 	if quick_build then
@@ -1427,7 +1467,7 @@ function ConstructionSite:Complete(quick_build) --quick_build - cheat build
 			palette = self.alternative_entity_t and self.alternative_entity_t.palette or {self:GetColorizationMaterial4()} },
 	}
 
-	local bld = PlaceBuilding(self.building_class, instance, params)
+	local bld = PlaceBuildingIn(self.building_class, self:GetMapID(), instance, params)
 	bld:SetAngle(self:GetAngle())
 	bld:SetPos(self:GetPos())
 	local dome = IsObjInDome(self)
@@ -1453,7 +1493,7 @@ function ConstructionSite:Complete(quick_build) --quick_build - cheat build
 	if multiselect_range_att and #multiselect_range_att > 0 and bld:HasMember(RangeHexRadius.bind_to) then
 		ShowBuildingHexes(bld, bld == SelectedObj and "RangeHexMovableRadius" or "RangeHexMultiSelectRadius", RangeHexRadius.bind_to)
 	end
-	DoneObject(self)
+
 	if self.clean_cables_on_place then
 		--should be before apply grids
 		self.city:SetCableCascadeDeletion(false, "ConstructionSite")
@@ -1461,7 +1501,8 @@ function ConstructionSite:Complete(quick_build) --quick_build - cheat build
 		
 		local interior = GetEntityInteriorShape(bld:GetEntity())
 		if interior and next(interior) then
-			for _, cable in ipairs(HexGridShapeGetObjectList(ObjectGrid, bld, interior, "ElectricityGridElement")) do
+			local object_hex_grid = GetObjectHexGrid(self)
+			for _, cable in ipairs(HexGridShapeGetObjectList(object_hex_grid.grid, bld, interior, "ElectricityGridElement")) do
 				DoneObject(cable)
 				found_any_cables = true
 			end
@@ -1473,6 +1514,9 @@ function ConstructionSite:Complete(quick_build) --quick_build - cheat build
 		end
 		self.city:SetCableCascadeDeletion(true, "ConstructionSite")
 	end
+
+	DoneObject(self)
+
 	-- ApplyToGrids is done in GridObject:GameInit()
 	-- this is speculative application to mark the spot so no other buildings can occupy it before GameInit is called (from a thread)
 	bld:ApplyToGrids()
@@ -1491,7 +1535,7 @@ function ConstructionSite:Complete(quick_build) --quick_build - cheat build
 
 	Msg("ConstructionComplete", bld, dome)
 
-	ResumePassEdits("ConstructionSite.Complete")
+	realm:ResumePassEdits("ConstructionSite.Complete")
 	ResumeTerrainInvalidations("ConstructionSite.Complete")
 
 	return bld
@@ -1499,7 +1543,8 @@ end
 
 function ConstructionSite:DestroyCablesUnderneath(building)
 	local found_any_cables = false
-	for _, cable in ipairs(HexGridShapeGetObjectList(ObjectGrid, building, building:GetShapePoints(), "ElectricityGridElement")) do
+	local object_hex_grid = GetObjectHexGrid(self)
+	for _, cable in ipairs(HexGridShapeGetObjectList(object_hex_grid.grid, building, building:GetShapePoints(), "ElectricityGridElement")) do
 		DoneObject(cable)
 		found_any_cables = true
 	end
@@ -1537,8 +1582,9 @@ function ConstructionSite:Cancel()
 	if not IsValid(self) then return end
 	if not self.can_cancel then return end
 
+	local realm = GetRealm(self)
 	SuspendTerrainInvalidations("construction_site")
-	SuspendPassEdits("ConstructionSite.Cancel")
+	realm:SuspendPassEdits("ConstructionSite.Cancel")
 	if IsValid(self.rebuild) then
 		self.rebuild:RebuildCancel()
 	end
@@ -1568,7 +1614,7 @@ function ConstructionSite:Cancel()
 			assert(grp[1]:CanDelete())
 			DoneObject(grp[1])
 			ResumeTerrainInvalidations("construction_site")
-			ResumePassEdits("ConstructionSite.Cancel")
+			realm:ResumePassEdits("ConstructionSite.Cancel")
 			return
 		else
 			self:CleanupWasteRockObstructors()
@@ -1587,7 +1633,7 @@ function ConstructionSite:Cancel()
 			end
 			self.construction_group = false
 			ResumeTerrainInvalidations("construction_site")
-			ResumePassEdits("ConstructionSite.Cancel")
+			realm:ResumePassEdits("ConstructionSite.Cancel")
 			return
 		end
 
@@ -1599,7 +1645,7 @@ function ConstructionSite:Cancel()
 	end
 	DoneObject(self)
 	ResumeTerrainInvalidations("construction_site")
-	ResumePassEdits("ConstructionSite.Cancel")
+	realm:ResumePassEdits("ConstructionSite.Cancel")
 end
 
 function ConstructionSite:ToggleDemolish()
@@ -1611,7 +1657,8 @@ local function exit_impassable_filter(obj)
 end
 
 function ConstructionSite:GetUnitsUnderneath(test) --if test == true, will break on first unit
-	return HexGetUnits(self, self:GetEntity(), self:GetVisualPos(),
+	local realm = GetRealm(self)
+	return HexGetUnits(realm, self, self:GetEntity(), self:GetVisualPos(),
 							self:GetAngle(), test, exit_impassable_filter)
 end
 
@@ -1660,7 +1707,8 @@ function ConstructionSite:Done()
 		end
 		self.construction_group = false --don't keep refs
 	end
-	local dome = GetDomeAtPoint(self)
+	local object_hex_grid = GetObjectHexGrid(self)
+	local dome = GetDomeAtPoint(object_hex_grid, self)
 	if dome then
 		UpdateCoveredGrass(self, dome, "clear")
 	end
@@ -1671,6 +1719,8 @@ function ConstructionSite:Done()
 			DoneObject(o)
 		end
 	end
+
+	self:StopNaniteThread()
 	
 	self:RemoveFromCityLabels()
 	Msg("ConstructionSiteRemoved", self)
@@ -1798,6 +1848,7 @@ local function DisableMultipleHints(ids)
 end
 
 function RemoveUnderConstruction(obj)
+	local realm = GetRealm(obj)
 	if IsValidEntity(obj:GetEntity()) then
 		-- enum all removable objects in a large enough radius, use the farthest point of the bounding box including surfaces
 		local bb = obj:GetEntitySurfacesBBox()
@@ -1807,7 +1858,10 @@ function RemoveUnderConstruction(obj)
 		for i = 1, #pts do
 			dist = Max(dist, pts[i]:Len2D())
 		end
-		MapForEach(
+
+		local object_hex_grid = GetObjectHexGrid(obj)
+
+		realm:MapForEach(
 			obj,
 			dist + GetEntityMaxSurfacesRadius(),
 			const.efRemoveUnderConstruction,
@@ -1827,7 +1881,7 @@ function RemoveUnderConstruction(obj)
 					hexes = GetEntityPeripheralHexShape(o:GetEntity())
 				end
 				for i = 1, #hexes do
-					HexGridGetObjects(ObjectGrid, q + hexes[i]:x(), r + hexes[i]:y(), nil, nil, function(o2) 
+					object_hex_grid:GetObjects(q + hexes[i]:x(), r + hexes[i]:y(), nil, nil, function(o2) 
 						if o2 == obj then
 							remove = true
 							return "break"
@@ -1843,7 +1897,7 @@ function RemoveUnderConstruction(obj)
 	else
 		local rad = obj:GetRadius()
 		rad = rad == 0 and const.HexSize or rad
-		MapDelete( obj, rad, const.efRemoveUnderConstruction)
+		realm:MapDelete( obj, rad, const.efRemoveUnderConstruction)
 	end
 end
 
@@ -1860,7 +1914,7 @@ function PlaceConstructionSite(city, class_name, pos, angle, params, no_block_pa
 											(class_name == "PassageGridElement" and "PassageConstructionSite") or
 											(IsKindOf(building_proto_class, "OpenCity") and "OpenCityConstructionSite") or
 											(building_proto_class.construction_site_applies_height_surfaces and "ConstructionSiteWithHeightSurfaces" or "ConstructionSite")
-	local site = PlaceObject(construction_site_class, params)
+	local site = PlaceObjectIn(construction_site_class, city.map_id, params)
 	site:SetBuildingClass(class_name)
 	AutoAttachObjectsToShapeshifter(site)
 	
@@ -1871,10 +1925,12 @@ function PlaceConstructionSite(city, class_name, pos, angle, params, no_block_pa
 	site.can_cancel = building_proto_class.can_cancel
 	site.can_user_change_prio = building_proto_class.can_user_change_prio
 
-	SuspendPassEdits("PlaceConstructionSite")
-	site:SetPos(AdjustBuildPos(pos))
+	local realm = GetRealm(city)
+	realm:SuspendPassEdits("PlaceConstructionSite")
+	site:SetPos(AdjustBuildPos(city, pos))
 	site:SetAngle(angle)
-	local dome = GetDomeAtPoint(pos)
+	local object_hex_grid = GetObjectHexGrid(city)
+	local dome = GetDomeAtPoint(object_hex_grid, pos)
 	if dome then
 		DeleteUnattachedRoads(site, dome)
 		UpdateCoveredGrass(site, dome, "build")
@@ -1884,7 +1940,7 @@ function PlaceConstructionSite(city, class_name, pos, angle, params, no_block_pa
 	site:ApplyToGrids() -- twofold purpose, both restrict building over our site and help clean up removables
 
 	RemoveUnderConstruction(site)
-	ResumePassEdits("PlaceConstructionSite")
+	realm:ResumePassEdits("PlaceConstructionSite")
 	ResumeTerrainInvalidations("PlaceConstructionSite")
 
 	if building_proto_class:HasMember("build_category") then
@@ -1970,7 +2026,7 @@ function PipeConstructionSite:Complete(quick_build, current, total)
 	end
 	
 	self.is_construction_complete = true
-	local bld = LifeSupportGridElement:new{
+	local bld = LifeSupportGridElement:new({
 		city = self.city, 
 		connect_dir = self.connect_dir_cached,
 		pillar = self.pillar, 
@@ -1978,7 +2034,7 @@ function PipeConstructionSite:Complete(quick_build, current, total)
 		construction_grid_skin = self:GetGridSkinName(),
 		is_switch = self.is_switch,
 		switch_state = self.switch_state,
-	}
+	}, self:GetMapID())
 	bld:SetAngle(self:GetAngle())
 	bld:SetPos(self:GetPos())
 	
@@ -2078,14 +2134,14 @@ function CableConstructionSite:Complete(quick_build, current, total)
 	end
 	
 	self.is_construction_complete = true
-	local bld = ElectricityGridElement:new{
+	local bld = ElectricityGridElement:new({
 		city = self.city,
 		construction_connections = self.construction_connections,
 		pillar = self.pillar,
 		chain = self.chain,
 		is_switch = self.is_switch,
 		switch_state = self.switch_state,
-	}
+	}, self:GetMapID())
 	bld:SetAngle(self:GetAngle())
 	bld:SetPos(self:GetPos())
 	if self.chain then
@@ -2203,14 +2259,14 @@ end
 
 function ConstructionGroupLeader:SetAutoConnect(set)
 	local grp = self.construction_group
-	for i = 1, #grp do
+	for i = 1, #(grp or "") do
 		grp[i].auto_connect = set
 	end
 end
 
 function ConstructionGroupLeader:SetUIWorking(working)
 	local grp = self.construction_group
-	for i = 2, #grp do
+	for i = 2, #(grp or "") do
 		grp[i].ui_working = working
 	end
 	Building.SetUIWorking(self, working)
@@ -2224,7 +2280,7 @@ end
 function ConstructionGroupLeader:ConnectToCommandCenters()
 	TaskRequester.ConnectToCommandCenters(self)
 	local grp = self.construction_group
-	for i = 2, #grp do
+	for i = 2, #(grp or "") do
 		grp[i]:ConnectToCommandCenters()
 	end
 end
@@ -2303,7 +2359,8 @@ end
 function ConstructionGroupLeader:Complete(quick_build)
 	if not IsValid(self) then return end -- happens when the user spams quick build and manages to complete the same site twice.
 
-	SuspendPassEdits("ConstructionGroupLeader.Complete")
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("ConstructionGroupLeader.Complete")
 	local construction_group = self.construction_group
 	if construction_group then
 		local c = #construction_group
@@ -2341,7 +2398,7 @@ function ConstructionGroupLeader:Complete(quick_build)
 		self.drop_offs = nil
 	end
 	DoneObject(self)
-	ResumePassEdits("ConstructionGroupLeader.Complete")
+	realm:ResumePassEdits("ConstructionGroupLeader.Complete")
 end
 
 function ConstructionGroupLeader:CanDelete()
@@ -2376,9 +2433,9 @@ if Platform.developer and debug_constr_grp_leaders then
 		print("leader removed, total leaders:", #all_construction_group_leaders)
 	end
 	
-	function CreateConstructionGroup(input_building_class, pos, prio, instabuild, per_object_bbox, use_group_goto)
+	function CreateConstructionGroup(input_building_class, pos, map_id, prio, instabuild, per_object_bbox, use_group_goto)
 		local construction_group = {}
-		local obj = PlaceObject("ConstructionGroupLeader", {
+		local obj = PlaceObjectIn("ConstructionGroupLeader", map_id, {
 			construction_group = construction_group, 
 			priority = prio or 2, 
 			instant_build = instabuild or false,
@@ -2392,9 +2449,9 @@ if Platform.developer and debug_constr_grp_leaders then
 		return construction_group
 	end
 else
-	function CreateConstructionGroup(input_building_class, pos, prio, instabuild, per_object_bbox, use_group_goto)
+	function CreateConstructionGroup(input_building_class, pos, map_id, prio, instabuild, per_object_bbox, use_group_goto)
 		local construction_group = {}
-		local obj = PlaceObject("ConstructionGroupLeader", {
+		local obj = PlaceObjectIn("ConstructionGroupLeader", map_id, {
 			construction_group = construction_group, 
 			priority = prio or 2, 
 			instant_build = instabuild or false,
@@ -2632,6 +2689,10 @@ function ConstructionSite:IsOutsideCommandRange(ignore_cg)
 			end
 		end
 		
+		if #(self.city.labels.AncientArtifactInterface or "") > 0 then
+			return false
+		end
+		
 		return true
 	else
 		return Building.IsOutsideCommandRange(self)
@@ -2665,10 +2726,19 @@ end
 GlobalVar("g_ConstructionNanitesResearched", false)
 function OnNanitesResearched()
 	g_ConstructionNanitesResearched = true
-	MapForEach(true, "ConstructionSite", function(o) o:StartNaniteThread() end)
+	MapsForEach(true, "ConstructionSite", function(o) o:StartNaniteThread() end)
 end
-function OnMsg.TechResearched(tech_id, city, first_time)
+function OnMsg.TechResearched(tech_id, research, first_time)
 	if tech_id == "ConstructionNanites" then
 		OnNanitesResearched()
 	end
+end
+
+function OnMsg.ConstructionCostChanged(building, resource)
+	local refresh_cost = function(object)
+		if object.building_class == building then
+			object:RefreshConstructionResources()
+		end
+	end
+	MapsForEach(true, "ConstructionSite", refresh_cost)
 end

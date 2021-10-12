@@ -47,6 +47,9 @@ PlaceObj('XTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'__template', "sectionAirGrid",
 		}),
+		PlaceObj('XTemplateTemplate', {
+			'__template', "sectionCheats",
+		}),
 		}),
 })
 

@@ -266,12 +266,6 @@ function ResourceStockpileBase:GameInit()
 			self.interest1 = "needFood"
 		end
 	end)
-	
-	if self.count_in_resource_overview then
-		for i=1,#Cities do
-			Cities[i]:AddToLabel("ResourceStockpile", self)
-		end
-	end
 end
 
 function ResourceStockpileBase:Done()
@@ -280,14 +274,21 @@ function ResourceStockpileBase:Done()
 	for i = 1, #(self.parent_construction or empty_table) do
 		self.parent_construction[i]:OnBlockingStockpileCleared(self)
 	end
-	
-	for i=1,#Cities do
-		local city = Cities[i]
-		city:RemoveFromLabel("ResourceStockpile", self)
-	end
-	
+
 	if SelectedObj == self then
 		SelectObj() --clear sel
+	end
+end
+
+function ResourceStockpileBase:AddToCityLabels()
+	if self.count_in_resource_overview and self.city then
+		self.city:AddToLabel("ResourceStockpile", self) 
+	end
+end
+
+function ResourceStockpileBase:RemoveFromCityLabels()
+	if self.count_in_resource_overview and self.city then
+		self.city:RemoveFromLabel("ResourceStockpile", self)
 	end
 end
 
@@ -391,7 +392,7 @@ function ResourceStockpileBase:Service(unit, duration)
 		unit:ChangeComfort(-g_Consts.OutsideFoodConsumptionComfort, "raw food")
 	end
 	
-	UICity:OnConsumptionResourceConsumed("Food", eat_amount)
+	self.city:OnConsumptionResourceConsumed("Food", eat_amount)
 	
 	local will_kill_myself = stored_amount <= eat_amount and self.destroy_when_empty and unit.command_thread == CurrentThread()
 	if eat_amount_assigned then
@@ -464,6 +465,10 @@ function ResourceStockpileBase:AddResourceAmount(amount_to_add, notify_parents)
 	end
 end
 
+function ResourceStockpileBase:RoverLoadResource(amount, resource, request)
+	self:AddResource(amount, resource, true)
+end
+
 function ResourceStockpileBase:AddResource(amount, resource, notify_parents)
 	self:AddResourceAmount(amount, notify_parents)
 end
@@ -507,6 +512,7 @@ function ResourceStockpileBase:SetCountInternal(new_count, count, resource, plac
 	local cube_class = self.cube_class
 	local group_entity = Resources[resource].group_entity
 	local fill_group_idx = self.fill_group_idx
+	local map_id = self:GetMapID()
 	if new_count > count then
  		for i = count + 1, new_count do
 			local is_group = group_entity and i % 10 == 0
@@ -516,7 +522,10 @@ function ResourceStockpileBase:SetCountInternal(new_count, count, resource, plac
 					placed_cubes[k] = nil
 				end
 			end
-			local cube = PlaceObject(cube_class, {resource = resource, is_group = is_group})
+			local cube = PlaceObjectIn(cube_class, map_id, {
+				resource = resource,
+				is_group = is_group,
+			})
 			self:Attach(cube)
 			cube:SetAngle(is_group and group_angle or single_angle)
 			local k = is_group and i-10+fill_group_idx or i
@@ -532,7 +541,9 @@ function ResourceStockpileBase:SetCountInternal(new_count, count, resource, plac
  			if group_entity and i % 10 == 0 then
  				for k=i-9,Min(i-1,new_count) do
 					if not placed_cubes[k] then
-						local cube = PlaceObject(cube_class, {resource = resource})
+						local cube = PlaceObjectIn(cube_class, map_id, {
+							resource = resource,
+						})
 						self:Attach(cube)
 						cube:SetAngle(single_angle)
 						cube:SetAttachOffset(self:GetCubePosRelative(k - 1, placement_offset))
@@ -658,8 +669,13 @@ function ResourceStockpileBase:DisconnectFromParent()
 end
 
 function ResourceStockpileBase:FallOnGround()
+	local game_map = GetGameMap(self)
+	local terrain = game_map.terrain
+	local buildable = game_map.buildable
+
 	local my_pos = self:GetPos()
-	local new_z = IsBuildableZone(my_pos) and GetBuildableZ(WorldToHex(my_pos)) or terrain.GetHeight(my_pos)
+	local q,r = WorldToHex(my_pos)
+	local new_z = buildable:IsBuildable(q, r) and buildable:GetZ(q, r) or terrain:GetHeight(my_pos)
 	
 	if new_z ~= my_pos:z() then
 		self:SetPos(my_pos:SetZ(new_z))
@@ -696,14 +712,17 @@ end
 function ResourceStockpileBase:TestAdjacentPos(pos)
 	pos = pos or self:GetAdjacentPos()
 	local q, r = WorldToHex(pos)
-	if not HexGetAnyObj(q, r) then --quick n dirty test for another stockpile blocking the adjacent pos, it tests pos, + near the x extremities for passability.
-		if terrain.IsPassable(pos) then
+	local game_map = GetGameMap(self)
+	local object_hex_grid = game_map.object_hex_grid
+	local terrain = game_map.terrain
+	if not object_hex_grid:GetObject(q, r) then --quick n dirty test for another stockpile blocking the adjacent pos, it tests pos, + near the x extremities for passability.
+		if terrain:IsPassable(pos) then
 			local x = (self.max_x / 2)
 			local x_offset = x * self.box_diam + (x + 1) * self.spacing_x
 			local p1 = RotateRadius(x_offset, self:GetAngle(), pos)
 			local p2 = RotateRadius(x_offset, self:GetAngle() + 180*60, pos)
-			return terrain.IsPassable(p1)
-					and terrain.IsPassable(p2)
+			return terrain:IsPassable(p1)
+					and terrain:IsPassable(p2)
 					
 		end
 	end
@@ -843,6 +862,110 @@ function SavegameFixups.ReconnectAttachedStockpiles()
 	end)
 end
 
+function SavegameFixups.ResetBrokenStockpiles2()
+	for _,city in ipairs(Cities or empty_table) do
+		-- Filter drones and colonists that can be causes for broken stockpiles
+		local drones_with_sreq = table.filter(city.labels.Drone or empty_table, function(_, drone) return drone.s_request or false end)
+		local shuttles_with_sreq = table.filter(city.labels.CargoShuttle or empty_table, function(_, shuttle) return shuttle.assigned_to_s_req and shuttle.assigned_to_s_req[1] or false end)
+		local colonists_with_serv = table.filter(city.labels.Colonist or empty_table, function(_, colonist) return colonist.assigned_to_service or false end)
+		
+		GetRealm(city):MapForEach("map", "ResourceStockpileBase", function(o)
+			local s_req = o:GetFoodSupplyRequest()
+			if s_req then
+				local reserved_amount = 0
+				-- Gather reserved amount to make sure storage is not about to enter broken state
+				local drones_for_req = {}
+				for _,drone in pairs(drones_with_sreq or empty_table) do
+					if drone.s_request == s_req and not drone.resource then
+						drones_for_req[#drones_for_req + 1] = drone
+						reserved_amount = reserved_amount + drone.request_amount
+					end
+				end
+				
+				local shuttles_for_req = {}
+				for _,shuttle in pairs(shuttles_with_sreq or empty_table) do
+					if shuttle.assigned_to_s_req[1] == s_req then
+						shuttles_for_req[#shuttles_for_req + 1] = shuttle
+						reserved_amount = reserved_amount + shuttle.assigned_to_s_req[2]
+					end
+				end
+					
+				local colonists_for_service = {}
+				for _,colonist in pairs(colonists_with_serv or empty_table) do
+					if colonist.assigned_to_service == o then
+						colonists_for_service[#colonists_for_service + 1] = colonist
+						local eat_amount = colonist.assigned_to_service_with_amount or colonist:GetEatPerVisit()
+						reserved_amount = reserved_amount + eat_amount
+					end
+				end
+				
+				local function reset_stockpile()
+					local actual_amount = s_req:GetActualAmount()
+					s_req:SetTargetAmount(actual_amount)
+					s_req:ResetWorkingUnits()
+					
+					if type(o.stockpiled_amount) == "table" then
+						o.stockpiled_amount["Food"] = actual_amount
+					else
+						o.stockpiled_amount = actual_amount
+					end
+					
+					-- Fixup stockpiled amount for farms
+					local p = o.parent
+					if p then
+						if IsKindOf(p, "SingleResourceProducer") then
+							-- Gather all stockpile amounts, and reset total
+							local stockpiled = 0
+							for _,pile in ipairs(p.stockpiles or empty_table) do
+								stockpiled = stockpiled + pile.stockpiled_amount
+							end
+							
+							p.total_stockpiled = stockpiled
+							if p.parent ~= p and p.parent:HasMember("amount_stored") then
+								p.parent.amount_stored = stockpiled
+							end
+						end
+					end
+				end
+				
+				local function call_destructors_and_reset_stockpile(obj)
+					-- We need to pop all previous destructors to ensure opposing demand requests are resolved properly
+					local destructors = obj.command_destructors
+					-- Remove current call since it wont be reset at the end of the calling code
+					destructors[destructors[1] + 1] = false
+					while destructors[1] > 1 do
+						sprocall(destructors[destructors[1]], obj)
+						destructors[destructors[1]] = false
+						destructors[1] = destructors[1] - 1
+					end
+					-- Now that the drone has been unassigned, we can reset the stockpile
+					reset_stockpile()
+				end
+				
+				if s_req:GetActualAmount() < s_req:GetTargetAmount() + reserved_amount then
+					-- Reset drones
+					for _,drone in ipairs(drones_for_req) do
+						drone:PushDestructor(call_destructors_and_reset_stockpile)
+						drone:SetCommandUserInteraction("Reset")
+					end
+					-- Reset shuttles
+					for _,shuttle in ipairs(shuttles_for_req) do
+						shuttle:PushDestructor(call_destructors_and_reset_stockpile)
+						shuttle:SetCommand("Idle")
+					end
+					-- Reset colonists
+					for _,colonist in ipairs(colonists_for_service) do
+						colonist:AssignToService()
+						colonist:SetCommand("Idle")
+					end
+					-- Clean up stockpile and parents resource amount
+					reset_stockpile()
+				end
+			end
+		end)
+	end
+end
+
 function ResourceStockpileBase:IsOneOfInterests(interest)
 	return Service.IsOneOfInterests(self, interest)
 end
@@ -910,208 +1033,6 @@ end
 ---------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------
---doesnt have requests, only visual pile of cubes
-DefineClass.SharedStorageBaseVisualOnly = {
-	__parents = { "ResourceStockpileBase" },
-		properties = {
-		{ template = true, name = T(696, "Max Shared Storage"),  category = "Storage Space", id = "max_shared_storage",  editor = "number", default = 120000, scale = const.ResourceScale },
-		{ id = "storable_resources", editor = "prop table", no_edit = true },
-		{ id = "StoredAmount", editor = false },
-		
-		{ id = "stockpiled_amount", editor = "number", default = false, no_edit = true },
-	},
-	storable_resources = false, --array of resources that can be stored in this depo -> {"r1", "r2"}
-	has_demand_request = false,
-	visual_cubes = false, --helper, to distinguish cube resource types
-	auto_transportation_states = false,
-	has_supply_request = false,
-	
-	cube_placement_angle = 0,
-	
-	dome_label = false,
-}
-
-function SharedStorageBaseVisualOnly:Init()
-	self.placement_offset = point30
-end
-
-function SavegameFixups.InitMissingCarriedResourcesForRovers()
-	MapForEach("map", "RCTransport", function(self)
-		local storable_resources = self.storable_resources
-		local resource_requests = self.resource_requests
-		local disconnected = false
-		local disconnected_from_start = #self.command_centers <= 0
-		for i = 1, #storable_resources do
-			local resource_name = storable_resources[i]
-			
-			if not self.visual_cubes[resource_name] then
-				if not disconnected and not disconnected_from_start then
-					self:DisconnectFromCommandCenters()
-					disconnected = true
-				end
-				self.stockpiled_amount[resource_name] = 0
-				self.visual_cubes[resource_name] = {}
-				
-				self["GetStored_"..resource_name] = function(self)
-					return self.stockpiled_amount[resource_name]
-				end
-				
-				self["GetMaxAmount_"..resource_name] = self.MaxSharedStorageGetter
-				
-				resource_requests[resource_name] = self:AddSupplyRequest(resource_name, 0, const.rfCannotMatchWithStorage)
-			end
-		end
-		
-		if disconnected and not disconnected_from_start then
-			self:ConnectToCommandCenters()
-		end
-	end)
-end
-
-function SharedStorageBaseVisualOnly:CreateResourceRequests() 
-	--no reqs, drones cannot interact with us.
-	--init stuff.
-	self.visual_cubes = { }
-	self.stockpiled_amount = self.stockpiled_amount or {}
-	local storable_resources = self.storable_resources
-	
-	for i = 1, #storable_resources do
-		local resource_name = storable_resources[i]
-		
-		self.stockpiled_amount[resource_name] = 0
-		self.visual_cubes[resource_name] = {}
-		
-		self["GetStored_"..resource_name]=  function(self)
-			return self.stockpiled_amount[resource_name]
-		end
-		
-		self["GetMaxAmount_"..resource_name] = self.MaxSharedStorageGetter
-	end
-end
-
-function SharedStorageBaseVisualOnly:AddResource(amount, resource)
-	local remaining_space = self:GetEmptyStorage()
-	amount = Clamp(amount, -(self.max_shared_storage - remaining_space), remaining_space)
-	
-	
-	self.stockpiled_amount[resource] = (self.stockpiled_amount[resource] or 0) + amount
-	self:SetCount(self.stockpiled_amount[resource], resource)
-end
-
-function SharedStorageBaseVisualOnly:GetEmptyStorage(resource)
-	return self.max_shared_storage - self:GetStoredAmount()
-end
-
-function SharedStorageBaseVisualOnly:SetResourceAutoTransportationState(resource, state)
-	self.auto_transportation_states[resource] = state
-end
-
-function SharedStorageBaseVisualOnly:GetStoredAmount(resource)
-	if not self.stockpiled_amount then
-		return 0
-	elseif resource then
-		return self.stockpiled_amount[resource]
-	else
-		local total = 0
-		for k, v in pairs(self.stockpiled_amount) do
-			total = total + v
-		end
-		
-		return total
-	end
-end
-
-function SharedStorageBaseVisualOnly:MaxSharedStorageGetter()
-	return self.max_shared_storage
-end
-
-function SharedStorageBaseVisualOnly:ReInitBoxSpots()
-	if self:HasSpot("Box") then
-		self.cube_attach_spot_idx = self:GetSpotBeginIndex("Box")
-	elseif self:HasSpot("Box1") then
-		self.cube_attach_spot_idx = self:GetSpotBeginIndex("Box1")
-	end
-	
-	self.placement_offset = point30
-end
-
-function SharedStorageBaseVisualOnly:OnResourceCubePlaced(cube, resource)
-	--callback
-end
-
-function SharedStorageBaseVisualOnly:SetCount(new_count, resource)
-	new_count = new_count/const.ResourceScale --+ (new_count%const.ResourceScale==0 and 0 or 1)
-	new_count = Max(new_count, 0)
-	if not resource then return end
-	
-	self:ReInitBoxSpots()
-	local total_cubes_of_type = #self.visual_cubes[resource]
-	if total_cubes_of_type == new_count then return end
-	local inc = new_count - total_cubes_of_type
-	local step = new_count > total_cubes_of_type and 1 or -1
-
-	for i = total_cubes_of_type, new_count + step * -1, step do
-		if step < 0 then
-			--decreasing count
-			local the_cube_in_question = self.visual_cubes[resource][i]
-			local idx = table.find(self.placed_cubes, the_cube_in_question)
-			self.placed_cubes[idx] = false
-			self.visual_cubes[resource][i] = nil
-			DoneObject(the_cube_in_question)
-			self:RearrangeCubes(idx)
-		else
-			--increasing count
-			local the_cube_in_question = PlaceObject(self.cube_class, {resource = resource})
-			self:Attach(the_cube_in_question, self.cube_attach_spot_idx)
-			local idx = table.find(self.placed_cubes, false) or #self.placed_cubes + 1
-			the_cube_in_question:SetAttachOffset(self:GetCubePosRelative(idx - 1))
-			--total_cubes = total_cubes + 1
-			assert(not self.placed_cubes[idx])
-			self.placed_cubes[idx] = the_cube_in_question
-			self.visual_cubes[resource][i + 1] = the_cube_in_question
-			self:OnResourceCubePlaced(the_cube_in_question, resource)
-		end
-	end
-	
-	self.count = self.count + inc
-end
-
-
-function SharedStorageBaseVisualOnly:GetCubePosRelative(idx)
-	return Rotate(ResourceStockpileBase.GetCubePosRelative(self, idx), self.cube_placement_angle)
-end
-
-function SharedStorageBaseVisualOnly:RearrangeCubes(removed_cube_idx)
-	--rearrange cubes that might be above the removed one.
-	local max = Max(self:GetMax(), #self.placed_cubes)
-	local step = self.max_x * self.max_y
-	local next_cube_idx = removed_cube_idx + step
-	while next_cube_idx <= max do
-		local next_cube = self.placed_cubes[next_cube_idx]
-		if not next_cube then
-			break
-		else
-			next_cube:SetAttachOffset(self:GetCubePosRelative(removed_cube_idx - 1))
-			self.placed_cubes[removed_cube_idx] = next_cube
-			self.placed_cubes[next_cube_idx] = false
-			
-			removed_cube_idx = removed_cube_idx + step
-			next_cube_idx = next_cube_idx + step
-		end
-	end
-end
-
-function SharedStorageBaseVisualOnly:DoesAcceptResource(resource)
-	return table.find(self.storable_resources, resource)
-end
-
-SharedStorageBaseVisualOnly.AddDepotResource = SharedStorageBaseVisualOnly.AddResource
-SharedStorageBaseVisualOnly.AddResourceAmount = SharedStorageBaseVisualOnly.AddResource
-SharedStorageBaseVisualOnly.SetResourceAmount = false --not impl.
-SharedStorageBaseVisualOnly.SetCountFromRequest = false --not impl.
----------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------
 DefineClass.ResourceStockpile = {
 	__parents = { "ResourceStockpileBase", "UngridedObstacle", "DoesNotObstructConstruction" },
 	GetModifiedBSphereRadius = ResourceStockpileBase.GetModifiedBSphereRadius,
@@ -1120,11 +1041,12 @@ DefineClass.ResourceStockpile = {
 
 local current_stockpile_placement_data = false
 --places all stockpiles in bulk so it can arrange them pleasantly.
-function PlaceResourceStockpile_Delayed(pos, resource, amount, angle, destroy_when_empty)
+function PlaceResourceStockpile_Delayed(pos, map_id, resource, amount, angle, destroy_when_empty)
 	current_stockpile_placement_data = current_stockpile_placement_data or {}
 	
 	current_stockpile_placement_data[#current_stockpile_placement_data + 1] = {
 		pos = pos,
+		map_id = map_id,
 		resource = resource,
 		amount = amount,
 		angle = angle + 90 * 60,
@@ -1186,6 +1108,7 @@ function ProcessPlaceStockpileCalls()
 		
 		if created then
 			parsed_entry.pos = entry.pos
+			parsed_entry.map_id = entry.map_id
 			parsed_entry.angle = entry.angle
 			parsed_entry.destroy_when_empty = entry.destroy_when_empty
 			
@@ -1268,7 +1191,7 @@ function ProcessPlaceStockpileCalls()
 									to_place + parsed_data_entry[resource] - to_place * stockpiles_to_place[resource]
 				end
 				
-				local stock = PlaceObject(resource_pile_class_override[resource] or "ResourceStockpile", {resource = resource, init_with_amount = to_place, destroy_when_empty = parsed_data_entry.destroy_when_empty, max_z = stockpile_amounts[resource].to_spread and 999 or ResourceStockpile.max_z})
+				local stock = PlaceObjectIn(resource_pile_class_override[resource] or "ResourceStockpile", parsed_data_entry.map_id, {resource = resource, init_with_amount = to_place, destroy_when_empty = parsed_data_entry.destroy_when_empty, max_z = stockpile_amounts[resource].to_spread and 999 or ResourceStockpile.max_z})
 				stock:SetAngle(parsed_data_entry.angle)
 
 				local my_width = GetStockpileWidth(resource)
@@ -1290,8 +1213,11 @@ function ProcessPlaceStockpileCalls()
 	ResumePassEdits("ProcessPlaceStockpileCalls")
 end
 
---insta places stockpile
-function PlaceResourceStockpile_Instant(pos, resource, amount, angle, destroy_when_empty, max_z)
+function PlaceResourceStockpile_Instant(...)
+	PlaceResourceStockpile_InstantIn(ActiveMapID, ...)
+end
+
+function PlaceResourceStockpile_InstantIn(map_id, pos, resource, amount, angle, destroy_when_empty, max_z)
 	local best_stock = false
 	local other_resource_stock = false
 	local pos_to_stock = {}
@@ -1307,9 +1233,10 @@ function PlaceResourceStockpile_Instant(pos, resource, amount, angle, destroy_wh
 			end
 		end
 	end
-	MapForEach(pos, 2*const.HexSize, "ResourceStockpile", stockpile_search )
+	local realm = GetRealmByID(map_id)
+	realm:MapForEach(pos, 2*const.HexSize, "ResourceStockpile", stockpile_search )
 	
-	--handle case where we already have a stockpile in the adjascent spot and we need its adjascent spot.
+	--handle case where we already have a stockpile in the adjacent spot and we need its adjacent spot.
 	if other_resource_stock then
 		local hashed_pos
 		while true do
@@ -1329,7 +1256,7 @@ function PlaceResourceStockpile_Instant(pos, resource, amount, angle, destroy_wh
 	else
 		did_create = true
 		local class = resource_pile_class_override[resource] or "ResourceStockpile"
-		best_stock = PlaceObject(class, {resource = resource, init_with_amount = amount, destroy_when_empty = destroy_when_empty, max_z = max_z})
+		best_stock = PlaceObjectIn(class, map_id, {resource = resource, init_with_amount = amount, destroy_when_empty = destroy_when_empty, max_z = max_z})
 		
 		if other_resource_stock then
 			local t_p = other_resource_stock:GetAdjacentPos()
@@ -1357,13 +1284,15 @@ DefineClass.ResourceStockpileLR = {
 
 function ResourceStockpileLR:GameInit()
 	if self.user_include_in_lrt then
-		LRManagerInstance:AddBuilding(self)
+		local lr_manager = GetLRManager(self)
+		lr_manager:AddBuilding(self)
 	end
 end
 
 function ResourceStockpileLR:Done()
 	if self.user_include_in_lrt then
-		LRManagerInstance:RemoveBuilding(self)
+		local lr_manager = GetLRManager(self)
+		lr_manager:RemoveBuilding(self)
 	end
 end
 -------------------------------------------------------------------------------------------------------------
@@ -1378,25 +1307,33 @@ end
 
 StockpileDumpQueryClasses = {"Unit", "WasteRockObstructor", "ResourceStockpileBase"}
 
-function HexGetAnyObj(q, r)
-	return HexGridGetObject(ObjectGrid, q, r)
+function HexGetLandscapeOrAnyObjButToxicPool(game_map, q, r)
+	return LandscapeCheck(game_map.landscape_grid, q, r, true) or game_map.object_hex_grid:GetObject(q, r, nil, "ToxicPool")
 end
 
-function HexGetLandscapeOrAnyObjButToxicPool(q, r)
-	return LandscapeCheck(q, r, true) or HexGridGetObject(ObjectGrid, q, r, nil, "ToxicPool")
-end
-
-function CanPlaceStockpileOnVegetation(q, r)
+function CanPlaceStockpileOnVegetation(map_id, q, r)
 	return true
 end
 
-function TryFindStockpileDumpSpot(q, r, angle, p_shape, hex_getter_override, for_waste_rock_resource, ignore_z_delta, path_test_obj)
+local function HexGetLowBuilding(game_map, ...)
+	local object_hex_grid = game_map.object_hex_grid
+	return object_hex_grid:GetLowBuilding(...)
+end
+
+function TryFindStockpileDumpSpot(...)
+	local game_map = GetGameMapByID(ActiveMapID)
+	TryFindStockpileDumpSpotIn(game_map, ...)
+end
+
+function TryFindStockpileDumpSpotIn(game_map, q, r, angle, p_shape, hex_getter_override, for_waste_rock_resource, ignore_z_delta, path_test_obj)
 	local hex_getter = hex_getter_override or HexGetLowBuilding
 	local filter = for_waste_rock_resource and StockpileDumpSpotFilterForWasteRock or StockpileDumpSpotFilter
 	local classes = StockpileDumpQueryClasses
 	local dir = HexAngleToDirection(angle)
 	local initial_q, initial_r = q, r
-	local orig_height = terrain.GetHeight(HexToWorld(q, r))
+	local terrain = game_map.terrain
+	local realm = game_map.realm
+	local orig_height = terrain:GetHeight(HexToWorld(q, r))
 	local tolerance = const.PathMaxZTolerance
 	
 	for i = 1, #p_shape do
@@ -1405,10 +1342,10 @@ function TryFindStockpileDumpSpot(q, r, angle, p_shape, hex_getter_override, for
 		q = initial_q + r_q
 		r = initial_r + r_r
 		local x, y = HexToWorld(q, r)
-		if (ignore_z_delta or abs(terrain.GetHeight(x, y) - orig_height) <= tolerance) and terrain.IsPassable(x, y) 
-		and CanPlaceStockpileOnVegetation(q, r)
-		and not hex_getter(q, r)
-		and not HexGetUnits(nil, nil, point(x, y), 0, true, filter, classes) 
+		if (ignore_z_delta or abs(terrain:GetHeight(x, y) - orig_height) <= tolerance) and terrain:IsPassable(x, y) 
+		and CanPlaceStockpileOnVegetation(game_map.map_id, q, r)
+		and not hex_getter(game_map, q, r)
+		and not HexGetUnits(realm, nil, nil, point(x, y), 0, true, filter, classes) 
 		and (not path_test_obj or path_test_obj:HasPath(point(x, y))) then
 			return true, q, r
 		end
@@ -1454,7 +1391,9 @@ end
 function StockpileController:CreateStockpiles()
 	local stock_max = 0
 	self.stockpiles = {}
-	SuspendPassEdits("CreateStockpiles")
+	local map_id = self:GetMapID()
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("CreateStockpiles")
 	for i = 1, #(self.stockpile_spots or "") do
 		local spot = self.stockpile_spots[i]
 		if not self.parent:HasSpot(spot) then
@@ -1477,13 +1416,13 @@ function StockpileController:CreateStockpiles()
 				params[k] = v
 			end
 			
-			local s = PlaceObject(self.stockpile_class, params)
+			local s = PlaceObjectIn(self.stockpile_class, map_id, params)
 			self.parent:Attach(s, j)
 			self.stockpiles[#self.stockpiles + 1] = s
 			stock_max = stock_max + s:GetMax() * const.ResourceScale
 		end
 	end
-	ResumePassEdits("CreateStockpiles")
+	realm:ResumePassEdits("CreateStockpiles")
 	self.stock_max = stock_max
 end
 
@@ -1496,6 +1435,8 @@ function StockpileController:ReleaseStockpiles()
 			DoneObject(self.stockpiles[i])
 		end
 	end
+	
+	self.total_stockpiled = 0
 	
 	self.stockpiles = false
 end

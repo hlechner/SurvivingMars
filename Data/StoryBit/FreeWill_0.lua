@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/04_interrogation.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickResident', {
 			'ParentBuildingLabel', "Arcology",
@@ -20,6 +21,10 @@ PlaceObj('StoryBit', {
 			'Field', "Breakthroughs",
 			'TechId', "HiveMind",
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(885768471792, --[[StoryBit FreeWill_0 Text]] "Luckily for the victim, <DisplayName> botched the assault attempt and failed to cause any harm, but this doesn't mean that the incident should be ignored."),
@@ -29,6 +34,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(880492504830, --[[voice:narrator]] "An Arcology resident has committed an armed assault against another Colonist! This is a rather strange case as nothing in the perpetrator’s file suggests a criminal intent."),
 	group = "Breakthroughs",
 	id = "FreeWill_0",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143302,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(838039138122, --[[StoryBit FreeWill_0 Text]] "Order a thorough investigation."),
 		'Prerequisite', PlaceObj('CheckColonistCount', {

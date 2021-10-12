@@ -19,6 +19,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/11_idiot.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -40,6 +41,10 @@ PlaceObj('StoryBit', {
 				}),
 			},
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(250517903053, --[[StoryBit Darwin_TerminalVelocity Text]] "<DisplayName> was ordered to repair a freight elevator. This Colonist's original approach to the problem included standing at the bottom of the elevator shaft and dislodging its steel cable without securing the counterweight on the other side.\n\nThe Martian gravity may be 38% of that of Earth, but 4 tons are still quite a lot.\n\n<effect>A Metals Extractor has malfunctioned. An Idiot Colonist has died."),
@@ -49,6 +54,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(760910696935, --[[voice:narrator]] "There was a bizarre accident in one of our Metals Extractors."),
 	group = "Colonists",
 	id = "Darwin_TerminalVelocity",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625144028,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(835836152096, --[[StoryBit Darwin_TerminalVelocity Text]] "This is a tragic event. We should mourn this loss."),
 		'OutcomeText', "custom",

@@ -328,7 +328,7 @@ PlaceObj('TechPreset', {
 	icon = "UI/Icons/Research/giant_crops.tga",
 	id = "GiantCrops",
 	PlaceObj('Effect_Code', {
-		OnApplyEffect = function (self, city, parent)
+		OnApplyEffect = function (self, colony, parent)
 UnlockCrop("Giant Leaf Crops", parent.id)
 UnlockCrop("Giant Wheat Grass", parent.id)
 UnlockCrop("Giant Potatoes", parent.id)
@@ -336,7 +336,7 @@ UnlockCrop("Giant Wheat", parent.id)
 UnlockCrop("Giant Corn", parent.id)
 UnlockCrop("Giant Rice", parent.id)
 end,
-		OnInitEffect = function (self, city, parent)
+		OnInitEffect = function (self, colony, parent)
 LockCrop("Giant Leaf Crops", parent.id)
 LockCrop("Giant Wheat Grass", parent.id)
 LockCrop("Giant Potatoes", parent.id)
@@ -540,6 +540,15 @@ PlaceObj('TechPreset', {
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "ConcretePlant_MagneticExtraction",
 	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGExtractor_MagneticExtraction",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGAutoExtractor_MagneticExtraction",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGAutoWaterExtractor_MagneticExtraction",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -677,6 +686,9 @@ PlaceObj('TechPreset', {
 	PlaceObj('Effect_UnlockResupplyItem', {
 		Item = "Temple",
 	}),
+	PlaceObj('Effect_UnlockResupplyItem', {
+		Item = "SchoolSpireCCP1",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -749,6 +761,9 @@ PlaceObj('TechPreset', {
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "MegaMall_ServiceBots",
 	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "LowGAmusementPark_ServiceBots",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -778,6 +793,21 @@ PlaceObj('TechPreset', {
 		Percent = 20,
 		Prop = "production_per_day1",
 		Upgrade = "MetalsExtractor_Amplify",
+	}),
+	PlaceObj('Effect_ModifyUpgrade', {
+		Percent = 20,
+		Prop = "production_per_day1",
+		Upgrade = "MicroGExtractor_Amplify",
+	}),
+	PlaceObj('Effect_ModifyUpgrade', {
+		Percent = 20,
+		Prop = "production_per_day1",
+		Upgrade = "MicroGAutoExtractor_Amplify",
+	}),
+	PlaceObj('Effect_ModifyUpgrade', {
+		Percent = 20,
+		Prop = "production_per_day1",
+		Upgrade = "MicroGAutoWaterExtractor_Amplify",
 	}),
 	PlaceObj('Effect_ModifyUpgrade', {
 		Percent = 20,
@@ -930,6 +960,11 @@ PlaceObj('TechPreset', {
 		Percent = -50,
 		Prop = "TravelTimeMarsEarth",
 	}),
+	PlaceObj('Effect_ModifyLabel', {
+		Label = "Consts",
+		Percent = -50,
+		Prop = "TravelTimeMarsAsteroid",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -947,6 +982,16 @@ PlaceObj('TechPreset', {
 	PlaceObj('Effect_ModifyLabel', {
 		Amount = 1,
 		Label = "DroneHub",
+		Prop = "disable_maintenance",
+	}),
+	PlaceObj('Effect_ModifyLabel', {
+		Amount = 1,
+		Label = "DroneHubExtender",
+		Prop = "disable_electricity_consumption",
+	}),
+	PlaceObj('Effect_ModifyLabel', {
+		Amount = 1,
+		Label = "DroneHubExtender",
 		Prop = "disable_maintenance",
 	}),
 })
@@ -1186,11 +1231,11 @@ PlaceObj('TechPreset', {
 	id = "UtilityCrops",
 	position = range(6, 6),
 	PlaceObj('Effect_Code', {
-		OnApplyEffect = function (self, city, parent)
+		OnApplyEffect = function (self, colony, parent)
 UnlockCrop("Algae", parent.id)
 UnlockCrop("Cover Crops", parent.id)
 end,
-		OnInitEffect = function (self, city, parent)
+		OnInitEffect = function (self, colony, parent)
 LockCrop("Algae", parent.id)
 LockCrop("Cover Crops", parent.id)
 end,
@@ -1199,13 +1244,16 @@ end,
 
 PlaceObj('TechPreset', {
 	SortKey = 7,
-	description = T(6332, --[[TechPreset MartianbornAdaptability description]] "<em>Martianborn</em> Colonists graduate faster in Universities and Sanatoriums and have higher chance to gain Perks from Schools.\n\n<grey>Certain restrictions that still persist on Earth derived from religion and general conservatism are absent here on Mars. As a result, we have the freedom to genetically enhance our newborns and hone their already-sharp minds to a sharp point.</grey>"),
+	description = T(6332, --[[TechPreset MartianbornAdaptability description]] "<em>Martianborn</em> Colonists graduate faster in Universities and Sanatoriums and have higher chance to gain Perks from Schools.<if_all(has_dlc('kerwin'))>\nNew Building: <em>Large Nursery</em> (<buildinginfo('LargeNurseryCCP1')>) - A larger nursery for housing more children.</if>\n\n<grey>Certain restrictions that still persist on Earth derived from religion and general conservatism are absent here on Mars. As a result, we have the freedom to genetically enhance our newborns and hone their already-sharp minds to a sharp point.</grey>"),
 	display_name = T(6331, --[[TechPreset MartianbornAdaptability display_name]] "Martianborn Adaptability"),
 	group = "Biotech",
 	icon = "UI/Icons/Research/martianborn_adaptability.tga",
 	id = "MartianbornAdaptability",
 	param1 = 100,
 	position = range(7, 10),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "LargeNurseryCCP1",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -1270,7 +1318,7 @@ PlaceObj('TechPreset', {
 	id = "GeneAdaptation",
 	position = range(11, 11),
 	PlaceObj('Effect_Code', {
-		OnApplyEffect = function (self, city, parent)
+		OnApplyEffect = function (self, colony, parent)
 UnlockCrop("Rice", parent.id)
 UnlockCrop("Vegetables", parent.id)
 UnlockCrop("Kelp", parent.id)
@@ -1280,7 +1328,7 @@ UnlockCrop("Quinoa", parent.id)
 UnlockCrop("Giant Corn", parent.id)
 UnlockCrop("Giant Rice", parent.id)
 end,
-		OnInitEffect = function (self, city, parent)
+		OnInitEffect = function (self, colony, parent)
 LockCrop("Rice", parent.id)
 LockCrop("Vegetables", parent.id)
 LockCrop("Kelp", parent.id)
@@ -1366,6 +1414,9 @@ PlaceObj('TechPreset', {
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "MedicalCenter_HolographicScanner",
 	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "HospitalCCP1_HolographicScanner",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -1395,6 +1446,12 @@ PlaceObj('TechPreset', {
 	}),
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "MedicalCenter_RejuvenationTreatment",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MedicalPostCCP1_RejuvenationTreatment",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "HospitalCCP1_RejuvenationTreatment",
 	}),
 })
 
@@ -1569,7 +1626,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 8,
-	description = T(6374, --[[TechPreset LowGEngineering description]] "New Dome: <em>Medium</em> (<buildinginfo('DomeMedium')>) - A medium-sized Dome.\nNew Dome: <em>Trigon</em> (<buildinginfo('DomeTrigon')>) - A triangle base Dome.\n\n<grey>Gaining experience in actually building constructions on Mars rather than just hypothesizing has vastly advanced our off-Earth architectural capabilities.</grey>"),
+	description = T(6374, --[[TechPreset LowGEngineering description]] "New Dome: <em>Medium</em> (<buildinginfo('DomeMedium')>) - A medium-sized Dome.\nNew Dome: <em>Trigon</em> (<buildinginfo('DomeTrigon')>) - A triangle base Dome.\nNew Building: <em>Low-G Amusement Park</em> (<buildinginfo('LowGAmusementPark')>) - A service building which provides Satisfaction for Tourists\n\n<grey>Gaining experience in actually building constructions on Mars rather than just hypothesizing has vastly advanced our off-Earth architectural capabilities.</grey>"),
 	display_name = T(6373, --[[TechPreset LowGEngineering display_name]] "Low-G Engineering"),
 	group = "Engineering",
 	icon = "UI/Icons/Research/low-g_engineering.tga",
@@ -1580,6 +1637,9 @@ PlaceObj('TechPreset', {
 	}),
 	PlaceObj('Effect_TechUnlockBuilding', {
 		Building = "DomeMedium",
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "LowGAmusementPark",
 	}),
 })
 
@@ -1600,7 +1660,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 10,
-	description = T(6377, --[[TechPreset SmartHome description]] "New Buildings: <em>Smart Homes</em> (<buildinginfo('SmartHome_Small')>)  & <em>Smart Complex</em> (<buildinginfo('SmartHome')>) - Provides a very comfortable living space for Colonists. Residents will recover Sanity when resting.\n\n<grey>Perfecting the Martian household - for a better life beyond Earth.</grey>"),
+	description = T(6377, --[[TechPreset SmartHome description]] "New Buildings: <em>Smart Homes</em> (<buildinginfo('SmartHome_Small')>), <em>Smart Complex</em> (<buildinginfo('SmartHome')>) <if_all(has_dlc('kerwin'))>, <em>Smart Apartments</em> (<buildinginfo('SmartApartmentsCCP1')>) </if>- Provides a very comfortable living space for Colonists. Residents will recover Sanity when resting.\nNew Building: <em>Hotel</em> (<buildinginfo('Hotel')>) - Provides luxurious hotel rooms for Tourists and Colonists. Tourists gain satisfaction when resting.<if_all(has_dlc('kerwin'))>\nNew Building: <em>Retirement Home</em> (<buildinginfo('SeniorsResidenceCCP1')>) - Provides very comfortable living space for Seniors.</if>\n\n<grey>Perfecting the Martian household - for a better life beyond Earth.</grey>"),
 	display_name = T(3533, --[[TechPreset SmartHome display_name]] "Smart Home"),
 	group = "Engineering",
 	icon = "UI/Icons/Research/smart_home.tga",
@@ -1611,6 +1671,15 @@ PlaceObj('TechPreset', {
 	}),
 	PlaceObj('Effect_TechUnlockBuilding', {
 		Building = "SmartHome_Small",
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "Hotel",
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "SmartApartmentsCCP1",
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "SeniorsResidenceCCP1",
 	}),
 })
 
@@ -1829,7 +1898,7 @@ PlaceObj('TechPreset', {
 	mystery = "BlackCubeMystery",
 	position = range(0, 2),
 	PlaceObj('Effect_Code', {
-		OnApplyEffect = function (self, city, parent)
+		OnApplyEffect = function (self, colony, parent)
 g_BCHexRangeEnable.SensorTower = true
 end,
 	}),
@@ -1977,10 +2046,10 @@ PlaceObj('TechPreset', {
 	id = "WildfireCure",
 	mystery = "TheMarsBug",
 	PlaceObj('Effect_Code', {
-		OnApplyEffect = function (self, city, parent)
+		OnApplyEffect = function (self, colony, parent)
 UnlockCrop("Cure", parent.id)
 end,
-		OnInitEffect = function (self, city, parent)
+		OnInitEffect = function (self, colony, parent)
 LockCrop("Cure", parent.id)
 end,
 	}),
@@ -2015,6 +2084,15 @@ PlaceObj('TechPreset', {
 	}),
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "ConcretePlant_Amplify",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGExtractor_Amplify",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGAutoExtractor_Amplify",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGAutoWaterExtractor_Amplify",
 	}),
 })
 
@@ -2228,6 +2306,11 @@ PlaceObj('TechPreset', {
 		Label = "Consts",
 		Prop = "IsDeepPreciousMetalsExploitable",
 	}),
+	PlaceObj('Effect_ModifyLabel', {
+		Amount = 1,
+		Label = "Consts",
+		Prop = "IsDeepPreciousMineralsExploitable",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -2271,7 +2354,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 17,
-	description = T(10514, --[[TechPreset ResearchAmplification description]] "<if_all(has_dlc('gagarin'),is_sponsor('ESA'))>Low-G Lab, </if> Research Lab, Hawking Institute & Network Node Upgrade (<em>Amplify</em>) - Increases production by <param1>% but also increases Power consumption.\n\n<grey>The speed of the calculations and research efficiency grows with the amount of power invested.</grey>"),
+	description = T(10514, --[[TechPreset ResearchAmplification description]] "<if_all(has_dlc('gagarin'),is_sponsor('ESA'))>Low-G Lab, </if> Research Lab, Hawking Institute & Network Node Upgrade (<em>Amplify</em>) - Increases production by <param1>% but also increases Power consumption.\n\n<grey>\"Your best and wisest refuge from all troubles is in your science.\"\n<right>Ada Lovelace</grey><left>"),
 	display_name = T(6470, --[[TechPreset ResearchAmplification display_name]] "Research Amplification"),
 	group = "Physics",
 	icon = "UI/Icons/Research/research_amplification.tga",
@@ -2351,7 +2434,7 @@ PlaceObj('TechPreset', {
 	}),
 	PlaceObj('Effect_ModifyLabel', {
 		Amount = 15,
-		Label = "RCTransport",
+		Label = "RCTransportAndChildren",
 		Prop = "max_shared_storage",
 	}),
 })
@@ -2372,12 +2455,12 @@ PlaceObj('TechPreset', {
 		Prop = "move_speed",
 	}),
 	PlaceObj('Effect_ModifyLabel', {
-		Label = "RCRover",
+		Label = "RCRoverAndChildren",
 		Percent = 20,
 		Prop = "move_speed",
 	}),
 	PlaceObj('Effect_ModifyLabel', {
-		Label = "RCTransport",
+		Label = "RCTransportAndChildren",
 		Percent = 20,
 		Prop = "move_speed",
 	}),
@@ -2480,6 +2563,9 @@ PlaceObj('TechPreset', {
 	PlaceObj('Effect_TechUnlockBuilding', {
 		Building = "MechanizedDepotSeeds",
 	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "MechanizedDepotRareMinerals",
+	}),
 })
 
 PlaceObj('TechPreset', {
@@ -2513,7 +2599,7 @@ PlaceObj('TechPreset', {
 	position = range(6, 10),
 	PlaceObj('Effect_ModifyLabel', {
 		Amount = 4,
-		Label = "RCRover",
+		Label = "RCRoverAndChildren",
 		Prop = "starting_drones",
 	}),
 	PlaceObj('Effect_ModifyLabel', {
@@ -2577,6 +2663,15 @@ PlaceObj('TechPreset', {
 	position = range(12, 14),
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "MetalsExtractor_FueledExtractor",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGExtractor_FueledExtractor",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGAutoExtractor_FueledExtractor",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "MicroGAutoWaterExtractor_FueledExtractor",
 	}),
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "PreciousMetalsExtractor_FueledExtractor",
@@ -2650,7 +2745,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 15,
-	description = T(6424, --[[TechPreset RoverPrinting description]] "Can construct <em>RC Commander</em> (<buildinginfo('RCRoverBuilding')>), <em>RC Transport</em> (<buildinginfo('RCTransportBuilding')>) and <em>RC Explorer</em> (<buildinginfo('RCExplorerBuilding')>).\n\n<grey>Machine-part printing devices have reached a fidelity high enough to print the intricate parts necessary to assemble state of the art Rovers. </grey>"),
+	description = T(6424, --[[TechPreset RoverPrinting description]] "Can construct <em>RC Commander</em> (<buildinginfo('RCRoverBuilding')>), <em>RC Transport</em> (<buildinginfo('RCTransportBuilding')>), <em>RC Explorer</em> (<buildinginfo('RCExplorerBuilding')>) and <em>RC Safari</em> (<buildinginfo('RCSafariBuilding')>).\n\n<grey>Machine-part printing devices have reached a fidelity high enough to print the intricate parts necessary to assemble state of the art Rovers. </grey>"),
 	display_name = T(6423, --[[TechPreset RoverPrinting display_name]] "Rover Printing"),
 	group = "Robotics",
 	icon = "UI/Icons/Research/rover_printing.tga",
@@ -2686,6 +2781,10 @@ PlaceObj('TechPreset', {
 	}),
 	PlaceObj('Effect_TechUnlockBuilding', {
 		Building = "RCConstructorBuilding",
+		HideBuilding = true,
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "RCSafariBuilding",
 		HideBuilding = true,
 	}),
 })
@@ -2726,7 +2825,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 18,
-	description = T(6433, --[[TechPreset TheMartianNetwork description]] "New Spire Building: <em>Network Node</em> (<buildinginfo('NetworkNode')>) - increases the research output of all Research Labs and Hawking Institutes in the Dome.\n\n<grey>Rapid transfer of information and an easier access to it could speed up research several times-fold.</grey>"),
+	description = T(6433, --[[TechPreset TheMartianNetwork description]] "New Spire Building: <em>Network Node</em> (<buildinginfo('NetworkNode')>) - increases the research output of all Research Labs and Hawking Institutes in the Dome.<if_all(has_dlc('kerwin'))>\nHospital Upgrade (<em>Remote Medic</em>) upgrade - decreases the total work slots. </if>\n\n<grey>Rapid transfer of information and an easier access to it could speed up research several times-fold.</grey>"),
 	display_name = T(6432, --[[TechPreset TheMartianNetwork display_name]] "The Martian Network"),
 	group = "Robotics",
 	icon = "UI/Icons/Research/the_martian_network.tga",
@@ -2734,6 +2833,9 @@ PlaceObj('TechPreset', {
 	position = range(16, 18),
 	PlaceObj('Effect_TechUnlockBuilding', {
 		Building = "NetworkNode",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "HospitalCCP1_RemoteMedic",
 	}),
 })
 
@@ -2767,7 +2869,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 1,
-	description = T(6483, --[[TechPreset LiveFromMars description]] "More <em>applicants</em> will start to appear on Earth.\n\n<grey>PR research aimed at exposing the benefits and positive aspects of life as a Colonist on Mars.</grey>"),
+	description = T(6483, --[[TechPreset LiveFromMars description]] "More <em>applicants</em> will start to appear on Earth.<if_all(has_dlc('kerwin'))>\nNew Building: <em>TV Studio Workshop</em> (<buildinginfo('TVStudioWorkshopCCP1')>) - A workshop building which also generates funds for completing TV shows.</if>\n\n<grey>PR research aimed at exposing the benefits and positive aspects of life as a Colonist on Mars.</grey>"),
 	display_name = T(6482, --[[TechPreset LiveFromMars display_name]] '"Live From Mars"'),
 	group = "Social",
 	icon = "UI/Icons/Research/live_from_mars.tga",
@@ -2777,6 +2879,9 @@ PlaceObj('TechPreset', {
 		Label = "Consts",
 		Percent = -25,
 		Prop = "ApplicantGenerationInterval",
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "TVStudioWorkshopCCP1",
 	}),
 })
 
@@ -2859,7 +2964,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 6,
-	description = T(6493, --[[TechPreset MartianEducation description]] "New Building: <em>Martian University</em> (<buildinginfo('MartianUniversity')>) - Trains Scientists, Geologists, Botanists, Medic, Engineers or Security officers.\n\n<grey>College education is always free on Mars.</grey>"),
+	description = T(6493, --[[TechPreset MartianEducation description]] "New Building: <em>Martian University</em> (<buildinginfo('MartianUniversity')>) - Trains Scientists, Geologists, Botanists, Medic, Engineers or Security officers.<if_all(has_dlc('kerwin'))>\nNew Building: <em>School Spire</em> (<buildinginfo('SchoolSpireCCP1')>) - Teaches positive traits to children and can give the Genius trait after an upgrade.</if>\n\n<grey>College education is always free on Mars.</grey>"),
 	display_name = T(6492, --[[TechPreset MartianEducation display_name]] "Martian Education"),
 	group = "Social",
 	icon = "UI/Icons/Research/martian_education.tga",
@@ -2867,6 +2972,12 @@ PlaceObj('TechPreset', {
 	position = range(6, 6),
 	PlaceObj('Effect_TechUnlockBuilding', {
 		Building = "MartianUniversity",
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "SchoolSpireCCP1",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "SchoolSpireCCP1_SuperiorEducation",
 	}),
 })
 
@@ -2904,7 +3015,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 9,
-	description = T(6501, --[[TechPreset EmergencyTraining description]] "<em>Security Officers and Medics</em> have +<param1> performance when working in their specialty.\n\n<grey>One can never be too prepared for the vast array of emergencies that could arise at any given moment on Mars.</grey>"),
+	description = T(6501, --[[TechPreset EmergencyTraining description]] "<em>Security Officers and Medics</em> have +<param1> performance when working in their specialty.<if_all(has_dlc('kerwin'))>\nNew Building: <em>Hospital</em> (<buildinginfo('HospitalCCP1')>) - A larger, more improved version of the Infirmary</if>\n\n<grey>One can never be too prepared for the vast array of emergencies that could arise at any given moment on Mars.</grey>"),
 	display_name = T(6500, --[[TechPreset EmergencyTraining display_name]] "Emergency Training"),
 	group = "Social",
 	icon = "UI/Icons/Research/emergency_training.tga",
@@ -2921,6 +3032,9 @@ PlaceObj('TechPreset', {
 		Amount = 10,
 		Label = "medic",
 		Prop = "preferred_workplace_performance_bonus",
+	}),
+	PlaceObj('Effect_TechUnlockBuilding', {
+		Building = "HospitalCCP1",
 	}),
 })
 
@@ -2980,7 +3094,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 14,
-	description = T(6505, --[[TechPreset MartianFestivals description]] "<em>Decorations</em> have increased Service Comfort.\n\n<grey>Reinforcing the notion of a separate and unique Martian culture makes our Colonists more positive and helps them find comfort in the uncertain world which is life on Mars.</grey>"),
+	description = T(6505, --[[TechPreset MartianFestivals description]] "<em>Decorations</em> have increased Service Comfort.\n<if_all(has_dlc('future'))>New Building :  <em>Amphitheater</em> (<buildinginfo('Amphitheater')>) - A building where colonists gather to perform or listen to recitals. Visitors receive a Comfort and Satisfaction boost.</if>\n\n<grey>Reinforcing the notion of a separate and unique Martian culture makes our Colonists more positive and helps them find comfort in the uncertain world which is life on Mars.</grey>"),
 	display_name = T(6504, --[[TechPreset MartianFestivals display_name]] "Martian Festivals"),
 	group = "Social",
 	icon = "UI/Icons/Research/martian_festivals.tga",
@@ -3037,6 +3151,15 @@ PlaceObj('TechPreset', {
 	}),
 	PlaceObj('Effect_UnlockUpgrade', {
 		Upgrade = "Arcology_HomeCollective",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "SmartApartmentsCCP1_HomeCollective",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "SeniorsResidenceCCP1_HomeCollective",
+	}),
+	PlaceObj('Effect_UnlockUpgrade', {
+		Upgrade = "SmartHome_HomeCollective",
 	}),
 })
 

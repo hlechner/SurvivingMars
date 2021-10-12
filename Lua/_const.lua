@@ -123,10 +123,45 @@ DefineConst{
 }
 DefineConst{
 	group = "Colonist",
-	help = T(237836219339, --[[ConstDef Colonist FundingFromTourist help]] "Funding received from each tourist when landing on Mars (in M)"),
-	id = "FundingFromTourist",
-	name = T(884220740845, --[[ConstDef Colonist FundingFromTourist name]] "FundingFromTourist"),
+	help = T(564503347383, --[[ConstDef Colonist HolidayCapThreshold help]] "Holiday rating is capped when health/sanity falls under this limit"),
+	id = "HolidayCapThreshold",
+	name = T(264619837062, --[[ConstDef Colonist HolidayCapThreshold name]] "HolidayCapThreshold"),
+	value = 30,
+}
+DefineConst{
+	group = "Colonist",
+	help = T(160194034081, --[[ConstDef Colonist HolidayCelebrityMultiplier help]] "Celebrity reward money multiplier"),
+	id = "HolidayCelebrityMultiplier",
+	name = T(438690655944, --[[ConstDef Colonist HolidayCelebrityMultiplier name]] "HolidayCelebrityMultiplier"),
 	value = 10,
+}
+DefineConst{
+	group = "Colonist",
+	help = T(140277019655, --[[ConstDef Colonist HolidayGeniusResearchPoints help]] "Awarded research points for having a Genius Tourist"),
+	id = "HolidayGeniusResearchPoints",
+	name = T(919049226879, --[[ConstDef Colonist HolidayGeniusResearchPoints name]] "HolidayGeniusResearchPoints"),
+	value = 1500,
+}
+DefineConst{
+	group = "Colonist",
+	help = T(994544119070, --[[ConstDef Colonist HolidayRenegadeCapRating help]] "Capped holiday rating for Renegades"),
+	id = "HolidayRenegadeCapRating",
+	name = T(719524089927, --[[ConstDef Colonist HolidayRenegadeCapRating name]] "HolidayRenegadeCapRating"),
+	value = 3,
+}
+DefineConst{
+	group = "Colonist",
+	help = T(543374091753, --[[ConstDef Colonist HolidaySaintMultiplier help]] "Multiplier for number of applicants"),
+	id = "HolidaySaintMultiplier",
+	name = T(495280127572, --[[ConstDef Colonist HolidaySaintMultiplier name]] "HolidaySaintMultiplier"),
+	value = 3,
+}
+DefineConst{
+	group = "Colonist",
+	help = T(151345915068, --[[ConstDef Colonist HolidayStatCapRating help]] "Capped holiday rating when stat is below the HolidayCapThreshold"),
+	id = "HolidayStatCapRating",
+	name = T(795976084512, --[[ConstDef Colonist HolidayStatCapRating name]] "HolidayStatCapRating"),
+	value = 2,
 }
 DefineConst{
 	group = "Colonist",
@@ -165,9 +200,23 @@ DefineConst{
 }
 DefineConst{
 	group = "Colonist",
-	help = T(850859674012, --[[ConstDef Colonist TouristSolsOnMars help]] "The number of sols that tourists stay on Mars."),
-	id = "TouristSolsOnMars",
-	name = T(432745681792, --[[ConstDef Colonist TouristSolsOnMars name]] "TouristSolsOnMars"),
+	help = T(237836219339, --[[ConstDef Colonist TouristFundingMultiplier help]] "Multiplier to funding received from each tourist when returning to earth in percent"),
+	id = "TouristFundingMultiplier",
+	name = T(884220740845, --[[ConstDef Colonist TouristFundingMultiplier name]] "TouristFundingMultiplier"),
+	value = 100,
+}
+DefineConst{
+	group = "Colonist",
+	help = T(464159782202, --[[ConstDef Colonist TouristSolsOnMarsMax help]] "The maximum number of sols that tourists stay on Mars."),
+	id = "TouristSolsOnMarsMax",
+	name = T(365958818165, --[[ConstDef Colonist TouristSolsOnMarsMax name]] "TouristSolsOnMarsMax"),
+	value = 10,
+}
+DefineConst{
+	group = "Colonist",
+	help = T(850859674012, --[[ConstDef Colonist TouristSolsOnMarsMin help]] "The number of sols that tourists stay on Mars."),
+	id = "TouristSolsOnMarsMin",
+	name = T(432745681792, --[[ConstDef Colonist TouristSolsOnMarsMin name]] "TouristSolsOnMarsMin"),
 	value = 5,
 }
 DefineConst{
@@ -647,6 +696,13 @@ DefineConst{
 }
 DefineConst{
 	group = "Gameplay",
+	help = T(13694, --[[ConstDef Gameplay IsDeepPreciousMineralsExploitable help]] "Deep Exotic Mineral deposits are exploitable when this is not 0"),
+	id = "IsDeepPreciousMineralsExploitable",
+	name = T(13695, --[[ConstDef Gameplay IsDeepPreciousMineralsExploitable name]] "Can exploit deep Exotic Minerals"),
+	value = 0,
+}
+DefineConst{
+	group = "Gameplay",
 	help = T(4611, --[[ConstDef Gameplay IsDeepWaterExploitable help]] "Deep Water deposits are exploitable when this is not 0"),
 	id = "IsDeepWaterExploitable",
 	name = T(4612, --[[ConstDef Gameplay IsDeepWaterExploitable name]] "Exploitable Deep Water"),
@@ -849,6 +905,13 @@ DefineConst{
 }
 DefineConst{
 	group = "Rover",
+	help = T(12811, --[[ConstDef Rover RCSafariMaxWaypoints help]] "How many waypoints a safari can have."),
+	id = "RCSafariMaxWaypoints",
+	name = T(12812, --[[ConstDef Rover RCSafariMaxWaypoints name]] "RC Transport maximum waypoints"),
+	value = 10,
+}
+DefineConst{
+	group = "Rover",
 	help = T(4640, --[[ConstDef Rover RCTransportGatherResourceWorkTime help]] "The time it takes the RC Transport to gather 1 resource from a deposit"),
 	id = "RCTransportGatherResourceWorkTime",
 	name = T(4641, --[[ConstDef Rover RCTransportGatherResourceWorkTime name]] "RC Transport resource gather time"),
@@ -859,6 +922,11 @@ DefineConst{
 	group = "Scale",
 	id = "Resources",
 	value = 1000,
+}
+DefineConst{
+	group = "Scale",
+	id = "SoilQuality",
+	value = 100,
 }
 DefineConst{
 	group = "Scale",
@@ -896,11 +964,6 @@ DefineConst{
 	id = "sols",
 	scale = "hours",
 	value = 720000,
-}
-DefineConst{
-	group = "Scale",
-	id = "SoilQuality",
-	value = 100,
 }
 DefineConst{
 	group = "Stat",
@@ -1062,14 +1125,6 @@ DefineConst{
 }
 DefineConst{
 	group = "Stat",
-	help = T(12338, --[[ConstDef Stat WaterMaxOutsideTime help]] "This is the time it takes for Colonists outside of Domes to become dehydrated"),
-	id = "WaterMaxOutsideTime",
-	name = T(12339, --[[ConstDef Stat WaterMaxOutsideTime name]] "Water max outside time"),
-	scale = "hours",
-	value = 180000,
-}
-DefineConst{
-	group = "Stat",
 	id = "PerformanceEffectOnServiceComfort",
 	name = T(359628595078, --[[ConstDef Stat PerformanceEffectOnServiceComfort name]] "Max effect of worker performance on Service Quality"),
 	scale = "Stat",
@@ -1084,11 +1139,110 @@ DefineConst{
 }
 DefineConst{
 	group = "Stat",
+	help = T(148733063704, --[[ConstDef Stat SatisfactionGainFlaw help]] "Tourists Satisfaction decreases when gaining a flaw"),
+	id = "SatisfactionGainFlaw",
+	name = T(774523705937, --[[ConstDef Stat SatisfactionGainFlaw name]] "Satisfaction Gain Flaw"),
+	scale = "Stat",
+	value = 10000,
+}
+DefineConst{
+	group = "Stat",
+	help = T(239825283062, --[[ConstDef Stat SatisfactionGainPerk help]] "Tourists Satisfaction increases when gaining a new perk"),
+	id = "SatisfactionGainPerk",
+	name = T(475061686876, --[[ConstDef Stat SatisfactionGainPerk name]] "Satisfaction Gain Perk"),
+	scale = "Stat",
+	value = 10000,
+}
+DefineConst{
+	group = "Stat",
+	help = T(531204593106, --[[ConstDef Stat SatisfactionHighComfortBonus help]] "Satisfaction bonus awarded when Comfort is above high threshold"),
+	id = "SatisfactionHighComfortBonus",
+	name = T(146864420582, --[[ConstDef Stat SatisfactionHighComfortBonus name]] "SatisfactionHighComfortBonus"),
+	value = 20,
+}
+DefineConst{
+	group = "Stat",
+	help = T(419850181535, --[[ConstDef Stat SatisfactionHighStatBonus help]] "Satisfaction bonus awarded when stat is above high threshold"),
+	id = "SatisfactionHighStatBonus",
+	name = T(624047905370, --[[ConstDef Stat SatisfactionHighStatBonus name]] "SatisfactionHighStatBonus"),
+	value = 5,
+}
+DefineConst{
+	group = "Stat",
+	help = T(855475527391, --[[ConstDef Stat SatisfactionLoseFlaw help]] "Tourists Satisfaction increases when losing a flaw"),
+	id = "SatisfactionLoseFlaw",
+	name = T(456025041535, --[[ConstDef Stat SatisfactionLoseFlaw name]] "Satisfaction Lose Flaw"),
+	scale = "Stat",
+	value = 10000,
+}
+DefineConst{
+	group = "Stat",
+	help = T(617017187748, --[[ConstDef Stat SatisfactionLowStatPenalty help]] "Satisfaction loss when stat is below the low threshold"),
+	id = "SatisfactionLowStatPenalty",
+	name = T(437220542891, --[[ConstDef Stat SatisfactionLowStatPenalty name]] "SatisfactionLowStatPenalty"),
+	value = 10,
+}
+DefineConst{
+	group = "Stat",
+	help = T(291494979377, --[[ConstDef Stat SatisfactionNoHomeComfort help]] "Tourists Satisfaction decreases when having no residence"),
+	id = "SatisfactionNoHomeComfort",
+	name = T(848729758274, --[[ConstDef Stat SatisfactionNoHomeComfort name]] "Satisfaction No Home Comfort"),
+	scale = "Stat",
+	value = 5000,
+}
+DefineConst{
+	group = "Stat",
+	help = T(966554985041, --[[ConstDef Stat SatisfactionOverstay help]] "Tourists Satisfaction decreases when staying longer than intended"),
+	id = "SatisfactionOverstay",
+	name = T(935839574484, --[[ConstDef Stat SatisfactionOverstay name]] "Satisfaction Overstay Penalty"),
+	scale = "Stat",
+	value = 20000,
+}
+DefineConst{
+	group = "Stat",
+	help = T(406705807522, --[[ConstDef Stat SatisfactionPerfectComfortBonus help]] "Satisfaction bonus awarded when Comfort is maxed out"),
+	id = "SatisfactionPerfectComfortBonus",
+	name = T(399989862229, --[[ConstDef Stat SatisfactionPerfectComfortBonus name]] "SatisfactionPerfectComfortBonus"),
+	value = 10,
+}
+DefineConst{
+	group = "Stat",
+	help = T(524875637641, --[[ConstDef Stat SatisfactionPerfectStatBonus help]] "Satisfaction bonus awarded when stat is maxed out"),
+	id = "SatisfactionPerfectStatBonus",
+	name = T(161655565768, --[[ConstDef Stat SatisfactionPerfectStatBonus name]] "SatisfactionPerfectStatBonus"),
+	value = 5,
+}
+DefineConst{
+	group = "Stat",
+	help = T(485525750330, --[[ConstDef Stat SatisfactionSanityBreakdown help]] "Tourists Satisfaction decreases when having a breakdown"),
+	id = "SatisfactionSanityBreakdown",
+	name = T(855663642150, --[[ConstDef Stat SatisfactionSanityBreakdown name]] "Satisfaction Sanity Breakdown"),
+	scale = "Stat",
+	value = 10000,
+}
+DefineConst{
+	group = "Stat",
+	help = T(920809754131, --[[ConstDef Stat SatisfactionShockPenalty help]] "Tourists Satisfaction decreases while in shock"),
+	id = "SatisfactionShockPenalty",
+	name = T(210074917094, --[[ConstDef Stat SatisfactionShockPenalty name]] "Satisfaction Shock Penalty"),
+	scale = "Stat",
+	value = 10000,
+}
+DefineConst{
+	group = "Stat",
 	help = T(4560, --[[ConstDef Stat SeeDeadSanity help]] "Colonist Sanity decreases when a Colonist from the same Residence dies from non-natural causes"),
 	id = "SeeDeadSanity",
 	name = T(4561, --[[ConstDef Stat SeeDeadSanity name]] "Seeing Death"),
 	scale = "Stat",
 	value = 15000,
+}
+DefineConst{
+	group = "Stat",
+	help = T(12338, --[[ConstDef Stat WaterMaxOutsideTime help]] "This is the time it takes for Colonists outside of Domes to become dehydrated"),
+	id = "WaterMaxOutsideTime",
+	name = T(12339, --[[ConstDef Stat WaterMaxOutsideTime name]] "Water max outside time"),
+	scale = "hours",
+	value = 180000,
 }
 DefineConst{
 	group = "Stat",
@@ -1230,7 +1384,7 @@ DefineConst{
 }
 DefineConst{
 	group = "Workplace",
-	help = T(4690, --[[ConstDef Workplace DefaultOutsideWorkplacesRadius help]] "Colonists search this far (in hexes) outisde their Dome when looking for a Workplace"),
+	help = T(4690, --[[ConstDef Workplace DefaultOutsideWorkplacesRadius help]] "Colonists search this far (in hexes) outside their Dome when looking for a Workplace"),
 	id = "DefaultOutsideWorkplacesRadius",
 	name = T(4691, --[[ConstDef Workplace DefaultOutsideWorkplacesRadius name]] "Default outside Workplaces radius"),
 	value = 10,

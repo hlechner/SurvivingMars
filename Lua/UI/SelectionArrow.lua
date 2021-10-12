@@ -45,6 +45,13 @@ DefineClass.ArrowEarthsick =
 	entity = "ArrowEarthsick",
 }
 
+for i = 1, 10 do
+	DefineClass["ArrowWaypoint" .. i] = {
+		__parents = { "SelectionArrow" },
+		entity = "ArrowWaypoint_" .. string.format("%02d", i)
+	}
+end
+
 ---------------------------------------------------------------------------------
 function SelectionArrowClearAll()
 	for obj, arrow in pairs(SelectionArrowsOwners) do

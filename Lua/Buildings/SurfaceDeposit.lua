@@ -3,7 +3,7 @@ for i=1,#SurfaceDeposits do
 	SurfaceDeposits[SurfaceDeposits[i]] = true
 end
 
-local DepositEntities = {
+DepositEntities = {
 	Metals = {
 		"SurfaceDepositMetals_01",
 		"SurfaceDepositMetals_02",
@@ -39,15 +39,20 @@ end
 DefineClass.SurfaceDepositMarker = {
 	__parents = { "DepositMarker" },
 	properties = {
-		{ category = "Deposit", name = T(15, "Resource"),               id = "resource",        editor = "combo",  default = "Metals", items = SurfaceDeposits, },		
+		{ category = "Deposit", name = T(15, "Resource"),                id = "resource",        editor = "combo",  default = "Metals", items = SurfaceDeposits, },
+		{ category = "Deposit", name = T(782, "Max amount"),             id = "max_amount",      editor = "number", default = 0, scale = const.ResourceScale},
 		{ category = "Deposit", name = T(803, "Max Drones"),             id = "max_drones",      editor = "number", default = 5, min = 1, max = 100 },
 		{ category = "Deposit", name = T(804, "Deposit Entity Variant"), id = "entity_variant",  editor = "combo",  default = "random", items = function(deposit) return GetDepositVariationsCombo(deposit) end},
 	},
 }
 
 function SurfaceDepositMarker:GetEstimatedAmount()
-	local range = DepositsDefaultAmountRange[self.resource]
-	return range and ((range.from + range.to) / 2) or 0
+	local amount = self.max_amount
+	if amount == 0 then
+		local range = DepositsDefaultAmountRange[self.resource]
+		amount = range and ((range.from + range.to) / 2) or 0
+	end
+	return amount
 end
 
 function SurfaceDepositMarker:OnPropertyChanged(prop_id)
@@ -82,7 +87,8 @@ function SurfaceDepositMarker:SpawnDeposit()
 		return
 	end
 	
-	local dep = PlaceObject(classname, {
+	local dep = PlaceObjectIn(classname, self:GetMapID(), {
+		max_amount = self.max_amount,
 		max_drones = self.max_drones,
 		entity_variant = self.entity_variant,
 	})
@@ -95,10 +101,10 @@ DefineClass.SurfaceDeposit = {
 	__parents = { "TaskRequester", "Shapeshifter", "AutoAttachObject", "Deposit", "UngridedObstacle", "SyncObject" },
 	flags = { gofTemporalConstructionBlock = true },
 	properties = {
+		{ category = "Deposit", name = T(782, "Max amount"), id = "max_amount", editor = "number", default = 0, scale = const.ResourceScale},
 		{ category = "Deposit", name = T(803, "Max Drones"), id = "max_drones", editor = "number", default = 5, min = 1, max = 100 },
 		{ category = "Deposit", name = T(804, "Deposit Entity Variant"),id = "entity_variant", editor = "combo", default = "random", items = function(deposit) return GetDepositVariationsCombo(deposit) end},
 	},
-	max_amount = 0,
 	display_name = T(805, "<resource(resource)> Surface Deposit"),
 	display_icon = "UI/Icons/bmb_demo.tga",
 	instant_build = true,
@@ -130,9 +136,11 @@ end
 function SurfaceDeposit:Init()
 	self:Setentity_variant(self.entity_variant)
 	self:SetOpacity(IsEditorActive() and 0 or 100)
-	
-	local range = DepositsDefaultAmountRange[self.resource]
-	self.max_amount = (range.from + self:Random(range.to - range.from)) * const.ResourceScale
+	if self.max_amount == 0 then
+		local range = DepositsDefaultAmountRange[self.resource]
+		local amount = range and (range.from + self:Random(range.to - range.from)) or 0
+		self.max_amount = amount * const.ResourceScale
+	end
 end
 
 GlobalVar("SurfaceDepositGroups", {})

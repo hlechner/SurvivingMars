@@ -16,7 +16,7 @@ PlaceObj('Scenario', {
 			'text_param1', T(5845, --[[Scenario Expeditions text_param1]] "50"),
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'rover:SetCommand("Malfunction")',
+			'expression', 'if rover then rover:SetCommand("Malfunction") end',
 		}),
 		}),
 	})

@@ -40,7 +40,8 @@ PlaceObj('XTemplate', {
 					local obj = ResolvePropObj(self.parent.context)
 					local dlg = GetDialog(self)
 					local prop_meta = self.parent.prop_meta
-					obj:FilterTrait(prop_meta, false)
+					obj:FilterTrait(prop_meta, TraitFilterState.Negative)
+					self.parent.active = self.parent.active ~= self and self or false
 				end,
 			}),
 			}),
@@ -67,7 +68,36 @@ PlaceObj('XTemplate', {
 					local obj = ResolvePropObj(self.parent.context)
 					local dlg = GetDialog(self)
 					local prop_meta = self.parent.prop_meta
-					obj:FilterTrait(prop_meta, true)
+					obj:FilterTrait(prop_meta, TraitFilterState.Positive)
+					self.parent.active = self.parent.active ~= self and self or false
+				end,
+			}),
+			}),
+		PlaceObj('XTemplateTemplate', {
+			'__template', "PropCheckBoxValue",
+			'RolloverAnchor', "left",
+			'Id', "idMusthave",
+			'Margins', box(0, 0, 5, 0),
+			'HandleMouse', true,
+			'Image', "UI/Icons/traits_musthave_disabled.tga",
+		}, {
+			PlaceObj('XTemplateFunc', {
+				'name', "OnMouseButtonDown(self, pos, button)",
+				'func', function (self, pos, button)
+					if button == "L" and not self.parent.prop_meta.submenu then
+						self:Press()
+						return "break"
+					end
+				end,
+			}),
+			PlaceObj('XTemplateFunc', {
+				'name', "Press",
+				'func', function (self, ...)
+					local obj = ResolvePropObj(self.parent.context)
+					local dlg = GetDialog(self)
+					local prop_meta = self.parent.prop_meta
+					obj:FilterTrait(prop_meta, TraitFilterState.Musthave)
+					self.parent.active = self.parent.active ~= self and self or false
 				end,
 			}),
 			}),
@@ -119,10 +149,18 @@ PlaceObj('XTemplate', {
 				elseif not self.prop_meta.submenu and shortcut == "ButtonX" then
 				  return self:OnMouseButtonDoubleClick(nil, "L")
 				elseif shortcut == "DPadLeft" or shortcut == "LeftThumbLeft" then
-					self.idPositive:Press()
+					if self.active == self.idPositive or self.active == self.idMusthave then
+						self.idMusthave:Press()
+					else
+						self.idPositive:Press()
+					end
 					return "break"
 				elseif shortcut == "DPadRight" or shortcut == "LeftThumbRight" then
-					self.idNegative:Press()
+					if self.active == self.idMusthave then
+						self.idPositive:Press()
+					else
+						self.idNegative:Press()
+					end
 					return "break"
 				end
 			end,
@@ -143,6 +181,11 @@ PlaceObj('XTemplate', {
 				if GetUIStyleGamepad() then
 					self:SetFocus(selected)
 				end
+			end,
+		}),
+		PlaceObj('XTemplateCode', {
+			'run', function (self, parent, context)
+				parent.active = false
 			end,
 		}),
 		}),

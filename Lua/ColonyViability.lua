@@ -12,7 +12,7 @@ DefineClass.SavedGlobalVars = {
 }
 
 function OnMsg.PreSaveMap()
-	if not mapdata.GameLogic then
+	if not ActiveMapData.GameLogic then
 		return
 	end
 	local saved = MapGet("detached", "SavedGlobalVars")[1] or SavedGlobalVars:new()
@@ -21,7 +21,7 @@ function OnMsg.PreSaveMap()
 	end
 end
 
-function OnMsg.NewMapLoaded()
+function OnMsg.PostNewGame()
 	local saved = MapGet("detached", "SavedGlobalVars")[1]
 	if saved then
 		for _, prop_meta in ipairs(saved:GetProperties()) do
@@ -44,7 +44,7 @@ local function CheckFirstColonistWithTrait()
 		local count = 0
 		while count<#SpecificTraits do
 			found = false
-			for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+			for _, dome in ipairs(MainCity.labels.Dome or empty_table) do
 				for _, trait_id in ipairs(SpecificTraits) do				
 					local traits_label = dome.labels[trait_id] or empty_table
 					if not shown[trait_id] and next(traits_label) then
@@ -149,7 +149,8 @@ GlobalVar("g_ColonistsDied", 0)
 
 function CountColonistsWithTrait(trait)
 	local count = 0
-	for _, colonist in ipairs(UICity.labels.Colonist or empty_table) do
+	local colonists = UIColony:GetCityLabels("Colonist")
+	for _, colonist in ipairs(colonists) do
 		count = count + (colonist.traits[trait] and 1 or 0)
 	end
 	return count
@@ -163,7 +164,8 @@ function OnMsg.ColonistDied(colonist, reason)
 			if CountColonistsWithTrait("Founder") == 0 and not g_LastFounderDies then
 				CreateRealTimeThread(
 					function() 
-						local ret = WaitPopupNotification("LastFounderDies", { params = { colonist = colonist, reason = DeathReasons[reason] or ""  } })
+						local popup_params = { params = { colonist = colonist, reason = DeathReasons[reason] or ""} , map_id = colonist.city.map_id }
+						local ret = WaitPopupNotification("LastFounderDies", popup_params)
 						if ret==1 then ViewAndSelectObject(colonist) end
 					end)
 				g_LastFounderDies = true
@@ -171,7 +173,8 @@ function OnMsg.ColonistDied(colonist, reason)
 			elseif not g_FounderDiedOfOldAge and reason == "Old age" then
 				CreateRealTimeThread(
 					function()
-						local ret = WaitPopupNotification, "FirstFounderDiesOfOldAge", { params = { colonist = colonist } }
+						local popup_params = { params = { colonist = colonist }, map_id = colonist.city.map_id }
+						local ret = WaitPopupNotification("FirstFounderDiesOfOldAge", popup_params)
 						if ret==1 then ViewAndSelectObject(colonist) end
 					end)
 				g_FounderDiedOfOldAge = true
@@ -181,7 +184,8 @@ function OnMsg.ColonistDied(colonist, reason)
 		if g_ColonistsDied == 0 then
 			CreateRealTimeThread(
 				function()
-					local ret = WaitPopupNotification("FirstColonistDeath", { params = { colonist = colonist, reason = DeathReasons[reason] or "" } })
+					local popup_params = { params = { colonist = colonist, reason = DeathReasons[reason] or "" }, map_id = colonist.city.map_id }
+					local ret = WaitPopupNotification("FirstColonistDeath", popup_params)
 					if ret==1 then ViewAndSelectObject(colonist) end
 				end)
 		end
@@ -195,7 +199,8 @@ function OnMsg.ColonistLeavingMars(colonist, rocket)
 			if CountColonistsWithTrait("Founder") == 0 then
 				CreateRealTimeThread(
 				function()
-					local ret = WaitPopupNotification("LastFounderLeavingMars", { params = { colonist = colonist } })
+					local popup_params = { params = { colonist = colonist }, map_id = colonist.city.map_id }
+					local ret = WaitPopupNotification("LastFounderLeavingMars", popup_params)
 					if ret==1 then ViewAndSelectObject(colonist) end
 				end)
 				
@@ -236,7 +241,8 @@ function OnMsg.ColonistStatusEffect(colonist, effect, value, time)
 				end
 				g_StatusEffectNotificationsShown[effect] = true
 				colonist = params.colonists[1] or colonist
-				local res = WaitPopupNotification(class.popup_on_first, { params = { colonist = colonist } })
+				local popup_params = { params = { colonist = colonist }, map_id = colonist.city.map_id }
+				local res = WaitPopupNotification(class.popup_on_first, popup_params)
 				if res==1 then ViewAndSelectObject(colonist) end
 			end)
 		end

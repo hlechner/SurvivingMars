@@ -32,6 +32,11 @@ PrefabFeatures = {
 		PlaceObj('PrefabFeatureChar_Deposit', {
 			'DepositResource', "PreciousMetals",
 		}),
+		PlaceObj('PrefabFeatureChar_SafariSight', {
+			'sight_name', T(12821, "Lava Coils"),
+			'sight_category', "Environmental Hotspots",
+			'sight_satisfaction', 3,
+		}),
 		PlaceObj('PrefabFeatureChar_RepulseDeposits', {
 			'DepositLayer', "terr",
 			'DepositResource', "Concrete",
@@ -65,6 +70,11 @@ PrefabFeatures = {
 		'color', RGBA(47, 213, 240, 255),
 	}, {
 		PlaceObj('PrefabFeatureChar_Geyser', nil),
+		PlaceObj('PrefabFeatureChar_SafariSight', {
+			'sight_name', T(12822, "Geysers"),
+			'sight_category', "Environmental Hotspots",
+			'sight_satisfaction', 3,
+		}),
 		PlaceObj('PrefabFeatureChar_RepulseDeposits', {
 			'DepositLayer', "subs",
 			'RepulseDist', 6400,
@@ -132,6 +142,11 @@ PrefabFeatures = {
 		'id', "Crater",
 		'color', RGBA(246, 198, 54, 255),
 	}, {
+		PlaceObj('PrefabFeatureChar_SafariSight', {
+			'sight_name', T(12823, "Crater"),
+			'sight_category', "Environmental Hotspots",
+			'sight_satisfaction', 3,
+		}),
 		PlaceObj('PrefabFeatureChar_Deposit', {
 			'DepositResource', "Metals",
 		}),
@@ -149,8 +164,37 @@ PrefabFeatures = {
 			'Weight', 120,
 			'DepositResource', "Water",
 		}),
+		PlaceObj('PrefabFeatureChar_SafariSight', {
+			'sight_name', T(12824, "Cold Area"),
+			'sight_category', "Environmental Hotspots",
+			'sight_satisfaction', 3,
+			'sight_visible_size', 22000,
+		}),
 		PlaceObj('PrefabFeatureChar_Effect', {
 			'EffectType', "ResearchEffectDeposit",
+		}),
+		}),
+	PlaceObj('PrefabFeature', {
+		'id', "Asteroid_Plain",
+	}, {
+		PlaceObj('PrefabFeatureChar_Deposit', {
+			'DepositResource', "PreciousMinerals",
+		}),
+		}),
+	PlaceObj('PrefabFeature', {
+		'id', "Asteroid_Crater",
+		'color', RGBA(234, 0, 0, 255),
+	}, {
+		PlaceObj('PrefabFeatureChar_Deposit', {
+			'DepositResource', "PreciousMinerals",
+		}),
+		}),
+	PlaceObj('PrefabFeature', {
+		'id', "Tunnel",
+		'color', RGBA(156, 40, 40, 255),
+	}, {
+		PlaceObj('PrefabFeatureChar_RepulseDeposits', {
+			'RepulseDist', 25600,
 		}),
 		}),
 	}

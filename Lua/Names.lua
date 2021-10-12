@@ -1002,6 +1002,94 @@ Dome = {
 			T(10639, "Akita"),
 		},
 	},
+
+-----------------------------------------------------------------------------------------------------------------------------------
+	LanderRocket = {	--picard
+		default = T(13616, "Asteroid Lander"),
+		Unique = {
+		},
+		NASA = {
+			T(13617, "Sphinx"),
+			T(13618, "Valkyrie"),
+			T(13619, "Galileo"),
+		},
+		
+		IMM = {
+			T(13620, "Pioneer"),
+			T(13621, "Curiosity"),
+			T(1591, "Opportunity"),
+			T(6827, "Perseverance"),
+		},
+		
+		Roscosmos = {
+			T(13622, "Molniya"),
+			T(13623, "Albitsky"),
+			T(13624, "Chernykh"),
+		},
+		
+		ESA = {
+			T(13625, "Hopper"),
+			T(13626, "Rosetta"),
+			T(13627, "Kuipers"),
+			T(13628, "Smirnova"),
+		},
+		
+		CNSA = {
+			T(13629, "Tianwen"),
+			T(13630, "Taiyang Shen"),
+			T(13631, "Blue Falcon")
+		},
+
+
+		ISRO = {
+			T(13632, "Shukrayaan"),
+			T(13633, "Vaidehi"),
+			T(13634, "Radhika"),
+		},
+		
+		SpaceY = {
+			T(1958, "Griffin"),
+			T(13635, "Wyvern"),
+			T(13636, "Rocket Man"),
+		},
+		
+		TerraInitiative = {	--mythical birds
+			T(13637, "Chamrosh"),
+			T(13638, "Chol"),
+			T(13639, "Gandaberunda"),
+			T(13640, "Garuda"),
+			T(13641, "Oozlum"),
+		},
+		
+		BlueSun = {
+			T(13642, "Cronus"),
+			T(1506, "Helios"),
+		},
+
+		NewArk = {		--archangels
+			T(13643, "Raphael"),
+			T(13644, "Uriel"),
+		},
+		
+		paradox = {
+			T(13645, "Columbo"),
+			T(1874, "Dallas"),
+			T(13646, "Alf"),
+			T(13647, "Airwolf"),
+			T(13648, "Vicky"),
+		},
+		
+		Brazil = { --gagarin
+			T(13649, "Amazonia"),
+			T(13650, "Cruls"),
+			T(13651, "Amaral"),
+		},
+		
+		Japan = {
+			T(13652, "Hayabusa"),
+			T(1521, "Minerva"),
+		},
+	},
 }
 
 
@@ -2868,7 +2956,7 @@ HumanNames  = {
 
 GlobalVar("g_UniqueHumanNames", false)
 GlobalVar("g_UniqueMachineNames", false)
-function OnMsg.NewMapLoaded()
+function OnMsg.NewGame()
 	g_UniqueHumanNames = {}
 	for nation, data in pairs(HumanNames) do
 		g_UniqueHumanNames[nation] = data.Unique and table.copy(data.Unique, "deep")  or {}
@@ -2902,7 +2990,7 @@ function NameUnit(unit)
 	-- try for mars name
 	if is_newborn then
 		local rand = Random(1,100, "unit_name")
-		local sol = UICity.day
+		local sol = UIColony.day
 		if HumanNames.Mars and sol>= const.FullTransitionToMarsNames or rand<MulDivRound(sol, 100, const.FullTransitionToMarsNames) then
 			nation="Mars"
 		end
@@ -2975,10 +3063,11 @@ function MarkNameAsUsed(machine_type, name)
 	used[name] = entry or 1
 end
 
-function GenerateRocketName(mark)
-	local name, base_name = GenerateMachineName("Rocket", mark)
-	if UICity then
-		for _, rocket in ipairs(UICity.labels.SupplyRocket or empty_table) do
+function GenerateRocketName(mark, class)
+	local class = class or "Rocket"
+	local name, base_name = GenerateMachineName(class, mark)
+	if UIColony then
+		for _, rocket in ipairs(UIColony.city_labels.labels.SupplyRocket or empty_table) do
 			assert(rocket.name ~= name)
 		end
 	end

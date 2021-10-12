@@ -23,7 +23,7 @@ DefineClass.BlackCubeMystery = {
 }
 
 function BlackCubeMystery:Init()
-	self.city:InitEmptyLabel("BlackCubeStockpiles")
+	MainCity:InitEmptyLabel("BlackCubeStockpiles")
 	StartBlackCubeAnimationThread()
 	table.remove_entry(StorableResourcesForSession, "BlackCube")
 end
@@ -32,7 +32,7 @@ function StartBlackCubeAnimationThread()
 	StopBlackCubeAnimationThread()
 	g_BlackCubeStockpileAnimThread = CreateGameTimeThread(function()
 		while true do
-			local piles = UICity.labels.BlackCubeStockpiles
+			local piles = MainCity.labels.BlackCubeStockpiles
 			if #piles > 0 then
 				table.shuffle(piles)
 				for _,pile in ipairs(piles) do
@@ -111,11 +111,11 @@ DefineClass.BlackCubeStockpileBase = {
 }
 
 function BlackCubeStockpileBase:GameInit()
-	self.city = self.city or UICity
+	self.city = self.city or MainCity
 	self:SetCountFromRequest()
 	
-	if not self.suppress_spawned_cube_counter and self.city.mystery then
-		self.city.mystery.spawned_cubes = self.city.mystery.spawned_cubes + self.stockpiled_amount / const.ResourceScale
+	if not self.suppress_spawned_cube_counter and self.city.colony.mystery then
+		self.city.colony.mystery.spawned_cubes = self.city.colony.mystery.spawned_cubes + self.stockpiled_amount / const.ResourceScale
 	end
 	
 	self.city:AddToLabel("BlackCubeStockpiles", self)
@@ -206,7 +206,7 @@ function BlackCubeStockpileBase:DroneWork(drone, request, resource, amount)
 		function(drone, work_req, subtract)
 			assert(subtract % const.ResourceScale == 0, "no frac counting for destroyed black cubes")
 			local self = drone.target
-			local mystery = self.city.mystery
+			local mystery = self.city.colony.mystery
 			mystery.destroyed_cubes = mystery.destroyed_cubes + abs(subtract) / const.ResourceScale
 			self:AddResourceAmount(-subtract) --this will update our supply request
 		end)
@@ -277,11 +277,13 @@ end
 
 GlobalVar("g_BlackCubesActive", false)
 
-function BlackCubesSetActive(value)
+function BlackCubesSetActive(map_id, value)
 	if value == g_BlackCubesActive then return end
+	if map_id ~= MainMapID then return end
 	g_BlackCubesActive = value
 	local moment = g_BlackCubesActive and "start" or "end"
-	MapForEach("map", "BlackCubeStockpileBase", function(pile, moment)
+	local realm = GetRealmByID(map_id)
+	realm:MapForEach("map", "BlackCubeStockpileBase", function(pile, moment)
 															pile:SetCountFromRequest()
 															PlayFX("ActivateBlackCubes", moment, pile)
 														end, moment )
@@ -340,18 +342,18 @@ end
 
 function BlackCubeDumpSite:DroneLoadResource(drone, request, resource, amount)
 	DumpSiteWithAttachedVisualPilesBase.DroneLoadResource(self, drone, request, resource, amount)
-	self.city.mystery.stored_cubes = self.city.mystery.stored_cubes - amount / const.ResourceScale
+	self.city.colony.mystery.stored_cubes = self.city.colony.mystery.stored_cubes - amount / const.ResourceScale
 end
 
 function BlackCubeDumpSite:DroneUnloadResource(drone, request, resource, amount)
 	DumpSiteWithAttachedVisualPilesBase.DroneUnloadResource(self, drone, request, resource, amount)
-	self.city.mystery.stored_cubes = self.city.mystery.stored_cubes + amount / const.ResourceScale
+	self.city.colony.mystery.stored_cubes = self.city.colony.mystery.stored_cubes + amount / const.ResourceScale
 end
 
 function BlackCubeDumpSite:Done()
-	if self.city.mystery then
+	if self.city.colony.mystery then
 		local count = self:GetStored_BlackCube() / const.ResourceScale
-		self.city.mystery.stored_cubes = self.city.mystery.stored_cubes - count
+		self.city.colony.mystery.stored_cubes = self.city.colony.mystery.stored_cubes - count
 	end
 end
 
@@ -361,18 +363,7 @@ function TestBlackCube(pos)
 	pos = pos or GetTerrainCursor()
 	local obj = PlaceObject("BlackCubeStockpile", {init_with_amount = 27000})
 	obj:SetPos(pos)
-	UICity.mystery.can_destroy_cubes = true
-end
-
-function PlaceBlackCubeOnDestroyedRegolithExtractorPos(pos, init_with_amount)
-	local obj = PlaceObject("BlackCubeStockpile", {init_with_amount = init_with_amount})
-	if MapGet(pos, 0, "TerrainDeposit") then
-		local q, r = WorldToHex(pos)
-		local x, y = HexToWorld(q + 1, r)
-		pos = point(x, y)
-	end
-	obj:SetPos(pos)
-	return pos
+	UIColony.mystery.can_destroy_cubes = true
 end
 
 ----------------------------------------------------------------------------------

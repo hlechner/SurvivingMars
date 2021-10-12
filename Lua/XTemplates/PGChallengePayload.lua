@@ -24,7 +24,6 @@ PlaceObj('XTemplate', {
 			'func', function (self, ...)
 				if GameState.gameplay then
 					if UICity then
-						--UICity.launch_elevator_mode = false
 						UICity.launch_mode = false
 					end
 				end
@@ -167,7 +166,7 @@ PlaceObj('XTemplate', {
 						'Padding', box(0, 0, 0, 0),
 						'TextStyle', "PGChallengeDescription",
 						'Translate', true,
-						'Text', T(270405570569, --[[XTemplate PGChallengePayload Text]] "<Capacity> kg"),
+						'Text', T(13691, --[[XTemplate PGChallengePayload Text]] "<UsedCapacity>/<TotalCapacity> kg"),
 					}),
 					PlaceObj('XTemplateWindow', {
 						'__class', "XText",
@@ -222,7 +221,15 @@ PlaceObj('XTemplate', {
 						PlaceObj('XTemplateForEach', {
 							'comment', "item",
 							'array', function (parent, context) return context:GetProperties() end,
-							'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and not context:IsLocked(item.id) and not context:IsBlacklisted(item) and not BuildingTemplates[item.id] end,
+							'condition', function (parent, context, item, i)
+								return (not item.filter or item.filter()) and 
+								not context:IsLocked(item.id) and 
+								not context:IsImportLocked(item) and 
+								not context:IsBlacklisted(item) and 
+								not context:IsBlacklistedSubmenu(item) and 
+								not context:IsHidden(item) and 
+								not BuildingTemplates[item.id]
+							end,
 							'item_in_context', "prop_meta",
 							'run_after', function (child, context, item, i, n)
 								local rollover = context:GetRollover(item.id)
@@ -265,7 +272,15 @@ PlaceObj('XTemplate', {
 						PlaceObj('XTemplateForEach', {
 							'comment', "item",
 							'array', function (parent, context) return context:GetProperties() end,
-							'condition', function (parent, context, item, i) return (not item.filter or item.filter()) and not context:IsLocked(item.id) and not context:IsBlacklisted(item) and BuildingTemplates[item.id] end,
+							'condition', function (parent, context, item, i)
+								return (not item.filter or item.filter()) and 
+								not context:IsLocked(item.id) and 
+								not context:IsImportLocked(item) and 
+								not context:IsBlacklisted(item) and 
+								not context:IsBlacklistedSubmenu(item) and 
+								not context:IsHidden(item) and 
+								BuildingTemplates[item.id]
+							end,
 							'item_in_context', "prop_meta",
 							'run_after', function (child, context, item, i, n)
 								local rollover = context:GetRollover(item.id)

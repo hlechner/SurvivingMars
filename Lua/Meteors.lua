@@ -39,8 +39,8 @@ GlobalVar("g_MeteorStormStop", false)
 
 local function GenerateDir(dir, angle)
 	local min, max = 10 * 60, 90 * 60
-	dir = dir or point(UICity:Random(-4096, 4096), UICity:Random(-4096, 4096))
-	angle = angle and Clamp(angle + UICity:Random(-15 * 60, 15 * 60), min, max) or UICity:Random(min, max)
+	dir = dir or point(SessionRandom:Random(-4096, 4096), SessionRandom:Random(-4096, 4096))
+	angle = angle and Clamp(angle + SessionRandom:Random(-15 * 60, 15 * 60), min, max) or SessionRandom:Random(min, max)
 	local s, c = sin(angle), cos(angle)
 	if c == 0 then
 		dir = point(0, 0, 4096)
@@ -52,24 +52,24 @@ local function GenerateDir(dir, angle)
 end
 
 local meteor_classes = {}
-function GenerateMeteor(descr, dest)
-	local large = UICity:Random(100) < descr.large_chance
+function GenerateMeteor(descr, dest, map_id)
+	local large = SessionRandom:Random(100) < descr.large_chance
 	local base_class = large and "BaseMeteorLarge" or "BaseMeteorSmall"
 	local list = meteor_classes[base_class]
 	if not list then
 		list = ClassLeafDescendantsList(base_class)
 		meteor_classes[base_class] = list
 	end
-	local class = UICity:TableRand(list)
+	local class = SessionRandom:TableRand(list)
 	
-	local meteor = g_Classes[class]:new{
+	local meteor = g_Classes[class]:new({
 		range = large and descr.large_radius or descr.small_radius,
-		speed = UICity:Random(descr.speed_min, descr.speed_max),
+		speed = SessionRandom:Random(descr.speed_min, descr.speed_max),
 		health_damage = large and 0 or g_Consts.MeteorHealthDamage,
 		dest = dest,
-	}
+	}, map_id)
 	assert(descr.deposit_rock_chance + descr.deposit_metals_chance + descr.deposit_anomaly_chance + descr.deposit_polymers_chance == 100, "Deposit chances must sum up to 100%")
-	local chance = UICity:Random(100)
+	local chance = SessionRandom:Random(100)
 	if chance < descr.deposit_rock_chance then
 		meteor.deposit_type = "Rocks"
 	elseif chance < descr.deposit_rock_chance + descr.deposit_metals_chance then
@@ -85,49 +85,52 @@ end
 
 local largest_prefab = 100 * guim
 
-function SpawnMeteor(meteors, dir, angle, pos)
+function SpawnMeteor(meteors, dir, angle, pos, city)
 	--DbgAddVector(pos, point(0, 0, 100*guim), const.clrGreen)
 	--DbgAddCircle(pos + point(0, 0, 100*guim), meteors.storm_radius, const.clrWhite)
-	
-	local new_pos = pos and GetRandomPassableAround(pos, meteors.storm_radius) or GetRandomPassable()
+	local map_id = city.map_id
+	local new_pos = pos and GetRandomPassableAroundOnMap(map_id, pos, meteors.storm_radius) or GetRandomPassable(city)
 	if not new_pos or (pos and new_pos:Dist2D(pos) > meteors.storm_radius) then
 		return
 	end
 	pos = new_pos
 	
-	pos = pos:SetZ(terrain.GetHeight(pos))
+	pos = pos:SetZ(GetTerrainByID(map_id):GetHeight(pos))
 	
 	--DbgAddVector(pos, point(0, 0, 100*guim), const.clrRed)
 
 	dir = GenerateDir(dir, angle)
 	local start = pos + SetLen(dir, meteors.travel_dist)
 	
-	return { meteor = GenerateMeteor(meteors, pos), start = start, pause = 0 }
+	return { meteor = GenerateMeteor(meteors, pos, map_id), start = start, pause = 0 }
 end
 
 function MeteorsDisaster(meteors, meteors_type, pos)
 	local spawned = {}
+	local city = MainCity
+	local map_id = city:GetMapID()
 	if meteors_type == "multispawn" then
 		local dir, angle = GenerateDir()
-		local count = UICity:Random(meteors.multispawn_count_min, meteors.multispawn_count_max)
+		local count = SessionRandom:Random(meteors.multispawn_count_min, meteors.multispawn_count_max)
 		for i = 1, count do
-			local meteor = SpawnMeteor(meteors, dir, angle, pos)	-- share same direction, deviate angle, random pos
+			local meteor = SpawnMeteor(meteors, dir, angle, pos, city)	-- share same direction, deviate angle, random pos
 			if not meteor then
 				break
 			end
 			spawned[i] = meteor
-			meteor.pause = UICity:Random(meteors.multispawn_delay_min, meteors.multispawn_delay_max)
+			meteor.pause = SessionRandom:Random(meteors.multispawn_delay_min, meteors.multispawn_delay_max)
 		end
 	elseif meteors_type == "storm" then
 		g_MeteorStorm = true
-		Msg("MeteorStorm")
+		Msg("MeteorStorm", map_id)
 		--DbgClearVectors()
 		local dir, angle = GenerateDir()
-		pos = pos or GetRandomPassable()
-		local speed = UICity:Random(meteors.storm_move_speed_min, meteors.storm_move_speed_max)
+		pos = pos or GetRandomPassable(city)
+		local speed = SessionRandom:Random(meteors.storm_move_speed_min, meteors.storm_move_speed_max)
 		--speed = 2*guim
-		local duration = UICity:Random(meteors.storm_duration_min, meteors.storm_duration_max)
-		local move_dir = Rotate(point(-guim, 0, 0), mapdata.OverviewOrientation)
+		local duration = SessionRandom:Random(meteors.storm_duration_min, meteors.storm_duration_max)
+		local map_data = ActiveMaps[map_id]
+		local move_dir = Rotate(point(-guim, 0, 0), map_data.OverviewOrientation)
 		
 		if speed > 0 then
 			-- make sure at least 75% of the duration will be on playable area
@@ -136,12 +139,13 @@ function MeteorsDisaster(meteors, meteors_type, pos)
 			local step = SetLen(move_dir, steplen)
 			for d = 0, dist, steplen do
 				local pt = pos + SetLen(move_dir, d)
-				if not pt:InBox2D(g_MapArea) then
+				local map_area = city.MapArea
+				if not pt:InBox2D(map_area) then
 					if d >= MulDivRound(dist, 75, 100) then
 						break
 					end
 					local bpt = pos - step
-					if bpt:InBox2D(g_MapArea) then
+					if bpt:InBox2D(map_area) then
 						pos = bpt
 					end
 				end
@@ -150,16 +154,16 @@ function MeteorsDisaster(meteors, meteors_type, pos)
 		
 		assert(pos, "Failed to find meteor storm pos!")
 		--pos = point(283405, 244259, 8006)
-		AddOnScreenNotification("MeteorStormDuration", nil, {start_time = GameTime(), expiration = duration})
-		ShowDisasterDescription("MeteorStorm")
+		AddOnScreenNotification("MeteorStormDuration", nil, {start_time = GameTime(), expiration = duration}, nil, map_id)
+		ShowDisasterDescription("MeteorStorm", map_id)
 		local pos_orig = pos
 		local time = 0
 		while time <= duration do
-			local meteor = SpawnMeteor(meteors, dir, angle, pos)	-- share same direction and pos, deviate angle
+			local meteor = SpawnMeteor(meteors, dir, angle, pos, city)	-- share same direction and pos, deviate angle
 			if not meteor then
 				break
 			end
-			meteor.pause = UICity:Random(meteors.storm_delay_min, meteors.storm_delay_max)
+			meteor.pause = SessionRandom:Random(meteors.storm_delay_min, meteors.storm_delay_max)
 			table.insert(spawned, meteor)
 			time = time + meteor.pause
 			if speed > 0 then
@@ -167,7 +171,7 @@ function MeteorsDisaster(meteors, meteors_type, pos)
 			end
 		end
 	elseif meteors_type == "single" then
-		local meteor = SpawnMeteor(meteors, nil, nil, pos)		-- random direction, angle and pos
+		local meteor = SpawnMeteor(meteors, nil, nil, pos, city)		-- random direction, angle and pos
 		if meteor then
 			spawned[1] = meteor
 		end
@@ -182,7 +186,7 @@ function MeteorsDisaster(meteors, meteors_type, pos)
 	end
 	
 	if meteors_type == "storm" then
-		PlayFX("MeteorStorm", "start")
+		PlayFX("MeteorStorm", "start", nil, nil, nil, nil, map_id)
 	end
 	local current_idx, predict_idx = 1, 0
 	local descr = spawned[current_idx]
@@ -193,7 +197,7 @@ function MeteorsDisaster(meteors, meteors_type, pos)
 			spawned[predict_idx].meteor:Predict()
 		end
 		if g_MeteorStormStop and not table.find(g_MeteorsPredicted, descr.meteor) then
-			RemoveOnScreenNotification("MeteorStormDuration")
+			RemoveOnScreenNotification("MeteorStormDuration", map_id)
 			g_MeteorStormStop = false
 			break
 		end
@@ -206,38 +210,40 @@ function MeteorsDisaster(meteors, meteors_type, pos)
 		current_time = current_time + delta
 	end
 	if meteors_type == "storm" then
-		PlayFX("MeteorStorm", "end")
-		Msg("MeteorStormEnded")
+		PlayFX("MeteorStorm", "end", nil, nil, nil, nil, map_id)
+		Msg("MeteorStormEnded", map_id)
 		g_MeteorStorm = false
 	end
 end
 
 local function GetMeteorsDescr()
-	if mapdata.MapSettings_Meteor == "disabled" then
+	if ActiveMaps[MainMapID].MapSettings_Meteor == "disabled" then
 		return
 	end
 	
 	local data = DataInstances.MapSettings_Meteor
 	
-	local orig_data = data[mapdata.MapSettings_Meteor] or data["Meteor_VeryLow"]
+	local orig_data = data[ActiveMaps[MainMapID].MapSettings_Meteor] or data["Meteor_VeryLow"]
 	return OverrideDisasterDescriptor(orig_data)
 end
 
 -- Single Meteor or Multi Spawn meteors
 GlobalGameTimeThread("Meteors", function()
+	if IsGameRuleActive("NoDisasters") then return end
+	
 	local meteors = GetMeteorsDescr()
 	if not meteors or meteors.forbidden then
 		return
 	end
 	
 	while true do
-		local spawn_time = UICity:Random(meteors.spawntime, meteors.spawntime + meteors.spawntime_random)
+		local spawn_time = SessionRandom:Random(meteors.spawntime, meteors.spawntime + meteors.spawntime_random)
 		local warning_time = GetDisasterWarningTime(meteors)
 		local start_time = GameTime()
 		if GameTime() - start_time > spawn_time - warning_time then
 			Sleep(5000)
 		end
-		local chance = UICity:Random(100)
+		local chance = SessionRandom:Random(100)
 		local meteors_type
 		if chance < meteors.multispawn_chance then
 			meteors_type = "multispawn"
@@ -259,24 +265,33 @@ end)
 
 -- Meteor Storm
 GlobalGameTimeThread("MeteorStorm", function()
+	if IsGameRuleActive("NoDisasters") then return end
+	
 	local meteors = GetMeteorsDescr()
 	if not meteors or meteors.storm_forbidden then
 		return
 	end
 
-	local wait_time = meteors.birth_hour + UICity:Random(meteors.spawntime_random)
+	local wait_time = meteors.birth_hour + SessionRandom:Random(meteors.spawntime_random)
 	while true do
 		-- wait and show the notification
 		local start_time = GameTime()
 		local last_check_time = GameTime()
+		local map_id = MainCity.map_id
 		while MeteorStormsDisabled or GameTime() - start_time < wait_time do
 			if MeteorStormsDisabled then
 				start_time = GameTime()
 			else
 				local warning_time = GetDisasterWarningTime(meteors)
 				if GameTime() - start_time > wait_time - warning_time then
-					AddOnScreenNotification("MeteorStorm2", nil, {start_time = GameTime(), expiration = warning_time, early_warning = GetEarlyWarningText(warning_time) , num_of_sensors = GetTowerCountText()})
-					ShowDisasterDescription("MeteorStorm")
+					AddOnScreenNotification("MeteorStorm2",
+						nil,
+						{ start_time = GameTime(),
+						  expiration = warning_time,
+						  early_warning = GetEarlyWarningText(warning_time),
+						  num_of_sensors = GetTowerCountText()},
+						nil, map_id)
+					ShowDisasterDescription("MeteorStorm", map_id)
 					break
 				end
 			end
@@ -284,7 +299,7 @@ GlobalGameTimeThread("MeteorStorm", function()
 		end
 		Sleep(Max(wait_time - (GameTime() - start_time), 0))
 		
-		RemoveOnScreenNotification("MeteorStorm2")
+		RemoveOnScreenNotification("MeteorStorm2", map_id)
 		if not MeteorStormsDisabled then
 			MeteorsDisaster(meteors, "storm")
 		end
@@ -295,7 +310,7 @@ GlobalGameTimeThread("MeteorStorm", function()
 			new_meteors = GetMeteorsDescr()
 		end
 		meteors = new_meteors
-		wait_time = UICity:Random(meteors.storm_spawntime, meteors.storm_spawntime + meteors.storm_spawntime_random)
+		wait_time = SessionRandom:Random(meteors.storm_spawntime, meteors.storm_spawntime + meteors.storm_spawntime_random)
 	end
 end)
 
@@ -354,7 +369,7 @@ function BaseMeteor:Done()
 		end
 	end
 	if not notification_left then
-		RemoveOnScreenNotification("MeteorImpact")
+		RemoveOnScreenNotification("MeteorImpact", MainCity.map_id)
 	end
 end
 
@@ -390,10 +405,11 @@ function BaseMeteor:Predict()
 	end
 	g_MeteorsPredicted[#g_MeteorsPredicted + 1] = self
 	PlayFX("SensorTowerMeteorPos", "start", self, nil, self.dest)
-	if MapCount(self:GetQuery()) > 0 then
+	local realm = GetRealm(self)
+	if realm:MapCount(self:GetQuery()) > 0 then
 		self.notification = true
 		if not IsOnScreenNotificationShown("MeteorImpact") then
-			AddOnScreenNotification("MeteorImpact", CycleMeteorImpacts)
+			AddOnScreenNotification("MeteorImpact", CycleMeteorImpacts, nil, nil, self:GetMapID())
 		end
 	end
 end
@@ -404,7 +420,7 @@ function BaseMeteor:GetTimeToImpact(dest)
 end
 
 function BaseMeteor:HitsDome(dest)
-	local domes = UICity.labels.Dome
+	local domes = MainCity.labels.Dome
 	if not domes then
 		return
 	end
@@ -480,21 +496,21 @@ function BaseMeteor:SpawnPrefab()
 		return
 	end
 	local name = table.rand(list)
-	local err, bbox, objs = PlacePrefab(name, self:GetPos(), UICity:Random(360 * 60), "+")
-	if err or MapCount(bbox, "Building") > 0 then
+
+	local game_map = GetGameMap(self)
+	local err, bbox, objs = PlacePrefab(name, self:GetPos(), game_map.map_id, SessionRandom:Random(360 * 60), "+")
+	if err or game_map.realm:MapCount(bbox, "Building") > 0 then
 		return
 	end
 
-	CalcBuildableGrid()
-	local UnbuildableZ = buildUnbuildableZ()
 	SuspendPassEdits("SpawnPrefab")
 	g_MeteorDecals = g_MeteorDecals or {}
 
 	for _, obj in ipairs(objs) do
 		if obj:IsKindOfClasses("SurfaceDepositMarker", "SubsurfaceAnomalyMarker") then
 			-- check for buildable
-			local q, r = WorldToHex(obj)	
-			if GetBuildableZ(q, r) ~= UnbuildableZ then		
+			local q, r = WorldToHex(obj)
+			if game_map.buildable:IsBuildable(q, r) then
 				if IsKindOf(obj, "SubsurfaceAnomalyMarker") then
 					obj.revealed = true
 				end
@@ -506,19 +522,21 @@ function BaseMeteor:SpawnPrefab()
 		end
 	end
 	ResumePassEdits("SpawnPrefab")
-	terrain.InvalidateType(bbox)
+	game_map.terrain:InvalidateType(bbox)
 end
 
 function BaseMeteor:SpawnDeposit(building)
 	if self.deposit_type == "Anomaly" or self.deposit_type == "Rocks" then
 		return
 	end
-	local pos = GetRandomPassableAround(building.pos, building.radius)
-	if not pos or MapCount(pos, 10 * guim, "Building") ~= 0 then
+	local map_id = self:GetMapID()
+	local pos = GetRandomPassableAroundOnMap(map_id, building.pos, building.radius)
+	local realm = GetRealm(self)
+	if not pos or realm:MapCount(pos, 10 * guim, "Building") ~= 0 then
 		return
 	end
 	
-	local marker = PlaceObject("SurfaceDepositMarker")
+	local marker = PlaceObjectIn("SurfaceDepositMarker", map_id)
 	marker:SetPos(pos:SetInvalidZ())
 	marker:SetAngle(self:Random(360*60))
 	marker.resource = self.deposit_type
@@ -539,8 +557,9 @@ DefineClass.BaseMeteorSmall =
 }
 
 function BaseMeteorSmall:Explode()
-	SuspendPassEdits("MeteorSmallExplode")
-	local objects = MapGet(self:GetQuery())
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("MeteorSmallExplode")
+	local objects = realm:MapGet(self:GetQuery())
 	local passages_fractured = {}
 	local buildings_hit = {}
 	local chain_id_counter = 1
@@ -548,6 +567,7 @@ function BaseMeteorSmall:Explode()
 	local destroyed_cables = {}
 	local cablesnpipes_to_kill = {}
 	local cablesnpipes = {}
+	local map_id = self:GetMapID()
 	for i=1,#objects do
 		local obj = objects[i]
 		if IsValid(obj) then --deleting objs from objects may cause other objs to also get deleted!
@@ -565,10 +585,10 @@ function BaseMeteorSmall:Explode()
 					obj:SetCommand("Malfunction")
 				end
 			elseif IsKindOf(obj, "UniversalStorageDepot") then
-				if not IsKindOf(obj, "SupplyRocket") and obj:GetStoredAmount("Fuel") > 0 then
+				if not IsKindOf(obj, "RocketBase") and obj:GetStoredAmount("Fuel") > 0 then
 					PlayFX("FuelExplosion", "start", obj)
 					obj:CheatEmpty()
-					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj})
+					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj}, map_id)
 				end
 				if IsKindOf(obj, "MechanizedDepot") then
 					obj:SetMalfunction()
@@ -578,7 +598,7 @@ function BaseMeteorSmall:Explode()
 				if obj.resource == "Fuel" and amount > 0 then
 					PlayFX("FuelExplosion", "start", obj)
 					obj:AddResourceAmount(-amount, true)
-					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj})
+					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj}, map_id)
 				end
 			elseif IsKindOf(obj, "PassageGridElement") then
 				if not passages_fractured[obj.passage_obj] then
@@ -628,9 +648,10 @@ function BaseMeteorSmall:Explode()
 	if #buildings_hit == 0 then
 		local has_neighbour_obj = false
 		local q, r = WorldToHex(self)
+		local object_hex_grid = GetObjectHexGrid(self)
 		for j = 1, #HexSurroundingsCheckShape do
 			local dq, dr = HexSurroundingsCheckShape[j]:xy()
-			if HexGetAnyObj(q + dq, r + dr) then
+			if object_hex_grid:GetObject(q + dq, r + dr) then
 				has_neighbour_obj = true
 				break
 			end
@@ -642,9 +663,9 @@ function BaseMeteorSmall:Explode()
 		self:SpawnDeposit(buildings_hit[1 + self:Random(#buildings_hit)])
 	end
 	
-	KillCablesAndPipesAndRebuildThem(cablesnpipes_to_kill, destroyed_cables, destroyed_pipes)
+	KillCablesAndPipesAndRebuildThem(MainCity, cablesnpipes_to_kill, destroyed_cables, destroyed_pipes)
 	self:KillVegetation()
-	ResumePassEdits("MeteorSmallExplode")
+	realm:ResumePassEdits("MeteorSmallExplode")
 end
 
 DefineClass.BaseMeteorLarge =
@@ -661,12 +682,13 @@ DefineClass.BaseMeteorLarge =
 }
 
 function BaseMeteorLarge:Init()
-	self:SetScale(UICity:Random(150, 180))
+	self:SetScale(SessionRandom:Random(150, 180))
 end
 
 function BaseMeteorLarge:Explode()
-	SuspendPassEdits("MeteorLargeExplode")
-	local objects = MapGet(self:GetQuery())
+	local realm = GetRealm(self)
+	realm:SuspendPassEdits("MeteorLargeExplode")
+	local objects = realm:MapGet(self:GetQuery())
 	local chain_id_counter = 1
 	local passages_fractured = {}
 	local destroyed_pipes = {}
@@ -674,6 +696,7 @@ function BaseMeteorLarge:Explode()
 	local cablesnpipes_to_kill = {}
 	local buildings_hit = {}
 	local cablesnpipes = {}
+	local map_id = self:GetMapID()
 	for i=1,#objects do
 		local obj = objects[i]
 		if IsValid(obj) then --deleting objs from objects may cause other objs to also get deleted!
@@ -686,10 +709,10 @@ function BaseMeteorLarge:Explode()
 				PlayFX("MeteorDestruction", "start", obj)
 				obj:SetCommand("Die", "meteor")
 			elseif IsKindOf(obj, "UniversalStorageDepot") then
-				if not IsKindOf(obj, "SupplyRocket") and obj:GetStoredAmount("Fuel") > 0 then
+				if not IsKindOf(obj, "RocketBase") and obj:GetStoredAmount("Fuel") > 0 then
 					PlayFX("FuelExplosion", "start", obj)
 					obj:CheatEmpty()
-					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj})
+					AddOnScreenNotification("FuelDestroyed", nil, {}, {obj}, map_id)
 				end
 			elseif IsKindOf(obj, "ResourceStockpileBase") then
 				local amount = obj:GetStoredAmount()
@@ -747,9 +770,10 @@ function BaseMeteorLarge:Explode()
 	if #buildings_hit == 0 then
 		local has_neighbour_obj = false
 		local q, r = WorldToHex(self)
+		local object_hex_grid = GetObjectHexGrid(self)
 		for j = 1, #HexSurroundingsCheckShape do
 			local dq, dr = HexSurroundingsCheckShape[j]:xy()
-			if HexGetAnyObj(q + dq, r + dr) then
+			if object_hex_grid:GetObject(q + dq, r + dr) then
 				has_neighbour_obj = true
 				break
 			end
@@ -760,10 +784,10 @@ function BaseMeteorLarge:Explode()
 	else
 		self:SpawnDeposit(buildings_hit[1 + self:Random(#buildings_hit)])
 	end
-	
-	KillCablesAndPipesAndRebuildThem(cablesnpipes_to_kill, destroyed_cables, destroyed_pipes)
+
+	KillCablesAndPipesAndRebuildThem(MainCity, cablesnpipes_to_kill, destroyed_cables, destroyed_pipes)
 	self:KillVegetation()
-	ResumePassEdits("MeteorLargeExplode")
+	realm:ResumePassEdits("MeteorLargeExplode")
 end
 
 DefineClass("MeteorSmall1", { __parents = {"BaseMeteorSmall"}, entity = "Asteroid" })
@@ -800,11 +824,13 @@ end)
 function GatherSupplyGridObjectsToBeDestroyed(first_obj, collected, chain_id_counter)
 	local is_pipe = IsKindOf(first_obj, "LifeSupportGridElement")
 	local supply_resource = is_pipe and "water" or "electricity"
-	local conn_grid = SupplyGridConnections[supply_resource]
+	local game_map = ActiveGameMap
+	local supply_connection_grid = game_map.supply_connection_grid
+	local conn_grid = supply_connection_grid[supply_resource]
 	local objs = {first_obj}
 	
 	if is_pipe then --calbes are killed 1 by 1 when cascade is disabled.
-		local o_grid = ObjectGrid
+		local o_grid = game_map.object_hex_grid
 		local grid_class = is_pipe and WaterGrid or ElectricityGrid
 		local process_idx = 1
 		
@@ -823,20 +849,20 @@ function GatherSupplyGridObjectsToBeDestroyed(first_obj, collected, chain_id_cou
 				
 				for i = 1, #(connections or ""), 2 do
 					local pt, other_pt = connections[i], connections[i + 1]
-					local adjascents = HexGridGetObjects(o_grid, other_pt, nil, nil, function(o)
+					local adjacents = o_grid:GetObjectsAtPos(other_pt, nil, nil, function(o)
 						return GetGrid(o, supply_resource)
 					end)
-					for i = 1, #adjascents do
-						if not table.find(objs, adjascents[i]) then
-							if IsKindOf(adjascents[i], "LifeSupportGridElement") and adjascents[i].chain and not adjascents[i].chain.id then
+					for i = 1, #adjacents do
+						if not table.find(objs, adjacents[i]) then
+							if IsKindOf(adjacents[i], "LifeSupportGridElement") and adjacents[i].chain and not adjacents[i].chain.id then
 								if o.chain and o.chain.id then 
-									adjascents[i].chain.id = o.chain.id
+									adjacents[i].chain.id = o.chain.id
 								else
-									adjascents[i].chain.id = chain_id_counter
+									adjacents[i].chain.id = chain_id_counter
 									chain_id_counter = chain_id_counter + 1
 								end
 							end
-							grid_class:DestroyConnection(pt, other_pt, o, adjascents[i], objs)
+							grid_class.DestroyConnection(pt, other_pt, o, adjacents[i], objs)
 						end
 					end
 				end
@@ -858,11 +884,11 @@ function GatherSupplyGridObjectsToBeDestroyed(first_obj, collected, chain_id_cou
 	return ret, chain_id_counter
 end
 
-function RebuildSupplyGridObjects(arr, class)
+function RebuildSupplyGridObjects(city, arr, class)
 	local chain_groups = {}
 	local construction_group = false
-	local city = UICity
 	local is_pipe = class == "LifeSupportGridElement"
+	local realm = GetRealm(city)
 	
 	for i = 1, #arr do
 		local o = arr[i]
@@ -881,12 +907,12 @@ function RebuildSupplyGridObjects(arr, class)
 			end
 			
 			--new group
-			construction_group = CreateConstructionGroup(class, pos, 3)
+			construction_group = CreateConstructionGroup(class, pos, city:GetMapID(), 3)
 		end
 		
 		if chain then
 			if not chain_groups[chain.id] then
-				local chunk_construction_group = CreateConstructionGroup(class, pos, 3)
+				local chunk_construction_group = CreateConstructionGroup(class, pos, city:GetMapID(), 3)
 				chunk_construction_group[1].construction_cost_multiplier = 500
 				chain_groups[chain.id] = chunk_construction_group
 				chunk_construction_group[1].drop_offs = {false, false}
@@ -907,7 +933,7 @@ function RebuildSupplyGridObjects(arr, class)
 		
 		local cs = PlaceConstructionSite(city, class, pos, angle, params, nil, true)
 		if not is_pipe or pillar then
-			local rocks = HexGetUnits(nil, nil, pos, 0, false, nil, "WasteRockObstructor", 10*guim) or empty_table
+			local rocks = HexGetUnits(realm, nil, nil, pos, 0, false, nil, "WasteRockObstructor", 10*guim) or empty_table
 			cs:AppendWasteRockObstructors(rocks)
 		end
 		
@@ -926,6 +952,7 @@ function RebuildSupplyGridObjects(arr, class)
 		DoneObject(construction_group[1])
 	end
 	
+	local object_hex_grid = GetActiveObjectHexGrid()
 	for i = 1, #chain_groups do
 		local grp = chain_groups[i]
 		if grp and grp[1]:CanDelete() then
@@ -937,7 +964,7 @@ function RebuildSupplyGridObjects(arr, class)
 					local qq, rr = pt:xy()
 					qq = qq + q
 					rr = rr + r
-					local a_p = HexGetPipe(qq, rr)
+					local a_p = HexGetPipe(object_hex_grid, qq, rr)
 					if a_p and a_p.pillar and not a_p.chain then
 						return a_p
 					end
@@ -973,9 +1000,10 @@ all_objs_to_kill = false
 all_cbls_to_rebuild = false
 all_pipes_to_rebuild = false
 
-function KillCablesAndPipesAndRebuildThemExec()
-	UICity:SetCableCascadeDeletion(false, "killingandrebuildingsupplygrid")
-	SuspendPassEdits("killingandrebuildingsupplygrid")
+function KillCablesAndPipesAndRebuildThemExec(city)
+	city:SetCableCascadeDeletion(false, "killingandrebuildingsupplygrid")
+	local realm = GetRealm(city)
+	realm:SuspendPassEdits("killingandrebuildingsupplygrid")
 	for i = 1, #all_objs_to_kill do
 		if IsValid(all_objs_to_kill[i]) then
 			DoneObject(all_objs_to_kill[i])
@@ -983,15 +1011,15 @@ function KillCablesAndPipesAndRebuildThemExec()
 	end
 	
 	if #all_pipes_to_rebuild > 0 then
-		RebuildSupplyGridObjects(all_pipes_to_rebuild, "LifeSupportGridElement")
+		RebuildSupplyGridObjects(city, all_pipes_to_rebuild, "LifeSupportGridElement")
 	end
 	
 	if #all_cbls_to_rebuild > 0 then
-		RebuildSupplyGridObjects(all_cbls_to_rebuild, "ElectricityGridElement")
+		RebuildSupplyGridObjects(city, all_cbls_to_rebuild, "ElectricityGridElement")
 	end
 	
-	ResumePassEdits("killingandrebuildingsupplygrid")
-	UICity:SetCableCascadeDeletion(true, "killingandrebuildingsupplygrid")
+	realm:ResumePassEdits("killingandrebuildingsupplygrid")
+	city:SetCableCascadeDeletion(true, "killingandrebuildingsupplygrid")
 	all_objs_to_kill = false
 	all_pipes_to_rebuild = false
 	all_cbls_to_rebuild = false
@@ -1020,11 +1048,11 @@ local function helper_pick_table(t1, tnew)
 	return t1
 end
 
-function KillCablesAndPipesAndRebuildThem(objs_to_kill, cbls_to_rebuild, pipes_to_rebuild)
+function KillCablesAndPipesAndRebuildThem(city, objs_to_kill, cbls_to_rebuild, pipes_to_rebuild)
 	all_objs_to_kill = helper_pick_table(all_objs_to_kill, objs_to_kill)
 	all_cbls_to_rebuild = helper_pick_table(all_cbls_to_rebuild, cbls_to_rebuild)
 	all_pipes_to_rebuild = helper_pick_table(all_pipes_to_rebuild, pipes_to_rebuild)
 	if not kill_thread then
-		kill_thread = CreateGameTimeThread(KillCablesAndPipesAndRebuildThemExec)
+		kill_thread = CreateGameTimeThread(function() KillCablesAndPipesAndRebuildThemExec(city) end)
 	end
 end

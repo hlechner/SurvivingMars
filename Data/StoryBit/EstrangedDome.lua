@@ -12,6 +12,7 @@ PlaceObj('StoryBit', {
 		"EstrangedDome_FollowUp",
 	},
 	Image = "UI/Messages/emergency.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -41,6 +42,10 @@ PlaceObj('StoryBit', {
 				}),
 			},
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(742843343523, --[[StoryBit EstrangedDome Text]] "A list of absurd and highly unpractical, not to mention impossible, demands has been forwarded to you.\n\nIf you fail to comply, they shall declare the <DisplayName> Dome independent from the rest of our colony. How that will happen, as they will be very much so dependent on us for Oxygen, Water and Power - to say the least - is beyond you."),
@@ -50,6 +55,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(394655193067, --[[voice:narrator]] "Our Renegade issues have escalated within one of our Domes."),
 	group = "Renegades",
 	id = "EstrangedDome",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625147558,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(207450118153, --[[StoryBit EstrangedDome Text]] "*lie* We will comply."),
 	}),

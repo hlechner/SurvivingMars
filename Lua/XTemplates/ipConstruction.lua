@@ -128,6 +128,11 @@ PlaceObj('XTemplate', {
 					'Text', T(912, --[[XTemplate ipConstruction Text]] "<em>Hold Shift</em> Place multiple"),
 				}),
 				PlaceObj('XTemplateTemplate', {
+					'__condition', function (parent, context) return not context.rocket and not IsKindOf(context, "LandscapeRampController") end,
+					'__template', "InfopanelText",
+					'Text', T(948977985272, --[[XTemplate ipConstruction Text]] "<em>Hold CTRL</em> Show effect ranges"),
+				}),
+				PlaceObj('XTemplateTemplate', {
 					'__condition', function (parent, context) return context:HasVariants() end,
 					'__template', "InfopanelText",
 					'Text', T(913, --[[XTemplate ipConstruction Text]] "Use <em>[</em> or <em>]</em> to cycle between visual variants for this building"),
@@ -162,7 +167,12 @@ PlaceObj('XTemplate', {
 				PlaceObj('XTemplateTemplate', {
 					'__condition', function (parent, context) return not context.rocket and not IsKindOf(context, "LandscapeRampController") end,
 					'__template', "InfopanelText",
-					'Text', T(7365, --[[XTemplate ipConstruction Text]] "<em>Hold<LT></em> Place multiple"),
+					'Text', T(7365, --[[XTemplate ipConstruction Text]] "<em>Hold <LT></em> Place multiple"),
+				}),
+				PlaceObj('XTemplateTemplate', {
+					'__condition', function (parent, context) return not context.rocket and not IsKindOf(context, "LandscapeRampController") end,
+					'__template', "InfopanelText",
+					'Text', T(687684223386, --[[XTemplate ipConstruction Text]] "<em>Hold <ButtonY></em> Show effect ranges"),
 				}),
 				PlaceObj('XTemplateTemplate', {
 					'__condition', function (parent, context) return context:HasVariants() end,

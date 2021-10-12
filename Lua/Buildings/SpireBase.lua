@@ -116,14 +116,14 @@ function SpireBase:UpdateFrame()
 		return
 	end	
 	if not IsValid(frame) then
-		frame = PlaceObject("SpireFrame")
+		frame = PlaceObjectIn("SpireFrame", self:GetMapID())
 		self:Attach(frame, self:GetSpotBeginIndex("Origin"))
 		if not self:IsNightLightPossible() then
 			frame:SetSIModulation(0)
 		end
 	end
 	
-	local hide = OpenAirBuildings and hide_open
+	local hide = GetOpenAirBuildings(self:GetMapID()) and hide_open
 	frame:SetVisible(not hide)
 	frame:ChangeEntity(frame_entity)
 	CopyColorizationMaterial(self, frame)
@@ -132,8 +132,8 @@ function SpireBase:UpdateFrame()
 	frame:SetAttachOffset( pos - self:GetPos() )
 end
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	if tech_id == "InspiringArchitecture" then
-		city:ForEachLabelObject("Colonist", Notify, "UpdateMorale")
+		UIColony:ForEachLabelObject("Colonist", Notify, "UpdateMorale")
 	end
 end

@@ -4136,12 +4136,14 @@ PlaceObj('ActionFXParticles', {
 	Action = "Moving",
 	Actor = "Rover",
 	Attach = true,
+	Comment = "Surface",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "move",
 	Offset = point(0, 800, 0),
 	Particles = "RCRover_Trail",
@@ -4155,12 +4157,14 @@ PlaceObj('ActionFXParticles', {
 	Action = "Moving",
 	Actor = "Rover",
 	Attach = true,
+	Comment = "Surface",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "move",
 	Offset = point(0, 800, 0),
 	Particles = "RCRover_Trail",
@@ -4857,6 +4861,7 @@ PlaceObj('ActionFXParticles', {
 	Action = "RocketEngine",
 	Actor = "FXRocket",
 	AlwaysVisible = true,
+	Comment = "LanderInheritsThis - Side Trails Harder",
 	Delay = 7000,
 	DetailLevel = 60,
 	EndRules = {
@@ -4864,29 +4869,55 @@ PlaceObj('ActionFXParticles', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "start",
 	Offset = point(0, 0, 100),
 	Particles = "SpaceRocket_TakeOff_Ignition",
 	Spot = "Trail",
 	SpotsPercent = 100,
-	handle = 1455110395,
+	handle = 161763227,
 })
 
 PlaceObj('ActionFXParticles', {
 	Action = "RocketEngine",
 	Actor = "FXRocket",
 	AlwaysVisible = true,
+	Comment = "LanderInheritsThis - Steady Glow, clouds",
 	DetailLevel = 40,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "start",
 	Offset = point(0, 0, 100),
 	Particles = "SpaceRocket_WarmUp",
 	SpotsPercent = 100,
-	handle = 565474274,
+	handle = 1313625899,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketEngine",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Attach = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderRocket_Asteroid - Side Trails Harder",
+	Delay = 7000,
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', nil),
+	},
+	Environment = "Asteroid",
+	Moment = "start",
+	Offset = point(0, 0, 100),
+	Particles = "LanderRocket_Landing_Puffs",
+	Spot = "Thrustersmallside",
+	SpotsPercent = 100,
+	handle = 1097482356,
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -4903,8 +4934,10 @@ PlaceObj('ActionFXParticles', {
 	Action = "RocketLand",
 	Actor = "FXRocket",
 	AlwaysVisible = true,
+	Comment = "LanderInheritsThis - Small Smoke around rocket when land?",
 	Delay = 4750,
 	DetailLevel = 60,
+	Environment = "Surface",
 	Flags = "OnGround",
 	Moment = "pre-hit-ground",
 	Offset = point(0, 0, 500),
@@ -4919,19 +4952,66 @@ PlaceObj('ActionFXParticles', {
 	Action = "RocketLand",
 	Actor = "FXRocket",
 	AlwaysVisible = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderInheritsThis - landing smoke",
 	DetailLevel = 60,
 	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
+		PlaceObj('ActionFXEndRule', nil),
 	},
+	Environment = "Surface",
 	Moment = "pre-hit-ground",
 	Offset = point(0, 0, 100),
 	Particles = "Rocket_LandSmoke",
 	Scale = 120,
 	Source = "ActionPos",
 	SpotsPercent = 100,
-	handle = 615058756,
+	handle = 546564558,
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLand",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Attach = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderRocket_Asteroid - Landing Puffs",
+	DetailLevel = 60,
+	Environment = "Asteroid",
+	Moment = "pre-hit-ground",
+	OffsetDir = "SourceAxisZ",
+	OrientationAxis = -3,
+	Particles = "LanderRocket_Launch_Puffs",
+	Source = "ActionPos",
+	Spot = "Thrustersmallbottom",
+	SpotsPercent = 100,
+	Time = 5000,
+	handle = 1319598409,
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLand",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderRocket_Asteroid - Landing smoke",
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', nil),
+	},
+	Environment = "Asteroid",
+	Moment = "pre-hit-ground",
+	Offset = point(0, 0, 100),
+	Particles = "LanderRocket_LandSmoke",
+	Scale = 120,
+	Source = "ActionPos",
+	SpotsPercent = 100,
+	handle = 1129077301,
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -4972,7 +5052,11 @@ PlaceObj('ActionFXParticles', {
 	Action = "RocketLand",
 	Actor = "FXRocket",
 	AlwaysVisible = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderInheritsThis - landing smoke",
 	DetailLevel = 60,
+	Environment = "Surface",
 	Moment = "pre-hit-ground2",
 	Offset = point(0, 0, 100),
 	Particles = "Rocket_LandSmoke_02",
@@ -4980,6 +5064,28 @@ PlaceObj('ActionFXParticles', {
 	Source = "ActionPos",
 	SpotsPercent = 100,
 	Time = 8000,
+	handle = 2100624969,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLand",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderRocket_Asteroid - landing smoke2",
+	DetailLevel = 60,
+	Environment = "Asteroid",
+	Moment = "pre-hit-ground2",
+	Offset = point(0, 0, 100),
+	OrientationAxis = -3,
+	Particles = "LanderRocket_LandSmoke_2",
+	Scale = 120,
+	Source = "ActionPos",
+	SpotsPercent = 100,
+	Time = 8000,
+	handle = 1645972150,
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5001,18 +5107,18 @@ PlaceObj('ActionFXParticles', {
 	Actor = "FXRocket",
 	AlwaysVisible = true,
 	Attach = true,
+	Comment = "LanderInheritsThis -  Big Bottom Flame",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "start",
 	Offset = point(0, 0, 100),
-	Particles = "SpaceRocket_Landing_Trail",
-	Spot = "Trail",
-	SpotsPercent = 100,
-	handle = 1687043967,
+	Particles = "SpaceRocket_Landing_Trail_Smoke",
+	handle = 1068234289,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5020,16 +5126,66 @@ PlaceObj('ActionFXParticles', {
 	Actor = "FXRocket",
 	AlwaysVisible = true,
 	Attach = true,
+	Comment = "LanderInheritsThis - Side Trails",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "start",
 	Offset = point(0, 0, 100),
-	Particles = "SpaceRocket_Landing_Trail_Smoke",
-	handle = 2059959332,
+	Particles = "SpaceRocket_Landing_Trail",
+	Spot = "Trail",
+	SpotsPercent = 100,
+	handle = 217554607,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLand",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Attach = true,
+	Comment = "LanderInheritsThis - Side Trails",
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Environment = "Surface",
+	Moment = "start",
+	Offset = point(0, 0, 100),
+	Particles = "SpaceRocket_Landing_Trail",
+	Spot = "Trail",
+	SpotsPercent = 100,
+	handle = 1293608524,
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLand",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Attach = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "pre-hit-ground",
+	Comment = "LanderRocket_Asteroid -  Big Bottom Flame",
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Environment = "Asteroid",
+	Moment = "start",
+	Particles = "LanderRocket_Trail_Smoke",
+	Spot = "Thrustersmallbottom",
+	SpotsPercent = 100,
+	Time = 25000,
+	handle = 1191092786,
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5073,20 +5229,24 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
-	Action = "RocketLaunch",
-	Actor = "FXRocket",
+	Action = "RocketLand",
 	AlwaysVisible = true,
+	Attach = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "pre-hit-ground",
+	Comment = "LanderRocket_Asteroid_Trails",
 	DetailLevel = 60,
 	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
+		PlaceObj('ActionFXEndRule', nil),
 	},
+	Environment = "Asteroid",
 	Moment = "start",
-	Particles = "Rocket_Launch",
+	Offset = point(0, 0, 100),
+	Particles = "LanderRocket_Landing_Puffs",
+	Spot = "Thrustersmallside",
 	SpotsPercent = 100,
-	Time = 15000,
-	handle = 1781309684,
+	handle = 401199950,
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5094,18 +5254,40 @@ PlaceObj('ActionFXParticles', {
 	Actor = "FXRocket",
 	AlwaysVisible = true,
 	Attach = true,
+	Comment = "LanderInheritsThis - Big Bottom Flame",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
+	Moment = "start",
+	Offset = point(0, 0, 100),
+	Particles = "SpaceRocket_Trail_Smoke",
+	SpotsPercent = 100,
+	handle = 1306073489,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLaunch",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Attach = true,
+	Comment = "LanderInheritsThis - Mist on nose?",
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Environment = "Surface",
 	Moment = "start",
 	Particles = "Rocket_LaunchWave",
 	Spot = "Nose",
 	SpotsPercent = 100,
 	Time = 10000,
-	handle = 1343675146,
+	handle = 278083848,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5113,19 +5295,21 @@ PlaceObj('ActionFXParticles', {
 	Actor = "FXRocket",
 	AlwaysVisible = true,
 	Attach = true,
+	Comment = "LanderInheritsThis - Mist on nose?",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "start",
 	OrientationAxis = -1,
 	Particles = "Rocket_LaunchWave",
 	Spot = "Nose",
 	SpotsPercent = 100,
 	Time = 10000,
-	handle = 333407190,
+	handle = 1469076571,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5133,18 +5317,20 @@ PlaceObj('ActionFXParticles', {
 	Actor = "FXRocket",
 	AlwaysVisible = true,
 	Attach = true,
+	Comment = "LanderInheritsThis - Mist on nose?",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "start",
 	Particles = "Rocket_LaunchWave_Middle",
 	Spot = "Nose",
 	SpotsPercent = 100,
 	Time = 10000,
-	handle = 1800334685,
+	handle = 46725794,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5152,18 +5338,39 @@ PlaceObj('ActionFXParticles', {
 	Actor = "FXRocket",
 	AlwaysVisible = true,
 	Attach = true,
+	Comment = "LanderInheritsThis - Side Trails",
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Surface",
 	Moment = "start",
 	Offset = point(0, 0, 100),
 	Particles = "SpaceRocket_Trail",
 	Spot = "Trail",
 	SpotsPercent = 100,
-	handle = 1168755514,
+	handle = 653251981,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLaunch",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Comment = "LanderInheritsThis - launch smoke",
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Environment = "Surface",
+	Moment = "start",
+	Particles = "Rocket_Launch",
+	SpotsPercent = 100,
+	Time = 15000,
+	handle = 585250570,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5171,17 +5378,66 @@ PlaceObj('ActionFXParticles', {
 	Actor = "FXRocket",
 	AlwaysVisible = true,
 	Attach = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderRocket_Asteroid - Big Bottom Flame",
+	Delay = 10000,
 	DetailLevel = 60,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
+	Environment = "Asteroid",
 	Moment = "start",
 	Offset = point(0, 0, 100),
-	Particles = "SpaceRocket_Trail_Smoke",
+	Particles = "LanderRocket_Trail_Smoke",
+	Spot = "Thrustersmalbottom",
 	SpotsPercent = 100,
-	handle = 1864001670,
+	handle = 158043576,
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLaunch",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Comment = "LanderRocket_Asteroid - launch smoke",
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Environment = "Asteroid",
+	Moment = "start",
+	Particles = "LanderRocket_Launch",
+	SpotsPercent = 100,
+	Time = 15000,
+	handle = 267247405,
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RocketLaunch",
+	Actor = "FXRocket",
+	AlwaysVisible = true,
+	Attach = true,
+	Behavior = "BehaviorDetachAndDestroy",
+	BehaviorMoment = "end",
+	Comment = "LanderRocket_Asteroid_Trails_Launch",
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', nil),
+	},
+	Environment = "Asteroid",
+	Moment = "start",
+	Offset = point(0, 0, 100),
+	Particles = "LanderRocket_Launch_Puffs",
+	Spot = "Thrustersmallside",
+	SpotsPercent = 100,
+	handle = 670819259,
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -8279,6 +8535,7 @@ PlaceObj('ActionFXParticles', {
 PlaceObj('ActionFXParticles', {
 	Action = "Thrusters",
 	Attach = true,
+	Comment = "LanderInheritsThis - Glow UnderRocket",
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
@@ -8288,24 +8545,25 @@ PlaceObj('ActionFXParticles', {
 	Particles = "RocketUI_Glow",
 	SpotsPercent = 100,
 	Target = "ignore",
-	handle = 571659848,
+	handle = 1782951040,
 })
 
 PlaceObj('ActionFXParticles', {
 	Action = "Thrusters",
 	Attach = true,
+	Comment = "LanderInheritsThis - UI Trails",
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
 		}),
 	},
 	Moment = "start",
-	OrientationAxis = -3,
+	OffsetDir = "SpotY",
 	Particles = "RocketUI_Trail",
 	Spot = "Trail",
 	SpotsPercent = 100,
 	Target = "ignore",
-	handle = 1159442663,
+	handle = 293571628,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -8673,6 +8931,25 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Working",
+	Actor = "Amphitheater",
+	Attach = true,
+	DetailLevel = 60,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "SourceAxisY",
+	Particles = "Amphitheater_Fall",
+	Spot = "Waterfall",
+	SpotsPercent = 100,
+	handle = 327487641,
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
 	Actor = "Arcology",
 	Attach = true,
 	DetailLevel = 40,
@@ -8693,6 +8970,7 @@ PlaceObj('ActionFXParticles', {
 PlaceObj('ActionFXParticles', {
 	Action = "Working",
 	Actor = "AutomaticMetalsExtractor",
+	Attach = true,
 	Delay = 200,
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {

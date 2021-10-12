@@ -5,7 +5,7 @@ PlaceObj('Challenge', {
 	TargetValue = 4,
 	TickProgress = function (self, regs)
 Sleep(1000)
-local list = UICity.labels.LivingQuarters or empty_table
+local list = UIColony.city_labels.labels.LivingQuarters or empty_table
 local n = 0
 for _, bld in ipairs(list) do
 	if bld:GetUIResidentsCount() == bld.capacity then
@@ -78,7 +78,7 @@ PlaceObj('Challenge', {
 	TickProgress = function (self, regs)
 WaitMsg("ColonistBorn")
 local count = 0
-for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+for _, dome in ipairs(UIColony.city_labels.labels.Dome or empty_table) do
 	count = count + #(dome.labels.Martianborn or empty_table)
 end
 return count
@@ -117,7 +117,7 @@ end,
 	Run = function (self)
 while true do
 	WaitMsg("ChallengeUpdate")
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony.city_labels.labels.Dome or empty_table) do
 		if #dome.labels.Colonist >= 100 and #dome.labels.Homeless == 0 then
 			return
 		end
@@ -206,7 +206,7 @@ PlaceObj('Challenge', {
 	TickProgress = function (self, regs)
 WaitMsg("TechResearched")
 local n = 0
-for tech, status in pairs(UICity.tech_status) do
+for tech, status in pairs(UIColony.tech_status) do
 	if status.researched then
 		n = n + 1
 	end
@@ -233,7 +233,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	local n = #(UICity.labels.Colonist or empty_table)
+	local n = #(UIColony.city_labels.labels.Colonist or empty_table)
 	if n >= 50 and g_TotalColonistComfort / n >= 80 then
 		return
 	end
@@ -243,12 +243,12 @@ end,
 	TargetValue = 80,
 	TickProgress = function (self, regs)
 Sleep(1000)
-local n = #(UICity.labels.Colonist or empty_table)
+local n = #(UIColony.city_labels.labels.Colonist or empty_table)
 return n > 0 and (g_TotalColonistComfort / n) or 0
 end,
 	TrackProgress = true,
 	WinCondition = function (self)
-return #(UICity.labels.Colonist or empty_table) >= 50
+return #(UIColony.city_labels.labels.Colonist or empty_table) >= 50
 end,
 	commander = "doctor",
 	description = T(213053799455, --[[Challenge Default NewArkChurchManyMartianborns description]] "Have a colony with at least 50 Colonists with average Comfort 80"),
@@ -269,7 +269,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	local total = UICity.funding_gain_total or empty_table
+	local total = UIColony.funds.funding_gain_total or empty_table
 	if (total.Tourist or 0) >= 2*1000*1000*1000 then
 		return
 	end
@@ -279,13 +279,14 @@ end,
 	TargetValue = 2000000000,
 	TickProgress = function (self, regs)
 Sleep(1000)
-local total = UICity.funding_gain_total or empty_table
+local total = UIColony.funds.funding_gain_total or empty_table
 return total.Tourist or 0
 end,
 	TrackProgress = true,
 	commander = "rocketscientist",
 	description = T(140613558769, --[[Challenge Default SpaceYMoneyFromTourists description]] "Earn $2,000 M  from Tourists"),
 	gamerule1 = "StoryBitsDisabled",
+	gamerule2 = "MoreTourists",
 	group = "Default",
 	id = "SpaceYMoneyFromTourists",
 	landing_spot = "SpaceYMoneyFromTourists",
@@ -293,7 +294,7 @@ end,
 	longitude = 50,
 	sponsor = "SpaceY",
 	time_completed = 57600000,
-	time_perfected = 28800000,
+	time_perfected = 32400000,
 	title = T(668546976180, --[[Challenge Default SpaceYMoneyFromTourists title]] "Tourist Trap"),
 })
 
@@ -301,7 +302,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	if #(UICity.labels.Colonist or empty_table) >= 200 then
+	if #(UIColony.city_labels.labels.Colonist or empty_table) >= 200 then
 		return
 	end
 end
@@ -310,7 +311,7 @@ end,
 	TargetValue = 200,
 	TickProgress = function (self, regs)
 Sleep(1000)
-return #(UICity.labels.Colonist or empty_table)
+return #(UIColony.city_labels.labels.Colonist or empty_table)
 end,
 	TrackProgress = true,
 	commander = "oligarch",
@@ -346,7 +347,7 @@ end)
 end,
 	Run = function (self)
 local function anomalies_explored()
-	for i, list in ipairs(g_MapSectors) do
+	for i, list in ipairs(MainCity.MapSectors) do
 		for j, sector in ipairs(list) do
 			if sector.status == "unexplored" and sector:HasMarkersOfType("SubsurfaceAnomalyMarker") then
 				return false
@@ -361,7 +362,7 @@ end
 
 while true do
 	WaitMsg("ChallengeUpdate")
-	if anomalies_explored() and MapCount("map", "SubsurfaceAnomaly") == 0 then
+	if anomalies_explored() and GetRealmByID(MainMapId):MapCount("map", "SubsurfaceAnomaly") == 0 then
 		return
 	end
 end
@@ -386,7 +387,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	local list = UICity.labels.FusionReactor or empty_table
+	local list = UIColony.city_labels.labels.FusionReactor or empty_table
 	local n = 0
 	for _, bld in ipairs(list) do
 		if bld.max_workers > 0 and bld:GetClosedSlots() == 0 and bld:GetFreeWorkSlots() == 0 then
@@ -402,7 +403,7 @@ end,
 	TargetValue = 4,
 	TickProgress = function (self, regs)
 Sleep(1000)
-local list = UICity.labels.FusionReactor or empty_table
+local list = UIColony.city_labels.labels.FusionReactor or empty_table
 local n = 0
 for _, bld in ipairs(list) do
 	if bld.max_workers > 0 and bld:GetClosedSlots() == 0 and bld:GetFreeWorkSlots() == 0 then
@@ -432,7 +433,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	WaitMsg("FundingChanged")
-	if UICity.funding > 50*1000*1000*1000 then
+	if UIColony.funds.funding > 50*1000*1000*1000 then
 		return
 	end
 end
@@ -441,7 +442,7 @@ end,
 	TargetValue = 35000000000,
 	TickProgress = function (self, regs)
 WaitMsg("FundingChanged")
-return UICity.funding
+return UIColony.funds.funding
 end,
 	TrackProgress = true,
 	commander = "politician",
@@ -463,9 +464,9 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	WaitMsg("ConstructionComplete")
-	if UICity:CountBuildings("VRWorkshop") > 0 and
-		UICity:CountBuildings("ArtWorkshop") > 0 and
-		UICity:CountBuildings("BioroboticsWorkshop") > 0 
+	if MainCity:CountBuildings("VRWorkshop") > 0 and
+		MainCity:CountBuildings("ArtWorkshop") > 0 and
+		MainCity:CountBuildings("BioroboticsWorkshop") > 0 
 	then
 		return
 	end
@@ -515,7 +516,7 @@ PlaceObj('Challenge', {
 while true do
 	WaitMsg("ColonistJoinsDome")
 	local n = 0
-	for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+	for _, dome in ipairs(UIColony.city_labels.labels.Dome or empty_table) do
 		if #(dome.labels.Colonist or empty_table) >= 200 then
 			n = n + 1
 		end
@@ -530,7 +531,7 @@ end,
 	TickProgress = function (self, regs)
 WaitMsg("ColonistJoinsDome")
 local n = 0
-for _, dome in ipairs(UICity.labels.Dome or empty_table) do
+for _, dome in ipairs(UIColony.city_labels.labels.Dome or empty_table) do
 	if #(dome.labels.Colonist or empty_table) >= 200 then
 		n = n + 1
 	end
@@ -557,7 +558,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	if #(UICity.labels.scientist or empty_table) >= 200 then
+	if #(UIColony.city_labels.labels.scientist or empty_table) >= 200 then
 		return
 	end
 end
@@ -566,7 +567,7 @@ end,
 	TargetValue = 200,
 	TickProgress = function (self, regs)
 Sleep(1000)
-return #(UICity.labels.scientist or empty_table)
+return #(UIColony.city_labels.labels.scientist or empty_table)
 end,
 	TrackProgress = true,
 	commander = "ecologist",
@@ -587,7 +588,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	if #(UICity.labels.Colonist or empty_table) >= 200 then
+	if #(UIColony.city_labels.labels.Colonist or empty_table) >= 200 then
 		return
 	end
 end
@@ -596,7 +597,7 @@ end,
 	TargetValue = 200,
 	TickProgress = function (self, regs)
 Sleep(1000)
-return #(UICity.labels.Colonist or empty_table)
+return #(UIColony.city_labels.labels.Colonist or empty_table)
 end,
 	TrackProgress = true,
 	commander = "doctor",
@@ -640,7 +641,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	for _, mine in ipairs(UICity.labels.MoholeMine or empty_table) do
+	for _, mine in ipairs(UIColony.city_labels.labels.MoholeMine or empty_table) do
 		local upgraded = true
 		for i = 1, 3 do
 			upgraded = upgraded and mine:HasUpgrade(i)
@@ -672,7 +673,7 @@ PlaceObj('Challenge', {
 	TickProgress = function (self, regs)
 WaitMsg("ConstructionComplete")
 Sleep(100) -- wait new buildings to enter their labels
-return UICity:CountBuildings("Wonders")
+return MainCity:CountBuildings("Wonders")
 end,
 	TrackProgress = true,
 	commander = "astrogeologist",
@@ -695,7 +696,7 @@ while true do
 	WaitMsg("TechResearched")
 	local n = 0
 	ForEachPreset("TechPreset", function(p)
-		if UICity:IsTechResearched(p.id) then
+		if UIColony:IsTechResearched(p.id) then
 		 	n = n + 1
 		end
 	end)
@@ -710,7 +711,7 @@ end,
 WaitMsg("TechResearched")
 local n = 0
 ForEachPreset("TechPreset", function(p)
-	if UICity:IsTechResearched(p.id) then
+	if UIColony:IsTechResearched(p.id) then
 	 	n = n + 1
 	end
 end)
@@ -736,7 +737,7 @@ PlaceObj('Challenge', {
 	Run = function (self)
 while true do
 	Sleep(1000)
-	if #(UICity.labels.Colonist or empty_table) >= 3000 then
+	if #(UIColony.city_labels.labels.Colonist or empty_table) >= 3000 then
 		return
 	end
 end
@@ -745,7 +746,7 @@ end,
 	TargetValue = 2000,
 	TickProgress = function (self, regs)
 Sleep(1000)
-return #(UICity.labels.Colonist or empty_table)
+return #(UIColony.city_labels.labels.Colonist or empty_table)
 end,
 	TrackProgress = true,
 	commander = "oligarch",

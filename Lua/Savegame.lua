@@ -26,7 +26,7 @@ function WaitCaptureSavegameScreenshot(path)
 end
 
 local function SaveCallback(folder)
-	assert(CurrentMap ~= "")
+	assert(ActiveMapID ~= "")
 	local err = PersistGame(folder)
 	local render_mode = GetRenderMode()
 	if render_mode ~= "scene" then
@@ -80,7 +80,7 @@ local function GatherGameMetadata()
 		map = GetMapName(),
 		latitude = g_CurrentMapParams.latitude,
 		longitude = g_CurrentMapParams.longitude,
-		elapsed_sols = UICity.day,
+		elapsed_sols = UIColony.day,
 		mission_sponsor_id = g_CurrentMissionParams.idMissionSponsor,
 		commander_profile_id = g_CurrentMissionParams.idCommanderProfile,
 		active_mods = GetLoadedModsSavegameData(),
@@ -227,9 +227,6 @@ local function LoadCallback(folder)
 	if err then
 		return err
 	end
-	if CurrentMap == "" then
-		CurrentMap = "loaded game"
-	end
 	l_LoadGameMeta = metadata
 	if not broken and SavegameBroken then
 		WaitMarsMessage(GetLoadingScreenDialog() or terminal.desktop, T(6851, "Warning"), T(10888, "This savegame was loaded in the past without required mods or with an incompatible game version. It may not function properly."), T(1000136, "OK"))
@@ -286,7 +283,7 @@ end
 
 local function SetNextAutosaveSol()
 	g_AutosaveInterval = AccountStorage.Options.AutosaveInterval
-	g_NextAutosaveSol = UICity.day + AccountStorage.Options.AutosaveInterval
+	g_NextAutosaveSol = UIColony.day + AccountStorage.Options.AutosaveInterval
 end
 
 GlobalVar("g_AutosaveInterval", 0)
@@ -329,7 +326,7 @@ function Autosave()
 			end
 		end
 	end
-	local display_name = _InternalTranslate(T{3688, "Autosave Sol <current_sol>", current_sol = UICity.day})
+	local display_name = _InternalTranslate(T{3688, "Autosave Sol <current_sol>", current_sol = UIColony.day})
 
 	-- 2. Save
 	err = SaveAutosaveGame(display_name)
@@ -362,15 +359,15 @@ GlobalVar("g_NextAutosaveSol", 0)
 
 local function WaitTryAutosave()
 	WaitMsg("NewDay")
-	if UICity.day == g_NextAutosaveSol then
+	if UIColony.day == g_NextAutosaveSol then
 		CreateRealTimeThread(Autosave)
 	end
 end
 
-function OnMsg.PersistLoad(data)
-	if g_NextAutosaveSol == UICity.day + 1 then
+function OnMsg.PostLoadGame(map_id)
+	if g_NextAutosaveSol == UIColony.day + 1 then
 		g_NextAutosaveSol = g_NextAutosaveSol + 1
-	elseif not g_NextAutosaveSol or g_NextAutosaveSol <= UICity.day then
+	elseif not g_NextAutosaveSol or g_NextAutosaveSol <= UIColony.day then
 		SetNextAutosaveSol()
 	end
 end

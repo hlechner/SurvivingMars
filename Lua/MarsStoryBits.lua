@@ -14,14 +14,6 @@ DefineStoryBitTrigger("Colonist became Youth", "ColonistBecameYouth")
 DefineStoryBitTrigger("Tech researched", "TechResearchedTrigger")
 DefineStoryBitTrigger("Sanity breakdown", "SanityBreakdown")
 
-DefineStoryBitTrigger("Cold Wave", "ColdWave")
-DefineStoryBitTrigger("Dust Storm", "DustStorm")
-DefineStoryBitTrigger("Meteor Storm", "MeteorStorm")
-
-DefineStoryBitTrigger("Cold Wave Ended", "ColdWaveEnded")
-DefineStoryBitTrigger("Dust Storm Ended", "DustStormEnded")
-DefineStoryBitTrigger("Meteor Storm Ended", "MeteorStormEnded")
-
 DefineStoryBitTrigger("Construction Prefab Placed", "ConstructionPrefabPlaced")
 DefineStoryBitTrigger("Colonist Death", "ColonistDied")
 
@@ -29,6 +21,14 @@ DefineStoryBitTrigger("Rocket Manual Launch", "RocketManualLaunch")
 DefineStoryBitTrigger("Rocket Landing Attempt", "RocketLandAttempt")
 
 DefineStoryBitTrigger("Repaired", "Repaired")
+
+DefineStoryBitTriggerMap("Cold Wave", "ColdWave")
+DefineStoryBitTriggerMap("Dust Storm", "DustStorm")
+DefineStoryBitTriggerMap("Meteor Storm", "MeteorStorm")
+
+DefineStoryBitTriggerMap("Cold Wave Ended", "ColdWaveEnded")
+DefineStoryBitTriggerMap("Dust Storm Ended", "DustStormEnded")
+DefineStoryBitTriggerMap("Meteor Storm Ended", "MeteorStormEnded")
 
 function IsStoryBitsDisabled()
 	return g_Tutorial or IsGameRuleActive("StoryBitsDisabled") or (Platform.developer and config.DisableStoryBits)
@@ -47,15 +47,15 @@ function IsStoryBitObjectValid(obj)
 	return true
 end
 
-function AddStoryBitNotification(id, title, text, dismissable, callback)
-	AddCustomOnScreenNotification(id, title, text, nil, callback, { dismissable = dismissable, priority = "CriticalBlue" })
+function AddStoryBitNotification(id, map_id, title, text, dismissable, callback)
+	AddCustomOnScreenNotification(id, title, text, nil, callback, { dismissable = dismissable, priority = "CriticalBlue" }, map_id)
 end
 
-function RemoveStoryBitNotification(id)
-	RemoveOnScreenNotification(id)
+function RemoveStoryBitNotification(id, map_id)
+	RemoveOnScreenNotification(id, map_id)
 end
 
-function WaitStoryBitPopup(title, voiced_text, text, actor, image, choices, choice_enabled, choice_extra_texts, object)
+function WaitStoryBitPopup(title, voiced_text, text, actor, image, choices, choice_enabled, choice_extra_texts, object, map_id)
 	local context = {
 		-- we ignore 'actor' in Mars
 		is_storybit = true,
@@ -71,7 +71,7 @@ function WaitStoryBitPopup(title, voiced_text, text, actor, image, choices, choi
 		context["choice" .. i] = T{10551, "<choice><newline><extra_text>", choice = choices[i], extra_text = choice_extra_texts[i]}
 		context.disabled[i] = not choice_enabled[i]
 	end
-	if IsKindOf(object, "CObject") and object:IsValidPos() then
+	if IsValid(object) and IsKindOf(object, "CObject") and object:IsValidPos() and map_id == ActiveMapID then
 		ViewAndSelectObject(object)
 	end
 	PlayFX("UIMenuNotificationStoryBit", "start")
@@ -94,25 +94,25 @@ function StoryBitFormatCost(cost)
 end
 
 function StoryBitCheckCost(cost)
-	return UICity:GetFunding() >= cost
+	return UIColony.funds:GetFunding() >= cost
 end
 
 function StoryBitPayCost(cost)
-	UICity:ChangeFunding(-cost)
+	UIColony.funds:ChangeFunding(-cost)
 end
 
 function StoryBitFormatGameTime()
-	return "Sol" .. UICity.day .. " h" .. UICity.hour
+	return "Sol" .. UIColony.day .. " h" .. UIColony.hour
 end
 
 ----
 
-function RemoveShuttles(count, idle_shuttles_first, logical_object_only)
+function RemoveShuttles(city, count, idle_shuttles_first, logical_object_only)
 	local k1 = idle_shuttles_first and 1 or 2
 	for k=k1,2 do
 		-- first pass try to remove only idle shuttles
 		local infos = {}
-		for _, hub in ipairs(UICity.labels.ShuttleHub) do
+		for _, hub in ipairs(city.labels.ShuttleHub) do
 			for _, info in ipairs(hub.shuttle_infos or empty_table) do
 				if k > 1 or not info.shuttle_obj then
 					assert(info.hub)
@@ -202,10 +202,10 @@ end
 function GetRandomResearchableTech(field, only_discovered, include_repeatables)
 	local available_techs = {}
 	if field == "Breakthroughs" then
-		available_techs = UICity:GetUnregisteredBreakthroughs()
+		available_techs = UIColony:GetUnregisteredBreakthroughs()
 	else
-		local status = UICity.tech_status
-		for field_i, techs in pairs(UICity.tech_field) do
+		local status = UIColony.tech_status
+		for field_i, techs in pairs(UIColony.tech_field) do
 			if field == "" or field_i == field then
 				for _,tech in ipairs(techs) do
 					local ts = status[tech]

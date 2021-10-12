@@ -1,5 +1,5 @@
 function City:GetColonyStatsButtons()
-	local resource_overview_obj = ResourceOverviewObj
+	local resource_overview_obj = GetCityResourceOverview(self)
 	local t = {
 		{
 			button_caption = T(547, "Colonists"),
@@ -144,7 +144,7 @@ function City:GetColonyStatsButtons()
 			id = "water",
 		},
 	}
-	for i, id in ipairs(StockpileResourceList) do
+	for i, id in ipairs(GetStockpileResourceList()) do
 		local resource_name = FormatResourceName(id)
 		t[#t + 1] = {
 			button_caption = T{9647, "<resource>", resource = resource_name},
@@ -169,7 +169,7 @@ function City:GetColonyStatsButtons()
 				end,
 				data = { self.ts_resources[id].produced, self.ts_resources[id].consumed, scale = const.ResourceScale}
 			},
-			margin_right = (i % 4 == 0 and i ~= #StockpileResourceList ) and 40 or nil,
+			margin_right = (i % 4 == 0 and i ~= #GetStockpileResourceList() ) and 40 or nil,
 			id = id,
 		}
 	end
@@ -219,10 +219,38 @@ function CommandCenterChooseGridBuilding(grid)
 	return first_element and first_element.building
 end
 
-local function FilterColonistByTrait(colonist, trait)
+function FilterColonistByTrait(colonist, trait)
 	if not trait then return end
 	local trait_id = trait.id
 	return not colonist.traits[trait_id]
+end
+
+function SortColonistTable(context, colonists)
+	local age_groups = table.invert(const.ColonistAges)
+	local specializations = table.invert(table.keys(const.ColonistSpecialization))
+	local stat_sort = context.sort_type
+	if not stat_sort then
+		table.stable_sort(colonists, function(a,b)
+			if a.age_trait ~= b.age_trait then
+				return age_groups[a.age_trait] < age_groups[b.age_trait]
+			elseif a.specialist ~= b.specialist then
+				return specializations[a.specialist] < specializations[b.specialist]
+			else
+				return a.age < b.age
+			end
+		end)
+	else
+		table.stable_sort(colonists, function(a,b)
+			local a_stat = stat_sort == "stat_morale" and a.traits["Renegade"] and 0 or a[stat_sort]
+			local b_stat = stat_sort == "stat_morale" and b.traits["Renegade"] and 0 or b[stat_sort]
+			if context.sort_ascending then
+				return a_stat < b_stat
+			else
+				return a_stat > b_stat
+			end
+		end)
+	end
+	return colonists
 end
 
 function GetCommandCenterColonists(context)
@@ -277,30 +305,7 @@ function GetCommandCenterColonists(context)
 			end
 		end
 	end
-	local age_groups = table.invert(const.ColonistAges)
-	local specializations = table.invert(table.keys(const.ColonistSpecialization))
-	local stat_sort = context.sort_type
-	if not stat_sort then
-		table.stable_sort(colonists, function(a,b)
-			if a.age_trait ~= b.age_trait then
-				return age_groups[a.age_trait] < age_groups[b.age_trait]
-			elseif a.specialist ~= b.specialist then
-				return specializations[a.specialist] < specializations[b.specialist]
-			else
-				return a.age < b.age
-			end
-		end)
-	else
-		table.stable_sort(colonists, function(a,b)
-			local a_stat = stat_sort == "stat_morale" and a.traits["Renegade"] and 0 or a[stat_sort]
-			local b_stat = stat_sort == "stat_morale" and b.traits["Renegade"] and 0 or b[stat_sort]
-			if context.sort_ascending then
-				return a_stat < b_stat
-			else
-				return a_stat > b_stat
-			end
-		end)
-	end
+	colonists = SortColonistTable(context, colonists)
 	return colonists
 end
 
@@ -360,7 +365,8 @@ end
 function Colonist:UICommandCenterStatUpdate(win, stat)
 	local v = self:GetProperty(stat)
 	local tv
-	if stat == "Morale" and self.traits.Renegade then
+	if stat == "Morale" and self.traits.Renegade or 
+		stat == "Satisfaction" and not self.traits.Tourist then
 		win.idLabel:SetVisible(false)
 		win.idNoStat:SetVisible(true)
 	else
@@ -473,10 +479,11 @@ function GetCommandCenterBuildings(context)
 		local query_filter = function(bld, self)
 				if not bld:IsKindOf("Building") then return false end
 				local dome = IsObjInDome(bld)
-				return (not dome or dome == self) and IsBuildingInDomeRange(bld, self) and bld.dome_label and true or false
+				return (not dome or dome == self) and self:IsBuildingInWorkRange(bld) and bld.dome_label and true or false
 		end
-		local objs = MapGet(dome, "hex", query_hexrad, "DomeOutskirtBld", query_filter, dome)
-		buildings = table.icopy(dome.labels.Building)
+		local realm = GetRealm(dome)
+		local objs = realm:MapGet(dome, "hex", query_hexrad, "DomeOutskirtBld", query_filter, dome)
+		buildings = table.icopy(dome.labels.Building) or {}
 		for _, obj in ipairs(objs) do
 			table.insert_unique(buildings, obj)
 		end
@@ -684,7 +691,7 @@ function Building:GetOverviewInfo()
 		end
 	end
 	if (IsKindOf(self, "UniversalStorageDepot") or IsKindOf(self, "MechanizedDepot")) and not self:IsKindOf("SupplyRocket") and not IsKindOf(self, "SpaceElevator") then
-		if (self:DoesAcceptResource("Metals") or self:DoesAcceptResource("Concrete") or self:DoesAcceptResource("Food") or self:DoesAcceptResource("PreciousMetals")) then
+		if (self:DoesAcceptResource("Metals") or self:DoesAcceptResource("Concrete") or self:DoesAcceptResource("Food") or self:DoesAcceptResource("PreciousMetals") or self:DoesAcceptResource("PreciousMinerals")) then
 			rows[#rows + 1] = T(9726, "<center><em>Basic Resources</em>")
 			if self:DoesAcceptResource("Concrete") then
 				rows[#rows + 1] = T(497, "<resource('Concrete' )><right><concrete(Stored_Concrete, MaxAmount_Concrete)>")
@@ -697,6 +704,9 @@ function Building:GetOverviewInfo()
 			end
 			if self:DoesAcceptResource("Metals") then
 				rows[#rows + 1] = T(496, "<resource('Metals' )><right><metals(Stored_Metals, MaxAmount_Metals)>")
+			end
+			if self:DoesAcceptResource("PreciousMinerals") then
+				rows[#rows + 1] = T(12774, "<resource('PreciousMinerals' )><right><preciousminerals(Stored_PreciousMinerals, MaxAmount_PreciousMinerals)>")
 			end
 		end
 		if (self:DoesAcceptResource("Polymers") or self:DoesAcceptResource("Electronics") or self:DoesAcceptResource("MachineParts") or self:DoesAcceptResource("Fuel") or self:DoesAcceptResource("MysteryResource")) then
@@ -717,7 +727,7 @@ function Building:GetOverviewInfo()
 				rows[#rows + 1] = T(8671, "<resource('MysteryResource' )><right><mysteryresource(Stored_MysteryResource, MaxAmount_MysteryResource)>")
 			end
 		end
-		if UICity:IsTechResearched("MartianVegetation") and self:DoesAcceptResource("Seeds") then
+		if UIColony:IsTechResearched("MartianVegetation") and self:DoesAcceptResource("Seeds") then
 			rows[#rows + 1] = Untranslated("<center><em>") .. T(12476, "Terraforming") .. TLookupTag("</em>")
 			rows[#rows + 1] = T(11843, "Seeds") .. Untranslated("<right><seeds(Stored_Seeds, MaxAmount_Seeds)>")
 		end
@@ -761,7 +771,7 @@ function Building:GetUIEffectsRow()
 	elseif (IsKindOf(self, "UniversalStorageDepot") or IsKindOf(self, "MechanizedDepot")) and not self:IsKindOf("SupplyRocket") and not IsKindOf(self, "SpaceElevator") then
 		local sum = type(self.resource) == "table" and #self.resource > 1
 		local stored, max = 0,0
-		if (self:DoesAcceptResource("Metals") or self:DoesAcceptResource("Concrete") or self:DoesAcceptResource("Food") or self:DoesAcceptResource("PreciousMetals")) then
+		if (self:DoesAcceptResource("Metals") or self:DoesAcceptResource("Concrete") or self:DoesAcceptResource("Food") or self:DoesAcceptResource("PreciousMetals")or self:DoesAcceptResource("PreciousMinerals")) then
 			if self:DoesAcceptResource("Concrete") then
 				if sum then
 					stored = stored + self:GetStored_Concrete()
@@ -792,6 +802,14 @@ function Building:GetUIEffectsRow()
 					max = max + self:GetMaxAmount_Metals()
 				else
 					return T(9734, "<metals(Stored_Metals, MaxAmount_Metals)>")
+				end
+			end
+			if self:DoesAcceptResource("PreciousMinerals") then
+				if sum then
+					stored = stored + self:GetStored_PreciousMinerals()
+					max = max + self:GetMaxAmount_PreciousMinerals()
+				else
+					return T(12775, "<preciousminerals(Stored_PreciousMinerals, MaxAmount_PreciousMinerals)>")
 				end
 			end
 		end
@@ -837,7 +855,7 @@ function Building:GetUIEffectsRow()
 				end
 			end
 		end
-		if UICity:IsTechResearched("MartianVegetation") and self:DoesAcceptResource("Seeds") then
+		if UIColony:IsTechResearched("MartianVegetation") and self:DoesAcceptResource("Seeds") then
 			if sum then
 				stored = stored + self:GetStored_Seeds()
 				max = max + self:GetMaxAmount_Seeds()
@@ -884,8 +902,8 @@ function Building:GetUIEffectsRow()
 end
 
 function GetCommandCenterDomesList()
-	local domes = UICity.labels.Dome or empty_table
-	table.sort(domes, function(a,b)
+	local communities = UICity.labels.Community or empty_table
+	table.sort(communities, function(a,b)
 		if a.build_category ~= "Domes" then --geoscape dome comes last
 			return false
 		elseif b.build_category ~= "Domes" then --geoscape dome comes last
@@ -898,7 +916,7 @@ function GetCommandCenterDomesList()
 			return a.name < b.name
 		end
 	end)
-	return domes
+	return communities
 end
 
 function SpawnDomesPopup(button)
@@ -1000,6 +1018,7 @@ function GetTransportationFilterRollover(context, description)
 	if context.drone_assemblers    then table.insert(rows, T(5046, "Drone Assemblers")) end
 	if context.rovers ~= false     then table.insert(rows, T(951182332337, "RC Rovers")) end
 	if context.shuttle_hubs        then table.insert(rows, T(5260, "Shuttle Hubs")) end
+	if context.rockets             then table.insert(rows, T(296967872321, "Rockets")) end
 	
 	local res
 	if #rows > 0 then
@@ -1119,9 +1138,9 @@ function Dome:GetOverviewInfo()
 	return #rows > 0 and table.concat(rows, "<newline><left>") or ""
 end
 
-function Dome:UICommandCenterStatUpdate(win, stat)
+function Community:UICommandCenterStatUpdate(win, stat)
 	local stat_scale = const.Scale.Stat
-	local v = self:GetAverageStat(stat) / stat_scale
+	local v = GetAverageStat(self.labels.Colonist, stat) / stat_scale
 	local tv
 	local low = g_Consts.LowStatLevel / stat_scale
 	if v < low then
@@ -1130,6 +1149,27 @@ function Dome:UICommandCenterStatUpdate(win, stat)
 		tv = Untranslated(v)
 	end
 	win.idLabel:SetText(v)
+end
+
+function Community:UIHasDomePolicies()
+	return false
+end
+
+function Dome:UIHasDomePolicies()
+	return true
+end
+
+function Community:UIGetLinkedDomes()
+	return ""
+end
+
+function Dome:UIGetLinkedDomes()
+	return tostring(#table.keys(self:GetConnectedDomes()))
+end
+
+function Community:UICommandCenterGetJobsHomes()
+	local homes = self:GetFreeLivingSpace()
+	return 0, homes
 end
 
 function Dome:UICommandCenterGetJobsHomes()
@@ -1314,6 +1354,9 @@ function GetCommandCenterTransportInfo(self)
 		if self:HasMember("GetStored_PreciousMetals") then
 			rows[#rows + 1] = T(925417865592, "Rare Metals<right><preciousmetals(Stored_PreciousMetals)>")
 		end
+		if self:HasMember("GetStored_PreciousMinerals") then
+			rows[#rows + 1] = T(12776, "Exotic Minerals<right><preciousminerals(Stored_PreciousMinerals)>")
+		end
 		if self:HasMember("GetStored_Polymers") then
 			rows[#rows + 1] = T(157677153453, "Polymers<right><polymers(Stored_Polymers)>")
 		end
@@ -1326,7 +1369,7 @@ function GetCommandCenterTransportInfo(self)
 		if self:HasMember("GetStored_Fuel") then
 			rows[#rows + 1] = T(317815331128, "Fuel<right><fuel(Stored_Fuel)>")
 		end
-		if UICity:IsTechResearched("MartianVegetation") and self:HasMember("GetStored_Seeds") then
+		if UIColony:IsTechResearched("MartianVegetation") and self:HasMember("GetStored_Seeds") then
 			rows[#rows + 1] = T(12002, "Seeds<right><seeds(Stored_Seeds)>")
 		end
 	end
@@ -1335,7 +1378,7 @@ function GetCommandCenterTransportInfo(self)
 		rows[#rows + 1] = T(410, "<UIConstructionStatus>")
 		rows[#rows + 1] = T(8646, "Available Drone Prefabs<right><drone(available_drone_prefabs)>")
 		rows[#rows + 1] = T(8539, "Scheduled Drone Prefabs<right><drone(drones_in_construction)>")
-		if UICity:IsTechResearched("ThePositronicBrain") then
+		if UIColony:IsTechResearched("ThePositronicBrain") then
 			rows[#rows + 1] = T(6742, "Scheduled Biorobots<right><colonist(androids_in_construction)>")
 		end
 		rows[#rows + 1] = T(693516738839, "Required <resource(ConstructResource)><right><resource(ConstructResourceAmount, ConstructResourceTotal, ConstructResource)>")
@@ -1434,7 +1477,7 @@ function UpdateUICommandCenterRow(self, context, row_type)
 		self.idTraits:SetVisible(not interests)
 		self.idInterests:SetVisible(interests)
 	elseif row_type == "dome" then
-		self.idLinked:SetText(tostring(#table.keys(context:GetConnectedDomes())))
+		self.idLinked:SetText(context:UIGetLinkedDomes())
 		local jobs, homes = context:UICommandCenterGetJobsHomes()
 		self.idJobs:SetText(tostring(jobs))
 		self.idHomes:SetText(tostring(homes))
@@ -1455,7 +1498,7 @@ function UpdateUICommandCenterRow(self, context, row_type)
 		elseif IsKindOf(context, "DroneFactory") then
 			local drone_count = (context.drones_in_construction or 0)
 			local text = tostring(drone_count) .. " <image UI/Icons/ColonyControlCenter/drone.tga 1400>"
-			if UICity:IsTechResearched("ThePositronicBrain") then
+			if UIColony:IsTechResearched("ThePositronicBrain") then
 				local android_count = (context.androids_in_construction or 0)
 				text = text .. " " .. tostring(android_count) .. " <image UI/Icons/ColonyControlCenter/android.tga 1400>"
 			end

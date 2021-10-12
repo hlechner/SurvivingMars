@@ -35,6 +35,9 @@ PlaceObj('XTemplate', {
 				'Text', T(958364317965, --[[XTemplate ipLeak Text]] "Losing <red><air(current_consumption)></red> each hour."),
 			}),
 			}),
+		PlaceObj('XTemplateTemplate', {
+			'__template', "sectionCheats",
+		}),
 		}),
 })
 

@@ -19,6 +19,7 @@ const.ResearchQueueSize = 4
 
 const.mediumGameSpeed = 3
 const.fastGameSpeed = 5
+const.ultraGameSpeed = 20
 
 const.GridSpacing = GetHexgridSpacingDefine() --10*guim, 1000
 const.GridVerticalSpacing = HexGetVerticalSpacing()
@@ -29,6 +30,7 @@ const.ResourceScale = const.Scale.Resources --resource scale.
 const.SoilQualityScale = 100
 
 const.ResearchPointsScale = 1000
+const.ReconPointsScale = 1000
 
 const.StoragePropagationThreshold = 2 -- storages will request up to this much resources so they can be propagated to other storages
 
@@ -46,7 +48,7 @@ const.TransportDistThreshold = 250*guim --objects closer than this will provoke 
 const.TransportDistMin = const.GridSpacing -- objects closer than this wont be LR transportated
 
 const.CommandCenterDefaultRadius = 35
-const.CommandCenterMaxRadius = 35
+const.CommandCenterMaxRadius = 50
 const.CommandCenterMinRadius = 5
 const.MoistureVaporatorRange = 5
 const.MoistureVaporatorPenaltyPercent = 40
@@ -55,6 +57,7 @@ const.OmegaTelescopeBoostPercent = 20
 const.MoholeMineHeatRadius = 8 --in hexes
 const.AdvancedStirlingGeneratorHeatRadius = 6
 const.DroneRestrictRadius = const.CommandCenterMaxRadius * 2 * const.GridSpacing -- twice the hex distance in game units
+const.SignalBoostersBuff = 15
 
 const.RCRoverDefaultRadius = 20
 const.RCRoverMaxRadius = 20
@@ -72,6 +75,9 @@ const.RangeToCheckForExploitersOnDepositReveal = 10 --when a subsurface deposit 
 const.DepositDeepestLayer = 2
 
 const.DefaultMouseCursor = "UI/Cursors/cursor.tga"
+const.DefaultRoverCursor = "UI/Cursors/RoverTarget.tga"
+const.DefaultInteractionCursor = "UI/Cursors/Interaction.tga"
+
 const.InterfaceAnimDuration = 100
 const.OverlaysVisibleDuration = 5*60*1000
 
@@ -118,23 +124,41 @@ const.OverviewCamLookAt = point(48, 48, 0) -- percent of map size
 const.OverviewCamPos = point(-48, -48, 135) -- percent of map size
 const.OverviewCamRotateArea = 1 -- percent of screen size
 
+DepositDescription = {
+	{ name = "Concrete",         display_name = T(3513, "Concrete") },
+	{ name = "Metals",           display_name = T(3514, "Metals"), multi_surface = true },
+	{ name = "Polymers",         display_name = T(3515, "Polymers") },
+	{ name = "PreciousMetals",   display_name = T(4139, "Rare Metals") },
+	{ name = "WasteRock",        display_name = T(4518, "Waste Rock") },
+	{ name = "Water",            display_name = T(681, "Water") },
+	{ name = "PreciousMinerals", display_name = T(12755, "Exotic Minerals"), multi_surface = true },
+	{ name = "Beauty",           display_name = T(13823, "Vistas"), hidden = true },
+	{ name = "Anomaly",          display_name = T(3984, "Anomalies"), hidden = true },
+}
+
+Deposits = {}
+for i, desc in ipairs(DepositDescription) do
+	Deposits[desc.name] = desc
+end
+
 ResourceDescription = {
-	{ name = "Concrete",        display_name = T(3513, "Concrete"),         display_icon = "UI/Icons/Buildings/res_concrete.tga", unit_amount = const.ResourceScale, color = RGB(169, 159, 90), entity = "ResourceRegolith", description = T(7909, "Basic construction material often used to construct and maintain Domes and Dome buildings."), },
-	{ name = "Metals",          display_name = T(3514, "Metals"),           display_icon = "UI/Icons/Buildings/res_metals.tga", unit_amount = const.ResourceScale, color = RGB(240, 51, 33), entity = "ResourceMetal", deep_enabled = true, description = T(7910, "Basic construction materials often used to construct and maintain outside buildings. Required for the creation of Machine Parts."), },
-	{ name = "Polymers",        display_name = T(3515, "Polymers"),         display_icon = "UI/Icons/Buildings/res_polymers.tga", unit_amount = const.ResourceScale, color = RGB(163, 7, 245), entity = "ResourcePolymer", description = T(7911, "Advanced materials often used to construct and maintain Power accumulators, advanced Power generators, Domes and Spires."), },
-	{ name = "Electronics",     display_name = T(3517, "Electronics"),      display_icon = "UI/Icons/Buildings/res_electronics.tga", unit_amount = const.ResourceScale, color = RGB(63, 245, 7), entity = "ResourceElectronics", description = T(7912, "Advanced materials often used to construct and maintain scientific and infrastructure buildings."), },
-	{ name = "MachineParts",    display_name = T(3516, "Machine Parts"),    display_icon = "UI/Icons/Buildings/res_machine_parts.tga", unit_amount = const.ResourceScale, color = RGB(63, 7, 245), entity = "ResourceMachineParts", description = T(7913, "Advanced materials often used to construct and maintain Extractors and Factories."), },
-	{ name = "PreciousMetals",  display_name = T(4139, "Rare Metals"),      display_icon = "UI/Icons/Buildings/res_precious_metals.tga", unit_amount = const.ResourceScale, color = RGB(245, 163, 7), entity = "ResourcePreciousMetals" , description = T(7985, "Can be exported to Earth for Funding or processed into Electronics.")},
-	{ name = "WasteRock",       display_name = T(4518, "Waste Rock"),       display_icon = "UI/Icons/Buildings/res_waste_rock.tga", unit_amount = const.ResourceScale, color = RGB(0, 255, 0), entity = {"ResourceWasteRock_01", "ResourceWasteRock_02", "ResourceWasteRock_03"} },
-	{ name = "BlackCube",       display_name = T(4764, "Black Cubes"),      display_icon = "UI/Icons/Buildings/res_black_box.tga", unit_amount = const.ResourceScale, color = RGB(0, 0, 0), entity = "Resource", },
-	{ name = "Water",           display_name = T(681, "Water"),             display_icon = "UI/Icons/Buildings/res_water.tga", unit_amount = const.ResourceScale, color = RGB(0, 237, 255), deep_enabled = true },
-	{ name = "Food",            display_name = T(1022, "Food"),             display_icon = "UI/Icons/Buildings/res_food.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceFood", description = T(7914, "Colonists arrive with nominal Food supply, but will soon need additional provisions to survive."), },
-	{ name = "Fuel",            display_name = T(4765, "Fuel"),             display_icon = "UI/Icons/Buildings/res_fuel.tga", unit_amount = const.ResourceScale, color = RGB(255, 128, 0), entity = "ResourceFuel", description = T(7986, "Advanced resource produced in Fuel Refineries from Water. Required for the refuelling of Rockets. Highly explosive.") },	
-	{ name = "Funding",         display_name = T(3613, "Funding"),    },
-	{ name = "Colonist",        display_name = T(4290, "Colonist"),         display_icon = "UI/Icons/Buildings/res_fuel.tga", unit_amount = const.ResourceScale, color = RGB(255, 128, 0), entity = "ResourceFuel" },	
-	{ name = "MysteryResource", display_name = T(8064, "Mystery Resource"), display_icon = "UI/Icons/Buildings/res_mystery_resource.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceMystery", description = T(8065, "Mystery Resource Description") },
-	{ name = "ResearchPoints",  display_name = T(9755, "Research Points"),  display_icon = "UI/Icons/res_experimental_research.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceFuel", description = T(9755, "Research Points") },
-	{ name = "Seeds",           display_name = T(11843, "Seeds"),           display_icon = "UI/Icons/Buildings/res_seeds.tga",    unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceSeeds", description = T(12053, "Seeds are required for planting vegetation on Mars."), dlc = "armstrong" },
+	{ name = "Concrete",         display_name = T(3513, "Concrete"),         display_icon = "UI/Icons/Buildings/res_concrete.tga", unit_amount = const.ResourceScale, color = RGB(169, 159, 90), entity = "ResourceRegolith", description = T(7909, "Basic construction material often used to construct and maintain Domes and Dome buildings."), },
+	{ name = "Metals",           display_name = T(3514, "Metals"),           display_icon = "UI/Icons/Buildings/res_metals.tga", unit_amount = const.ResourceScale, color = RGB(240, 51, 33), entity = "ResourceMetal", deep_enabled = true, description = T(7910, "Basic construction materials often used to construct and maintain outside buildings. Required for the creation of Machine Parts."), },
+	{ name = "Polymers",         display_name = T(3515, "Polymers"),         display_icon = "UI/Icons/Buildings/res_polymers.tga", unit_amount = const.ResourceScale, color = RGB(163, 7, 245), entity = "ResourcePolymer", description = T(7911, "Advanced materials often used to construct and maintain Power accumulators, advanced Power generators, Domes and Spires."), },
+	{ name = "Electronics",      display_name = T(3517, "Electronics"),      display_icon = "UI/Icons/Buildings/res_electronics.tga", unit_amount = const.ResourceScale, color = RGB(63, 245, 7), entity = "ResourceElectronics", description = T(7912, "Advanced materials often used to construct and maintain scientific and infrastructure buildings."), },
+	{ name = "MachineParts",     display_name = T(3516, "Machine Parts"),    display_icon = "UI/Icons/Buildings/res_machine_parts.tga", unit_amount = const.ResourceScale, color = RGB(63, 7, 245), entity = "ResourceMachineParts", description = T(7913, "Advanced materials often used to construct and maintain Extractors and Factories."), },
+	{ name = "PreciousMetals",   display_name = T(4139, "Rare Metals"),      display_icon = "UI/Icons/Buildings/res_precious_metals.tga", unit_amount = const.ResourceScale, color = RGB(245, 163, 7), entity = "ResourcePreciousMetals" , description = T(7985, "Can be exported to Earth for Funding or processed into Electronics.")},
+	{ name = "WasteRock",        display_name = T(4518, "Waste Rock"),       display_icon = "UI/Icons/Buildings/res_waste_rock.tga", unit_amount = const.ResourceScale, color = RGB(0, 255, 0), entity = {"ResourceWasteRock_01", "ResourceWasteRock_02", "ResourceWasteRock_03"} },
+	{ name = "BlackCube",        display_name = T(4764, "Black Cubes"),      display_icon = "UI/Icons/Buildings/res_black_box.tga", unit_amount = const.ResourceScale, color = RGB(0, 0, 0), entity = "Resource", },
+	{ name = "Water",            display_name = T(681, "Water"),             display_icon = "UI/Icons/Buildings/res_water.tga", unit_amount = const.ResourceScale, color = RGB(0, 237, 255), deep_enabled = true },
+	{ name = "Food",             display_name = T(1022, "Food"),             display_icon = "UI/Icons/Buildings/res_food.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceFood", description = T(7914, "Colonists arrive with nominal Food supply, but will soon need additional provisions to survive."), },
+	{ name = "Fuel",             display_name = T(4765, "Fuel"),             display_icon = "UI/Icons/Buildings/res_fuel.tga", unit_amount = const.ResourceScale, color = RGB(255, 128, 0), entity = "ResourceFuel", description = T(7986, "Advanced resource produced in Fuel Refineries from Water. Required for the refuelling of Rockets. Highly explosive.") },	
+	{ name = "Funding",          display_name = T(3613, "Funding") },
+	{ name = "Colonist",         display_name = T(4290, "Colonist"),         display_icon = "UI/Icons/Buildings/res_fuel.tga", unit_amount = const.ResourceScale, color = RGB(255, 128, 0), entity = "ResourceFuel" },	
+	{ name = "MysteryResource",  display_name = T(8064, "Mystery Resource"), display_icon = "UI/Icons/Buildings/res_mystery_resource.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceMystery", description = T(8065, "Mystery Resource Description") },
+	{ name = "ResearchPoints",   display_name = T(9755, "Research Points"),  display_icon = "UI/Icons/res_experimental_research.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceFuel", description = T(9755, "Research Points") },
+	{ name = "Seeds",            display_name = T(11843, "Seeds"),           display_icon = "UI/Icons/Buildings/res_seeds.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceSeeds", description = T(12053, "Seeds are required for planting vegetation on Mars."), dlc = "armstrong" },
+	{ name = "PreciousMinerals", display_name = T(12755, "Exotic Minerals"), display_icon = "UI/Icons/Buildings/res_precious_minerals.tga", unit_amount = const.ResourceScale, color = RGB(255, 0, 255), entity = "ResourcePreciousMinerals", description = T(12810, "Advanced materials found on asteroids. Required for new applications found in the Recon & Expansion tech tree."), dlc = "picard" },
 }
 
 Resources = {}
@@ -143,18 +167,22 @@ for i, desc in ipairs(ResourceDescription) do
 	Resources[desc.name] = desc
 end
 
-function IsDlcAvailableForResource(resource)
+function IsDlcAccessibleForResource(resource)
 	local dsc = Resources[resource]
-	return IsDlcAvailable(dsc and dsc.dlc)
+	return IsDlcAccessible(dsc and dsc.dlc)
 end
 
 --when adding a new category, add its name to AllResourceListNames below
-ConstructionResourceList = {"Concrete", "Metals", "Polymers", "BlackCube", "Electronics", "MachineParts", "PreciousMetals", "WasteRock" }
-DepositResources = {"Concrete", "Metals", "Polymers", "Water", "PreciousMetals" }
+ConstructionResourceList = {"Concrete", "Metals", "Polymers", "BlackCube", "Electronics", "MachineParts", "PreciousMetals", "WasteRock", "PreciousMinerals" }
+DepositResources = {"Concrete", "Metals", "Polymers", "Water", "PreciousMetals", "PreciousMinerals" }
+DepositResourcesDefault = {"Concrete", "Metals", "Polymers", "Water", "PreciousMetals" }
 LifeSupportResourceList = { "Food" }
-OtherResourceList = { "WasteRock", "Fuel", "MysteryResource", "Seeds" }
-StockpileResourceList = { "Metals", "Concrete", "Food", "PreciousMetals", "Polymers", "Electronics", "MachineParts", "Fuel" }
+OtherResourceList = { "WasteRock", "Fuel", "MysteryResource", "Seeds", "PreciousMinerals" }
 
+StockpileResourceList = { "Metals", "Concrete", "Food", "PreciousMetals", "Polymers", "Electronics", "MachineParts", "Fuel" }
+function GetStockpileResourceList()
+	return table.copy(StockpileResourceList)
+end
 
 for i, desc in ipairs(ResourceDescription) do
 	ResourcesDropDownListItems[i] = { value = desc.name, text = desc.display_name }
@@ -179,6 +207,7 @@ DepositsDefaultAmountRange =
 	["Metals"]   = range(5, 15),
 	["Polymers"] = range(1, 3),
 	["Water"]    = range(3000, 6000),
+	["PreciousMinerals"] = range(1, 3),
 }
 
 for i=1,#DepositResources do
@@ -232,6 +261,7 @@ const.TagLookupTable["icon_BlackCube"]    = "<image UI/Icons/res_black_box.tga 1
 const.TagLookupTable["icon_Electronics"]    = "<image UI/Icons/res_electronics.tga 1300>"
 const.TagLookupTable["icon_MachineParts"]    = "<image UI/Icons/res_machine_parts.tga 1300>"
 const.TagLookupTable["icon_PreciousMetals"]    = "<image UI/Icons/res_precious_metals.tga 1300>"
+const.TagLookupTable["icon_PreciousMinerals"]    = "<image UI/Icons/res_precious_minerals.tga 1300>"
 const.TagLookupTable["icon_Seeds"] 		   = "<image UI/Icons/res_seeds.tga 1300>"
 const.TagLookupTable["icon_Fuel"]    		= "<image UI/Icons/res_fuel.tga 1300>"
 const.TagLookupTable["icon_Food"]         = "<image UI/Icons/res_food.tga 1300>"
@@ -241,18 +271,24 @@ const.TagLookupTable["icon_Water"]        = "<image UI/Icons/res_water.tga 1300>
 const.TagLookupTable["icon_Drone"]        = "<image UI/Icons/res_drone.tga 1300>"
 const.TagLookupTable["icon_Shuttle"]      = "<image UI/Icons/res_shuttle.tga 1300>"
 const.TagLookupTable["icon_Colonist"]     = "<image UI/Icons/res_colonist.tga 1300>"
+const.TagLookupTable["icon_Tourist"]      = "<image UI/Icons/res_tourist.tga 1300>"
 const.TagLookupTable["icon_Home"]         = "<image UI/Icons/res_home.tga 1300>"
 const.TagLookupTable["icon_Homeless"]     = "<image UI/Icons/res_homeless.tga 1300>"
 const.TagLookupTable["icon_Work"]         = "<image UI/Icons/res_work.tga 1300>"
 const.TagLookupTable["icon_Unemployed"]   = "<image UI/Icons/res_unemployed.tga 1300>"
 const.TagLookupTable["icon_Research"]     = "<image UI/Icons/res_experimental_research.tga 1300>"
+const.TagLookupTable["icon_Recon"]        = "<image UI/Icons/res_recon.tga 1300>"
 const.TagLookupTable["icon_MetalsDeep"]   = "<image UI/Icons/res_metal_undergrounds.tga 1300>"
+const.TagLookupTable["icon_PreciousMineralsDeep"] = "<image UI/Icons/res_precious_minerals_undergrounds.tga 1300>"
 const.TagLookupTable["icon_MysteryResource"]= "<image UI/Icons/res_mystery_resource.tga 1300>"
 const.TagLookupTable["icon_AtmosphereTP"] = "%<image UI/Icons/res_atmosphere.tga 1300>"
 const.TagLookupTable["icon_TemperatureTP"]= "%<image UI/Icons/res_temperature.tga 1300>"
 const.TagLookupTable["icon_WaterTP"]      = "%<image UI/Icons/res_water_2.tga 1300>"
 const.TagLookupTable["icon_VegetationTP"] = "%<image UI/Icons/res_vegetation.tga 1300>"
 const.TagLookupTable["icon_OverallTP"]    = "%<image UI/Icons/res_overall_terraforming.tga 1300>"
+const.TagLookupTable["icon_Anomaly"]      = "<image UI/Icons/res_waste_rock.tga 1300>"
+const.TagLookupTable["icon_Beauty"]       = "<image UI/Icons/res_waste_rock.tga 1300>"
+const.TagLookupTable["icon_Prefab"]       = "<image UI/Icons/res_prefab.tga 1300>"
 
 const.TagLookupTable["icon_AtmosphereTP_alt"] = "<image UI/Icons/res_atmosphere.tga 1300>"
 const.TagLookupTable["icon_TemperatureTP_alt"]= "<image UI/Icons/res_temperature.tga 1300>"
@@ -267,7 +303,8 @@ const.TagLookupTable["icon_BlackCube_orig"]       = "<image UI/Icons/res_black_b
 const.TagLookupTable["icon_Electronics_orig"]     = "<image UI/Icons/res_electronics.tga>"
 const.TagLookupTable["icon_MachineParts_orig"]    = "<image UI/Icons/res_machine_parts.tga>"
 const.TagLookupTable["icon_PreciousMetals_orig"]  = "<image UI/Icons/res_precious_metals.tga>"
-const.TagLookupTable["icon_Seeds_orig"]  			= "<image UI/Icons/res_seeds.tga>"
+const.TagLookupTable["icon_PreciousMinerals_orig"]  = "<image UI/Icons/res_precious_minerals.tga>"
+const.TagLookupTable["icon_Seeds_orig"]             = "<image UI/Icons/res_seeds.tga>"
 const.TagLookupTable["icon_Fuel_orig"]            = "<image UI/Icons/res_fuel.tga>"
 const.TagLookupTable["icon_Food_orig"]            = "<image UI/Icons/res_food.tga>"
 const.TagLookupTable["icon_Power_orig"]           = "<image UI/Icons/res_electricity.tga>"
@@ -276,13 +313,17 @@ const.TagLookupTable["icon_Water_orig"]           = "<image UI/Icons/res_water.t
 const.TagLookupTable["icon_Drone_orig"]           = "<image UI/Icons/res_drone.tga>"
 const.TagLookupTable["icon_Shuttle_orig"]         = "<image UI/Icons/res_shuttle.tga>"
 const.TagLookupTable["icon_Colonist_orig"]        = "<image UI/Icons/res_colonist.tga>"
+const.TagLookupTable["icon_Tourist_orig"]         = "<image UI/Icons/res_tourist.tga>"
 const.TagLookupTable["icon_Home_orig"]            = "<image UI/Icons/res_home.tga>"
 const.TagLookupTable["icon_Homeless_orig"]        = "<image UI/Icons/res_homeless.tga>"
 const.TagLookupTable["icon_Work_orig"]            = "<image UI/Icons/res_work.tga>"
 const.TagLookupTable["icon_Unemployed_orig"]      = "<image UI/Icons/res_unemployed.tga>"
 const.TagLookupTable["icon_Research_orig"]        = "<image UI/Icons/res_experimental_research.tga>"
+const.TagLookupTable["icon_Recon_orig"]           = "<image UI/Icons/res_recon.tga>"
 const.TagLookupTable["icon_MetalsDeep_orig"]      = "<image UI/Icons/res_metal_undergrounds.tga>"
 const.TagLookupTable["icon_MysteryResource_orig"] = "<image UI/Icons/res_mystery_resource.tga>"
+const.TagLookupTable["icon_Prefab_orig"]          = "<image UI/Icons/res_prefab.tga>"
+const.TagLookupTable["icon_ScannedResources_orig"]= "<image UI/Icons/res_scanned.tga>"
 
 const.TagLookupTable["icon_Food_small"]       = "<image UI/Icons/res_food.tga 800>"
 const.TagLookupTable["icon_Power_small"]      = "<image UI/Icons/res_electricity.tga 800>"
@@ -294,10 +335,12 @@ const.TagLookupTable["icon_BlackCube_small"]  = "<image UI/Icons/res_black_box.t
 const.TagLookupTable["icon_Electronics_small"]     = "<image UI/Icons/res_electronics.tga 800>"
 const.TagLookupTable["icon_MachineParts_small"]    = "<image UI/Icons/res_machine_parts.tga 800>"
 const.TagLookupTable["icon_PreciousMetals_small"]  = "<image UI/Icons/res_precious_metals.tga 800>"
+const.TagLookupTable["icon_PreciousMinerals_small"]  = "<image UI/Icons/res_precious_minerals.tga 800>"
 const.TagLookupTable["icon_Seeds_small"]			 = "<image UI/Icons/res_seeds.tga 800>"
 const.TagLookupTable["icon_Fuel_small"]    = "<image UI/Icons/res_fuel.tga 800>"
 const.TagLookupTable["icon_Drone_small"]      = "<image UI/Icons/res_drone.tga 800>"
 const.TagLookupTable["icon_Colonist_small"]   = "<image UI/Icons/res_colonist.tga 800>"
+const.TagLookupTable["icon_Tourist_small"]    = "<image UI/Icons/res_tourist.tga 800>"
 const.TagLookupTable["icon_Home_small"]             = "<image UI/Icons/res_home.tga 800>"
 const.TagLookupTable["icon_Homeless_small"]         = "<image UI/Icons/res_homeless.tga 800>"
 const.TagLookupTable["icon_Work_small"]             = "<image UI/Icons/res_work.tga 800>"
@@ -512,6 +555,8 @@ const.SanityBreakdownTraits = {
 	"Coward",
 	"Melancholic",
 }
+
+EnvironmentTypes = { "Surface" }
 
 function OnMsg.ClassesGenerate()
 	AddConstGroupAsModifiableProperties(Consts, "Gameplay")

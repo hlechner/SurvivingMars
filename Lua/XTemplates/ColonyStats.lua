@@ -26,7 +26,7 @@ PlaceObj('XTemplate', {
 							for _, win in ipairs(dlg.idContent) do
 								win.idTitle:SetText(win.idTitle:GetText())
 							end
-						end, parent, UICity.day)
+						end, parent, UIColony.day)
 						local dlg = GetDialog(parent)
 						if dlg then
 							dlg.OnShortcut = function(dlg, shortcut, source)
@@ -163,7 +163,7 @@ PlaceObj('XTemplate', {
 						}, {
 							PlaceObj('XTemplateForEach', {
 								'array', function (parent, context) return GetDialog(parent).context end,
-								'__context', function (parent, context, item, i, n) local data, unit = TimeSeries_GetGraphValueHeights(item.data, UICity.day, 50, 240, 4); return SubContext(item, {data = data, unit = unit, columns = #(item.data)}) end,
+								'__context', function (parent, context, item, i, n) local data, unit = TimeSeries_GetGraphValueHeights(item.data, UIColony.day, 50, 240, 4); return SubContext(item, {data = data, unit = unit, columns = #(item.data)}) end,
 								'run_after', function (child, context, item, i, n)
 									if i ~= 1 then
 										child:SetMargins(box(0,15,0,0))

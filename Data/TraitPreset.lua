@@ -1,90 +1,15 @@
 -- ========== THIS IS AN AUTOMATICALLY GENERATED FILE! ==========
 
 PlaceObj('TraitPreset', {
-	SortKey = 100000,
-	add_interest = "interestPlaying",
+	_incompatible = "Martianborn",
+	add_interest = "interestSafari",
 	auto = false,
-	description = T(6687, --[[TraitPreset Child description]] "Children are too young to work and use many of the buildings in the Colony. They can go to School and use certain special buildings such as the Playground and Nursery."),
-	display_name = T(4775, --[[TraitPreset Child display_name]] "Child"),
-	group = "Age Group",
-	id = "Child",
-	incompatible = {},
-	initial_filter = true,
-	show_in_traits_ui = false,
-})
-
-PlaceObj('TraitPreset', {
-	SortKey = 100100,
-	apply_func = function (colonist, trait, init)
-if not init then -- if is from aplicants or is spawn as youth his traits are already generated and will be applied
-	local max = g_Consts.MaxColonistTraitsToGenerate
-	if colonist.playground_visit and colonist:Random(100)<=g_Consts.positive_playground_chance then
-		local new_trait = GetRandomTrait(colonist.traits, {}, {}, "Positive", "base",GetRareTraitChance(colonist))
-		colonist:AddTrait(new_trait,init)
-		max = max - 1
-		colonist.playground_visit = nil
-	end
-	colonist:ApplyTraits(GenerateTraits(colonist, false, max))
-	colonist:ChooseEntity()
-end
-
-if IsKindOf(colonist.workplace, "School") then
-	colonist.workplace:FireWorker(colonist)
-end
-if IsKindOf(colonist.residence, "Nursery") then
-	colonist.lock_residence = nil
-	colonist:SetResidence(false)
-	colonist:UpdateResidence()
-end
-colonist:UpdateHomelessLabels()
-colonist:UpdateEmploymentLabels()
-end,
-	auto = false,
-	description = T(6688, --[[TraitPreset Youth description]] "A young Colonist, able to work in all buildings."),
-	display_name = T(4777, --[[TraitPreset Youth display_name]] "Youth"),
-	group = "Age Group",
-	id = "Youth",
-	incompatible = {},
-	show_in_traits_ui = false,
-})
-
-PlaceObj('TraitPreset', {
-	SortKey = 100200,
-	auto = false,
-	description = T(6689, --[[TraitPreset Adult description]] "An adult Colonist, able to work in all buildings."),
-	display_name = T(4779, --[[TraitPreset Adult display_name]] "Adult"),
-	group = "Age Group",
-	id = "Adult",
-	incompatible = {},
-	show_in_traits_ui = false,
-})
-
-PlaceObj('TraitPreset', {
-	SortKey = 100300,
-	auto = false,
-	description = T(6690, --[[TraitPreset Middle Aged description]] "A middle aged Colonist, approaching retirement, but still able to work in all buildings."),
-	display_name = T(4781, --[[TraitPreset Middle Aged display_name]] "Middle Aged"),
-	group = "Age Group",
-	id = "Middle Aged",
-	incompatible = {},
-	show_in_traits_ui = false,
-})
-
-PlaceObj('TraitPreset', {
-	SortKey = 100400,
-	apply_func = function (colonist, trait, init)
-colonist:ChooseEntity()
-if not g_SeniorsCanWork then
-	colonist:SetWorkplace(false)
-end	
-end,
-	auto = false,
-	description = T(6691, --[[TraitPreset Senior description]] "A senior Colonist, too old to work."),
-	display_name = T(4783, --[[TraitPreset Senior display_name]] "Senior"),
-	group = "Age Group",
-	id = "Senior",
-	incompatible = {},
-	initial_filter = true,
+	description = T(450597355347, --[[TraitPreset Safari description]] "empty"),
+	display_name = T(910327997978, --[[TraitPreset Safari display_name]] "Safari"),
+	id = "Safari",
+	incompatible = {
+		Martianborn = true,
+	},
 	show_in_traits_ui = false,
 })
 
@@ -306,7 +231,7 @@ end,
 PlaceObj('TraitPreset', {
 	daily_update_func = function (colonist, trait)
 if colonist.stat_comfort >= g_Consts.HighStatLevel	then
-	colonist.city:ChangeFunding(trait.param, "Celebrity")
+	UIColony.funds:ChangeFunding(trait.param, "Celebrity")
 end	
 end,
 	description = T(6643, --[[TraitPreset Celebrity description]] "Generates Funding when at high Comfort."),
@@ -397,7 +322,7 @@ PlaceObj('TraitPreset', {
 	_incompatible = "Idiot",
 	daily_update_func = function (colonist, trait)
 if colonist.stat_sanity >= g_Consts.HighStatLevel	then 	
-	colonist.city:AddResearchPoints(trait.param)
+	colonist.city.colony:AddResearchPoints(trait.param)
 end	
 end,
 	description = T(6641, --[[TraitPreset Genius description]] "Generates Research when at high Sanity."),
@@ -492,7 +417,7 @@ PlaceObj('TraitPreset', {
 })
 
 PlaceObj('TraitPreset', {
-	_incompatible = "Hippie,Lazy",
+	_incompatible = "Hippie,Lazy,Tourist",
 	description = T(6631, --[[TraitPreset Workaholic description]] "Individual performance increased by 20. No penalty for heavy workloads. -Relaxation"),
 	display_name = T(6630, --[[TraitPreset Workaholic display_name]] "Workaholic"),
 	group = "Positive",
@@ -537,7 +462,7 @@ PlaceObj('TraitPreset', {
 
 PlaceObj('TraitPreset', {
 	apply_func = function (colonist, trait, init)
-local mystery = UICity.mystery
+local mystery = UIColony.mystery
 if mystery:IsKindOf("DreamMystery") and mystery.state == "ended" then
 	colonist:SetModifier("performance", "trait effect(Dreamer)", trait.param, 0, T(7598, "<green>Dreamer's inspiration +<amount> (Dreamer)</color>"))
 end
@@ -558,7 +483,7 @@ end,
 
 PlaceObj('TraitPreset', {
 	apply_func = function (colonist, trait, init)
-local mystery = UICity.mystery
+local mystery = UIColony.mystery
 if mystery:IsKindOf("DreamMystery") and mystery.state == "ended" then
 	colonist:SetModifier("performance", "trait effect(Dreamer)", trait.param, 0, T(7598, "<green>Dreamer's inspiration +<amount> (Dreamer)</color>"))
 end
@@ -591,7 +516,7 @@ PlaceObj('TraitPreset', {
 
 PlaceObj('TraitPreset', {
 	daily_update_func = function (colonist, trait)
-		return GuruDailyUpdate(colonist, trait)
+return GuruDailyUpdate(colonist, trait)
 end,
 	description = T(6648, --[[TraitPreset Guru description]] "Randomly spreads other traits of this colonist to persons in the same Dome with less than 3 traits."),
 	display_name = T(6647, --[[TraitPreset Guru display_name]] "Guru"),
@@ -606,9 +531,9 @@ end,
 PlaceObj('TraitPreset', {
 	_incompatible = "Tourist,Founder",
 	apply_func = function (colonist, trait, init)
-	if colonist.city:IsTechResearched("MartianbornIngenuity") then
-		colonist:SetModifier("performance", "MartianbornIngenuity", TechDef.MartianbornIngenuity.param1, 0, T(7600, "<green>Martian born Ingenuity <amount> (Martianborn)</color>"))
-	end 
+if colonist.city.colony:IsTechResearched("MartianbornIngenuity") then
+	colonist:SetModifier("performance", "MartianbornIngenuity", TechDef.MartianbornIngenuity.param1, 0, T(7600, "<green>Martian born Ingenuity <amount> (Martianborn)</color>"))
+end 
 end,
 	auto = false,
 	description = T(6717, --[[TraitPreset Martianborn description]] "Martianborn Colonists never become Earthsick. The Martianborn group of techs can improve this trait significantly."),
@@ -619,6 +544,7 @@ end,
 	id = "Martianborn",
 	incompatible = {
 		Founder = true,
+		Safari = true,
 		Tourist = true,
 	},
 	unapply_func = function (colonist, trait)
@@ -643,20 +569,6 @@ end,
 	modify_target = "self",
 	param = 15,
 	weight = 0,
-})
-
-PlaceObj('TraitPreset', {
-	_incompatible = "Martianborn",
-	add_interest = "interestGambling",
-	auto = false,
-	description = T(12243, --[[TraitPreset Tourist description]] "Doesn’t work. Grants <if(has_researched('TeraTourism'))>$15</if><if(not(has_researched('TeraTourism')))>$10</if> Million Funding on arrival. Leaves at first opportunity after 5 Sols. More Tourists appear when Tourists successfully return to Earth. +Gambling"),
-	display_name = T(6714, --[[TraitPreset Tourist display_name]] "Tourist"),
-	group = "other",
-	id = "Tourist",
-	incompatible = {
-		Martianborn = true,
-	},
-	initial_filter = true,
 })
 
 PlaceObj('TraitPreset', {
@@ -774,6 +686,108 @@ end,
 	id = "medic",
 	incompatible = {},
 	remove_interest = "interestRelaxation",
+	show_in_traits_ui = false,
+})
+
+PlaceObj('TraitPreset', {
+	SortKey = 10700,
+	_incompatible = "Martianborn",
+	add_interest = "interestGambling",
+	auto = false,
+	description = T(12655, --[[TraitPreset Tourist description]] "Looking for an otherworldly holiday. Doesn't work. Grants Funding and new applicants when successfully returning to Earth based on Satisfaction. Leaves at first opportunity after 5 Sols. Loses Satisfaction while staying longer than 10 sols. +Gambling"),
+	display_name = T(6714, --[[TraitPreset Tourist display_name]] "Tourist"),
+	group = "Specialization",
+	id = "Tourist",
+	incompatible = {
+		Martianborn = true,
+	},
+})
+
+PlaceObj('TraitPreset', {
+	SortKey = 100000,
+	add_interest = "interestPlaying",
+	auto = false,
+	description = T(6687, --[[TraitPreset Child description]] "Children are too young to work and use many of the buildings in the Colony. They can go to School and use certain special buildings such as the Playground and Nursery."),
+	display_name = T(4775, --[[TraitPreset Child display_name]] "Child"),
+	group = "Age Group",
+	id = "Child",
+	incompatible = {},
+	initial_filter = true,
+	show_in_traits_ui = false,
+})
+
+PlaceObj('TraitPreset', {
+	SortKey = 100100,
+	apply_func = function (colonist, trait, init)
+if not init then -- if is from aplicants or is spawn as youth his traits are already generated and will be applied
+	local max = g_Consts.MaxColonistTraitsToGenerate
+	if colonist.playground_visit and colonist:Random(100)<=g_Consts.positive_playground_chance then
+		local new_trait = GetRandomTrait(colonist.traits, {}, {}, "Positive", "base",GetRareTraitChance(colonist))
+		colonist:AddTrait(new_trait,init)
+		max = max - 1
+		colonist.playground_visit = nil
+	end
+	colonist:ApplyTraits(GenerateTraits(colonist, false, max))
+	colonist:ChooseEntity()
+end
+
+if IsKindOf(colonist.workplace, "School") then
+	colonist.workplace:FireWorker(colonist)
+end
+if IsKindOf(colonist.residence, "Nursery") then
+	colonist.lock_residence = nil
+	colonist:SetResidence(false)
+	colonist:UpdateResidence()
+end
+colonist:UpdateHomelessLabels()
+colonist:UpdateEmploymentLabels()
+end,
+	auto = false,
+	description = T(6688, --[[TraitPreset Youth description]] "A young Colonist, able to work in all buildings."),
+	display_name = T(4777, --[[TraitPreset Youth display_name]] "Youth"),
+	group = "Age Group",
+	id = "Youth",
+	incompatible = {},
+	show_in_traits_ui = false,
+})
+
+PlaceObj('TraitPreset', {
+	SortKey = 100200,
+	auto = false,
+	description = T(6689, --[[TraitPreset Adult description]] "An adult Colonist, able to work in all buildings."),
+	display_name = T(4779, --[[TraitPreset Adult display_name]] "Adult"),
+	group = "Age Group",
+	id = "Adult",
+	incompatible = {},
+	show_in_traits_ui = false,
+})
+
+PlaceObj('TraitPreset', {
+	SortKey = 100300,
+	auto = false,
+	description = T(6690, --[[TraitPreset Middle Aged description]] "A middle aged Colonist, approaching retirement, but still able to work in all buildings."),
+	display_name = T(4781, --[[TraitPreset Middle Aged display_name]] "Middle Aged"),
+	group = "Age Group",
+	id = "Middle Aged",
+	incompatible = {},
+	show_in_traits_ui = false,
+})
+
+PlaceObj('TraitPreset', {
+	SortKey = 100400,
+	apply_func = function (colonist, trait, init)
+colonist:ChooseEntity()
+if not g_SeniorsCanWork then
+	colonist:SetWorkplace(false)
+end	
+end,
+	auto = false,
+	description = T(6691, --[[TraitPreset Senior description]] "A senior Colonist, too old to work."),
+	display_name = T(4783, --[[TraitPreset Senior display_name]] "Senior"),
+	group = "Age Group",
+	id = "Senior",
+	incompatible = {},
+	initial_filter = true,
 	show_in_traits_ui = false,
 })
 

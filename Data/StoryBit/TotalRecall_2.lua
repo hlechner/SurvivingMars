@@ -7,7 +7,7 @@ PlaceObj('StoryBit', {
 	Image = "UI/Messages/Events/01_video_call.tga",
 	Prerequisites = {},
 	ScriptDone = true,
-	Text = T(900842586317, --[[StoryBit TotalRecall_2 Text]] "The expedition landed at their coordinates, and after a short search Douglas Quaid came across a vast underground cave. There they found the immense alien artifact, some sort of a machine.\n\nQuaid approached it and pressed something which started the machine. The tremors caused the rock to cave in, nearly burying the team alive, but they made it to safety!\n\nThe artifact somehow generated or revealed previously unknown resources, making Mars a bit more hospitable for sentient beings. Of course, Douglas Quaid chose exactly what we needed!"),
+	Text = T(900842586317, --[[StoryBit TotalRecall_2 Text]] "The expedition landed at their coordinates, and after a short search Douglas Quaid came across a vast underground cave. There they found the immense alien artifact, some sort of a machine.\n\nQuaid approached it and pressed something which started the machine. The tremors caused the rock to cave-in, nearly burying the team alive, but they made it to safety!\n\nThe artifact somehow generated or revealed previously unknown resources, making Mars a bit more hospitable for sentient beings. Of course, Douglas Quaid chose exactly what we needed!"),
 	TextReadyForValidation = true,
 	TextsDone = true,
 	Title = T(842584071122, --[[StoryBit TotalRecall_2 Title]] "Total Recall: The Artifact"),

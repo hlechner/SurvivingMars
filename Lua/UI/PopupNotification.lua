@@ -229,11 +229,18 @@ if FirstLoad then
 	g_PopupQueue = {}
 	SyncPopupId = 0
 	g_PopupsSuspended = {}
+	g_ShownPopupNotifications = {}
 end
 
+GlobalVar("g_ShownPopupNotifications",{})-- show once notifications support
 function ShowPopupNotification(preset, params, bPersistable, parent, callback)
 	assert(not bPersistable) -- we don't support these
 	local context = _GetPopupNotificationContext(preset, params or {}, bPersistable)
+	
+	if preset and context.show_once and g_ShownPopupNotifications[preset] then
+		return
+	end
+	
 	context.parent = parent
 	if bPersistable then
 		SyncPopupId = SyncPopupId + 1
@@ -245,9 +252,12 @@ function ShowPopupNotification(preset, params, bPersistable, parent, callback)
 	if context.start_minimized == false then
 		table.insert(g_PopupQueue, context)
 		PopPopupNotification(parent)
+		if preset and context.show_once and g_ShownPopupNotifications then
+			g_ShownPopupNotifications[preset] = true
+		end
 	else
-		--spawn an OnScreenNotification
-		notification_id = AddOnScreenNotification(nil, callback, context)
+		local map_id = params and params.map_id or nil
+		notification_id = AddOnScreenNotification(nil, callback, context, nil, map_id)
 	end
 	return context.sync_popup_id, context.async_signal, notification_id
 end
@@ -258,7 +268,7 @@ function WaitPopupNotification(preset, params, bPersistable, parent, callback)
 	local _, res
 	if sync_popup_id then
 		_, res = WaitMsg("PopupNotification" .. sync_popup_id)
-	else
+	elseif async_signal then
 		_, res = WaitMsg(async_signal)
 	end
 	return res

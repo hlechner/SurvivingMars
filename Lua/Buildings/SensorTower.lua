@@ -1,5 +1,5 @@
 DefineClass.SensorTowerBase = {
-	__parents = { "Object" },
+	__parents = { "CityObject" },
 	turn_off_time = false,
 }
 
@@ -16,7 +16,8 @@ function SensorTowerBase:GetSensorTowerWorking()
 end
 
 function SensorTowerBase:GetWorkingSensorTowersCount()
-	local towers = UICity.labels["SensorTower"]
+	local city = self.city or MainCity
+	local towers = city.labels["SensorTower"] or empty_table
 	local count = 0
 	for i = 1, #towers do
 		if towers[i].working then
@@ -42,8 +43,6 @@ function SensorTower:GameInit()
 	end
 end
 
-
-
 function SensorTower:OnModifiableValueChanged(prop)
 	if prop == "disable_maintenance" then
 		self:ResetDust()
@@ -54,21 +53,21 @@ function SensorTower:OnModifiableValueChanged(prop)
 end
 
 function SensorTower:GetSelectionRadiusScale()
-	if IsKindOf(UICity.mystery, "BlackCubeMystery") and g_BCHexRangeEnable[self.class] then
-		return UICity.mystery.tower_protect_range
+	if IsKindOf(UIColony.mystery, "BlackCubeMystery") and g_BCHexRangeEnable[self.class] then
+		return UIColony.mystery.tower_protect_range
 	end
 	return 0
 end
 
 function SensorTower:GetBlackCubeProtectionRange()
-	if IsKindOf(UICity.mystery, "BlackCubeMystery") and UICity:IsTechResearched("BlackCubesNegation") then
-		return UICity.mystery.tower_protect_range * const.GridSpacing
+	if IsKindOf(UIColony.mystery, "BlackCubeMystery") and UIColony:IsTechResearched("BlackCubesNegation") then
+		return UIColony.mystery.tower_protect_range * const.GridSpacing
 	end
 	return 0
 end
 
 function SensorTower:ShowUISectionConsumption()
-	if self.city:IsTechResearched("AutonomousSensors") then
+	if UIColony:IsTechResearched("AutonomousSensors") then
 		return false
 	end	
 	return Building.ShowUISectionConsumption(self)

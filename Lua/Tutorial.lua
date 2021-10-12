@@ -300,7 +300,7 @@ function ShowTutorialArrow(where, class, entity)
 	end
 	assert(IsPoint(position), "No position for tutorial arrow")
 	
-	local arrow = PlaceObject(class or "ArrowTutorial")
+	local arrow = PlaceObjectIn(class or "ArrowTutorial", MainMapID)
 	arrow:SetPos(position)
 	if entity then
 		arrow:ChangeEntity(entity)
@@ -375,7 +375,7 @@ end
 function PlaceGhost(entity, pos, angle, hex_align)
 	assert(IsValidEntity(entity))
 	angle = angle or 0
-	local obj = PlaceObject("TutorialGhostObj")
+	local obj = PlaceObjectIn("TutorialGhostObj", MainMapID)
 	
 	if hex_align then
 		local q, r = WorldToHex(pos)
@@ -468,7 +468,8 @@ function WaitBuildMenuItemSelected(category, item, mode, view_pos)
 	elseif mode == "place-instant" then
 		WaitConstruction(item)
 	elseif mode == "construction" then 
-		while GetInGameInterfaceMode() ~= mode or CityConstruction[UICity].template ~= item do
+		local city_construction = GetDefaultConstructionController(MainCity)
+		while GetInGameInterfaceMode() ~= mode or city_construction.template ~= item do
 			Sleep(50)
 		end
 	else
@@ -531,7 +532,9 @@ function WaitBuildMenuStorageSelected(item, anchor_type)
 			return Dialogs.XBuildMenu.idCategoryList.Storages
 		end,
 	}, terminal.desktop)
-	while GetInGameInterfaceMode() ~= "construction" or CityConstruction[UICity].template ~= item do
+
+	local city_construction = GetDefaultConstructionController(MainCity)
+	while GetInGameInterfaceMode() ~= "construction" or city_construction.template ~= item do
 		Sleep(50)
 	end
 	if arrow and arrow.window_state ~= "destroying" then
@@ -569,7 +572,7 @@ end
 function WaitResearchQueued(tech_id, close, wait_any_tech)
 	local tech_def = TechDef[tech_id]
 	local tech_field = tech_def.group
-	local field_order = UICity:UITechField(tech_field)
+	local field_order = UIColony:UITechField(tech_field)
 	local x = table.find(field_order, tech_id)
 	local y = table.find(Presets.TechFieldPreset.Default, "id", tech_field)
 	local focus_order = point(x, y)
@@ -588,7 +591,7 @@ function WaitResearchQueued(tech_id, close, wait_any_tech)
 					return Dialogs.HUD and Dialogs.HUD.idResearch or false
 				end
 			end
-			if table.find(UICity.research_queue, tech_id) and close then
+			if table.find(UIColony.research_queue, tech_id) and close then
 				return dlg and dlg.idToolBar.idclose or false
 			end
 			
@@ -613,17 +616,17 @@ function WaitResearchQueued(tech_id, close, wait_any_tech)
 		end,
 	}, terminal.desktop)
 	if wait_any_tech then
-		local initial_cnt = #UICity.research_queue
+		local initial_cnt = #UIColony.research_queue
 		while true do
 			WaitMsg("ResearchQueueChange")
-			if initial_cnt ~= #UICity.research_queue then
+			if initial_cnt ~= #UIColony.research_queue then
 				break
 			end
 		end
 	else
 		while true do
 			WaitMsg("ResearchQueueChange")
-			if table.find(UICity.research_queue, tech_id) then
+			if table.find(UIColony.research_queue, tech_id) then
 				break
 			end
 		end
@@ -766,7 +769,7 @@ function WaitResourcesNearPoint(point, resource, amount, radius, ignore_classes)
 		drone_func = function(drone, resource, getter_name, ignore_classes)
 				if IsKindOfClasses(drone, ignore_classes) then return end
 				if drone.resource == resource then
-					total = total + drone.amount
+					total = total + (drone.amount or 0)
 				end
 		end
 	else --no specific resource - gather all resources
@@ -786,7 +789,7 @@ function WaitResourcesNearPoint(point, resource, amount, radius, ignore_classes)
 		end
 		drone_func = function(drone, resource, getter_name, ignore_classes)
 				if IsKindOfClasses(drone, ignore_classes) then return end
-				total = total + drone.amount
+				total = total + (drone.amount or 0)
 		end
 	end
 	
@@ -805,7 +808,7 @@ function WaitResourcesNearPoint(point, resource, amount, radius, ignore_classes)
 end
 
 function HasPoweredBuilding(label)
-	for _, bld in ipairs(UICity.labels[label] or empty_table) do
+	for _, bld in ipairs(MainCity.labels[label] or empty_table) do
 		if bld:HasPower() then
 			return true
 		end
@@ -835,7 +838,7 @@ end
 
 function GetSector(id)
 	for i = 1, const.SectorCount do
-		local row = g_MapSectors[i]
+		local row = MainCity.MapSectors[i]
 		for j = 1, const.SectorCount do
 			local sector = row[j]
 			if sector.id == id then

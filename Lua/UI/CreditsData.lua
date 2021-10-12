@@ -1,5 +1,140 @@
 CreditContents = {
 {
+company_name = Untranslated [[Abstraction]],
+
+
+Untranslated [[
+CHIEF EXECUTIVE OFFICER
+
+Ralph Egas
+
+
+
+CHIEF OPERATING OFFICER
+
+Dominique Morel
+
+
+
+CHIEF TECHNOLOGY OFFICER
+
+Erik Bastianen
+
+
+
+CREATIVE DIRECTOR
+
+Tiberius Lazar
+
+
+
+ART DIRECTOR
+
+Scott Davidson
+
+
+
+EXECUTIVE PRODUCER
+
+Olivier L'Hermite
+
+
+
+COMMERCIAL DIRECTOR
+
+Simon Usiskin
+
+
+
+HR MANAGER
+
+Kirsten Kapteijns
+
+
+
+PRODUCERS
+
+Jay Egas
+Lisa Burgers
+Maurice Kroes
+
+
+
+LEAD PROGRAMMER
+
+Wouter van Dongen
+
+
+
+PROGRAMMERS
+
+Marc Smids
+Tom Jansen
+Vlad Gapchych
+Eric Troost
+Anton Novoselov
+
+
+
+LEAD DESIGNER
+
+Bart Vossen
+
+
+
+DESIGNERS
+
+Savvas Lampoudis
+Guillaume Lucas
+Elmer Lexmond
+
+
+
+ARTISTS
+
+Gijs de Jong
+Slava Gedich
+Natacha Lourosa
+Cannelle Nouvet
+Mathis Nowak
+Inken Starosta
+Sylvain Maupetit
+
+
+
+QA LEAD
+
+Mark Pittam
+
+
+
+QUALITY ASSURANCE
+
+Keith Russell
+Victor Danila
+Matthijs Nahon
+Elaine Verhaaf
+
+
+
+CONTENT CREATOR PACK CREATION
+
+Sylvain Maupetit
+
+
+
+BELOW AND BEYOND MUSIC
+
+Martin Hall
+
+
+
+BELOW AND BEYOND SFX
+
+Dan Bewick]],
+},
+
+{
 company_name = Untranslated [[Haemimont Games]],
 
 Untranslated [[
@@ -246,6 +381,7 @@ LEAD PRODUCER
 
 Robin Cederholm
 Nikhat Ali
+Loke Norman
 
 
 
@@ -258,6 +394,8 @@ Nils Hallberg
 PRODUCT MANAGER
 
 Jakob Munthe
+Andreas Skoglund
+Magnus Lysell
 
 
 
@@ -268,6 +406,7 @@ Jakob Jorstedt
 Sean Greaney
 Anusha Nayar
 Daniela Sjunnesson
+Elizabeth Hirata
 
 
 
@@ -943,6 +1082,43 @@ Simon Zickbauer
 JUNIOR USER ACQUISITION MANAGER MOBILE
 
 Julija Laskovska]],
+},
+
+{
+company_name = Untranslated [[The Most Games]],
+
+Untranslated [[
+QA MANAGER
+
+Dmitry Klimov
+
+
+
+QA LEAD
+
+Daniil Tsoev
+
+
+
+QA TESTERS
+
+Sana Miller
+Anastasia Khudikova
+Polina Sharikova
+Anna Abaeva
+Anton Korsakov
+Tatiana Saienko
+Yulia Omelchenko
+Alex Osovets
+Maksim Kalinin
+Olha Matyhina
+Aleksei Moroz
+Dmitry Bormatenkov
+Artem Zabrodskyi
+Konstantin Maslov
+Ekaterina Podsevalova
+Andrei Antonov
+]],
 },
 
 {

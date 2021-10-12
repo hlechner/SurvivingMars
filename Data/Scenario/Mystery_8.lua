@@ -14,7 +14,7 @@ PlaceObj('Scenario', {
 		}),
 		PlaceObj('SA_WaitExpression', {
 			'comment', "trigger condition",
-			'expression', "#(UICity.labels.Colonist or empty_table) >= 100",
+			'expression', "#(MainCity.labels.Colonist or empty_table) >= 100",
 			'duration', 5000,
 		}),
 		PlaceObj('SA_WaitMarsTime', {
@@ -236,7 +236,7 @@ PlaceObj('Scenario', {
 		'name', "Contaminated Lab",
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.ResearchBuildings and #UICity.labels.ResearchBuildings >= 1",
+			'expression', "MainCity.labels.ResearchBuildings and #MainCity.labels.ResearchBuildings >= 1",
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'wait_type', "Sols",
@@ -788,7 +788,7 @@ PlaceObj('Scenario', {
 		'name', "SpeedUpResearch",
 	}, {
 		PlaceObj('SA_Exec', {
-			'expression', 'count = #(UICity.labels.MedicalBuilding or "")  + 1',
+			'expression', 'count = #(MainCity.labels.MedicalBuilding or "")  + 1',
 		}),
 		PlaceObj('SA_Repeat', {
 			'sa_id', 1,
@@ -799,7 +799,7 @@ PlaceObj('Scenario', {
 			'comment', "Wait for the construction of a new medical building (Infirmary or Medical Center) then grant a tech boost to the tech (already done below). Do this a total of 10 times",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', '#(UICity.labels.MedicalBuilding or "") >= count',
+			'expression', '#(MainCity.labels.MedicalBuilding or "") >= count',
 		}),
 		PlaceObj('SA_Exec', {
 			'expression', "count = count + 1",
@@ -980,7 +980,7 @@ PlaceObj('Scenario', {
 			'comment', "Wait until there are no colonists with the Infected trait",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', 'UICity:CountDomeLabel("Infected") == 0',
+			'expression', 'MainCity:CountDomeLabel("Infected") == 0',
 		}),
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 1,

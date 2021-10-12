@@ -1,5 +1,5 @@
-local l_traits_rollover_for_domes = T(1143, "Colonists with <em>MORE</em> of the desired traits will prefer this Dome.<newline><newline>Colonists with <em>ANY</em> of the undesired traits will leave, provided there is <em>available living space</em> elsewhere.<newline><newline>Colonists can walk to closely positioned Domes but will need Shuttles to reach distant Domes.")
-local l_traits_rollover_for_rocket = T(1144, "Applicants with <em>MORE</em> of the desired traits will board the Rocket.<newline><newline>Applicants with <em>ANY</em> of the undesired traits will be rejected.")
+local l_traits_rollover_for_domes = T(1143, "Colonists with <em>ANY</em> of the must include traits will prefer this Dome, regardless of their undesired traits.<newline><newline>Colonists with <em>MORE</em> of the desired traits will prefer this Dome.<newline><newline>Colonists with <em>ANY</em> of the undesired traits will leave, provided there is <em>available living space</em> elsewhere.<newline><newline>Colonists can walk to closely positioned Domes but will need Shuttles to reach distant Domes.")
+local l_traits_rollover_for_rocket = T(1144, "Applicants with <em>ANY</em> of the must include traits will board the Rocket before those with desired traits, regardless of their undesired traits.<newline><newline>Applicants with <em>MORE</em> of the desired traits will board the Rocket.<newline><newline>Applicants with <em>ANY</em> of the undesired traits will be rejected.")
 local function TraitCategoryItems(self, cat_id)
 	local items = {}
 	items[#items + 1] = {
@@ -40,22 +40,22 @@ local function TraitCategoryItems(self, cat_id)
 end
 
 function CycleFilterTraits(obj, dir, category)
-	local domes = UICity.labels.Dome or {}
-	local idx = table.find(domes, obj.dome	)
-	local count = #domes
-	local next_dome = idx and domes[idx + dir] or domes[dir == 1 and 1 or count]
-	if not idx or not domes[idx + dir] then
+	local communities = UICity.labels.Community or {}
+	local idx = table.find(communities, obj.dome)
+	local count = #communities
+	local next_community = idx and communities[idx + dir] or communities[dir == 1 and 1 or count]
+	if not idx or not communities[idx + dir] then
 		idx = dir == 1 and 1 or count
 	end	
-	while next_dome and not next_dome:GetUIInteractionState() do	
+	while next_community and not next_community:GetUIInteractionState() do	
 		idx = idx + dir
 		if idx<1 or idx>count then
 			idx = dir == 1 and 1 or count
 		end	
-		next_dome = domes[idx]		
+		next_community = communities[idx]		
 	end
-	if next_dome then
-		next_dome:OpenFilterTraits(category)
+	if next_community then
+		next_community:OpenFilterTraits(category)
 	end
 end
 
@@ -138,9 +138,9 @@ end
 function TraitsObject:CountApplicantsSpecialist(applicants, spec)
 	local count = 0
 	for _, applicant_table in ipairs(applicants or empty_table) do	
-		if applicant_table[1].specialist == spec then
+		if applicant_table[1].specialist == spec or applicant_table[1].traits[spec] then 
 			count = count + 1
-		end	
+		end
 	end	
 	return count
 end
@@ -154,15 +154,15 @@ function TraitsObject:GetApprovedSpecialist(spec)
 end
 
 function TraitsObject:GetMatchingSpecialist(spec)
-	if not self.matching_applicants  then
-		return 0
+	if self.applicants_invalid then
+		self:ResolveApplicantLists()
 	end
 	return self:CountApplicantsSpecialist(self.matching_applicants, spec) + self:GetApprovedSpecialist(spec)
 end
 
 function TraitsObject:GetPassengerCapacity(launch_mode)
 	launch_mode = launch_mode or UICity and UICity.launch_mode
-	return launch_mode == "passenger_pod" and g_Consts.MaxColonistsPerPod or g_Consts.MaxColonistsPerRocket
+	return GetLaunchModeMaxPassengers(launch_mode)
 end
 
 function TraitsObject:SetUIResupplyParams(win)
@@ -189,21 +189,35 @@ function TraitsObject:GetPropTraitDisplayName(prop_meta)
 	return T{7646, "<name> (<approved>/<count>)", name = prop_meta.name, approved = approved, count = self.colonist_count[id] or 0}
 end
 
+TraitFilterState = {
+	Musthave = 1000000,
+	Positive = 1,
+	Neutral = 0,
+	Negative = -1000,
+}
+
 function TraitsObject:FilterTrait(prop_meta, state)
 	local filter = self.filter
 	local cat_id = prop_meta.cat_id or prop_meta.id
 	local all = prop_meta.value == "all" or prop_meta.submenu
 	if all then
 		local categories = self.categories
-		local positive = categories[cat_id].__true == categories[cat_id].count
-		local mix_positive = not positive and (categories[cat_id].__true or 0) >= 1
-		local negative = categories[cat_id].__false == categories[cat_id].count
-		local mix_negative = not negative and (categories[cat_id].__false or 0) >= 1
-		if (positive or mix_positive) and state then
-			local current_state = mix_positive and true or nil
+		local musthave = categories[cat_id].__musthave == categories[cat_id].count
+		local mix_musthave = not musthave and (categories[cat_id].__musthave or 0) >= 1
+
+		local positive = categories[cat_id].__positive == categories[cat_id].count
+		local mix_positive = not positive and (categories[cat_id].__positive or 0) >= 1
+
+		local negative = categories[cat_id].__negative == categories[cat_id].count
+		local mix_negative = not negative and (categories[cat_id].__negative or 0) >= 1
+		if (musthave or mix_musthave) and state == TraitFilterState.Musthave then
+			local current_state = mix_musthave and TraitFilterState.Musthave or nil
 			self:SetFilter(prop_meta, nil, current_state)
-		elseif (negative or mix_negative) and not state then
-			local current_state = mix_negative and false or nil
+		elseif (positive or mix_positive) and state == TraitFilterState.Positive then
+			local current_state = mix_positive and TraitFilterState.Positive or nil
+			self:SetFilter(prop_meta, nil, current_state)
+		elseif (negative or mix_negative) and state == TraitFilterState.Negative then
+			local current_state = mix_negative and TraitFilterState.Negative or nil
 			self:SetFilter(prop_meta, nil, current_state)
 		else
 			self:SetFilter(prop_meta, state)
@@ -238,18 +252,25 @@ end
 function TraitsObject:UpdateImages(ctrl, prop_meta)
 	local filter = self.filter
 	local categories = self.categories
-	local positive, negative, mix_positive, mix_negative
+	local musthave, positive, negative, mix_musthave, mix_positive, mix_negative
 	local cat_id = prop_meta.cat_id or prop_meta.id
 	local all = prop_meta.value == "all" or prop_meta.submenu
 	if all then
-		positive = categories[cat_id].__true == categories[cat_id].count
-		negative = categories[cat_id].__false == categories[cat_id].count
-		mix_positive = not positive and (categories[cat_id].__true or 0) >= 1
-		mix_negative = not negative and (categories[cat_id].__false or 0) >= 1
+		musthave = categories[cat_id].__musthave == categories[cat_id].count
+		mix_musthave = not musthave and (categories[cat_id].__musthave or 0) >= 1
+
+		positive = categories[cat_id].__positive == categories[cat_id].count
+		mix_positive = not positive and (categories[cat_id].__positive or 0) >= 1
+
+		negative = categories[cat_id].__negative == categories[cat_id].count
+		mix_negative = not negative and (categories[cat_id].__negative or 0) >= 1
 	else
-		positive = filter[prop_meta.value] == true
-		negative = filter[prop_meta.value] == false
+		musthave = filter[prop_meta.value] == TraitFilterState.Musthave
+		positive = filter[prop_meta.value] == TraitFilterState.Positive
+		negative = filter[prop_meta.value] == TraitFilterState.Negative
 	end
+
+	ctrl.idMusthave:SetImage(mix_musthave and "UI/Icons/traits_random_musthave.tga" or musthave and "UI/Icons/traits_musthave.tga" or "UI/Icons/traits_musthave_disabled.tga")
 	ctrl.idPositive:SetImage(mix_positive and "UI/Icons/traits_random_approve.tga" or positive and "UI/Icons/traits_approve.tga" or "UI/Icons/traits_approve_disable.tga")
 	ctrl.idNegative:SetImage(mix_negative and "UI/Icons/traits_random_disapprove.tga" or negative and "UI/Icons/traits_disapprove.tga" or "UI/Icons/traits_disapprove_disable.tga")
 end
@@ -260,10 +281,12 @@ function TraitsObject:CountTraitsPerCategory()
 	ForEachPreset(TraitPreset, function(trait, group_list)
 		self.categories[trait.group] = self.categories[trait.group] or {}
 		local cat_t = self.categories[trait.group]
-		if filter[trait.id] then
-			cat_t.__true = (cat_t.__true or 0) + 1
-		elseif filter[trait.id] == false then
-			cat_t.__false = (cat_t.__false or 0) + 1
+		if filter[trait.id] == TraitFilterState.Musthave then
+			cat_t.__musthave = (cat_t.__musthave or 0) + 1
+		elseif filter[trait.id] == TraitFilterState.Positive then
+			cat_t.__positive = (cat_t.__positive or 0) + 1
+		elseif filter[trait.id] == TraitFilterState.Negative then
+			cat_t.__negative = (cat_t.__negative or 0) + 1
 		end
 		cat_t.count = (cat_t.count or 0) + 1
 	end)
@@ -294,6 +317,72 @@ function TraitsObject:CountApprovedColonistsForCategory(category)
 			end
 		end
 	end
+end
+
+function TraitsObject:AddApprovedColonistsForCategory(category)
+	if not self.approved_per_trait then
+		self.approved_per_trait = {}
+	end
+	if self:CanAddApprovedColonistsForCategory(category) then
+		self.approved_per_trait[category] = (self.approved_per_trait[category] or 0) + 1
+		ObjModified(self)
+	end
+end
+
+function TraitsObject:RemoveApprovedColonistsForCategory(category)
+	if not self.approved_per_trait then
+		self.approved_per_trait = {}
+	end
+	if self:CanRemoveApprovedColonistsForCategory(category) then
+		self.approved_per_trait[category] = (self.approved_per_trait[category] or 0) - 1
+		ObjModified(self)
+	end
+end
+
+function TraitsObject:ClearApprovedColonists()
+	for _, trait in sorted_pairs(TraitPresets) do
+		if self.approved_per_trait and self.approved_per_trait[trait.id] then
+			self.approved_per_trait[trait.id] = 0
+		end
+	end
+	ObjModified(self)
+end
+
+function TraitsObject:CanAddApprovedColonistsForCategory(category)
+	return category and self:GetPassengerCapacity() - self:GetTotalApprovedSpecialists() > 0
+end
+
+function TraitsObject:CanRemoveApprovedColonistsForCategory(category)
+	return category and (self.approved_per_trait[category] or 0) > 0
+end
+
+function TraitsObject:GetApprovedColonistsForCategory(category)
+	if not self.approved_per_trait then
+		self.approved_per_trait = {}
+	end
+	return self.approved_per_trait[category] or 0
+end
+
+function TraitsObject:GetAvailableColonistsForCategory(city, category)
+	local available = 0
+	for _,colonist in ipairs(city.labels.Colonist or empty_table) do
+		if colonist.traits[category] then
+			if category ~= "Tourist" and not colonist.traits.Tourist or category == "Tourist" and colonist.traits.Tourist then
+				available = available + 1
+			end
+		end
+	end
+	return available
+end
+
+function TraitsObject:GetTotalApprovedSpecialists()
+	local count = 0
+	for _,trait in sorted_pairs(TraitPresets) do
+		if self.approved_per_trait and self.approved_per_trait[trait.id] then
+			count = count + self.approved_per_trait[trait.id]
+		end
+	end
+	return count
 end
 
 function TraitsObject:CountColonists()
@@ -380,7 +469,7 @@ function TraitsObject:CreateUIListItems(colonists, selected)
 		local name = colonist.name
 		local specialist = GetSpecialization(colonist.specialist).display_name
 		local nation = table.find_value(Nations, "value", colonist.birthplace)
-		local flag = nation and nation.flag			
+		local flag = nation and nation.flag
 		local rollover_description =  T{1148, "Birthplace <right><flag><newline><left>Sex<right><gender><newline><left>Age<right><Age><newline><left>Specialization<right><specialist>", 
 					name = name, specialist = specialist, 
 					gender = Colonist.GetGender(colonist), Age = Colonist.GetAge(colonist),
@@ -396,7 +485,12 @@ function TraitsObject:CreateUIListItems(colonists, selected)
 		if next(traits) then
 			rollover_description = rollover_description..T(1150, "<newline><left><center>Traits<newline><left>")..table.concat(traits,"<newline><newline><left>")
 		end
-		local info  = (colonist.traits.Child or colonist.traits.Senior) and Colonist.GetAge(colonist) or specialist
+		
+		if colonist.traits["Tourist"] then
+			specialist = T(12754, "Tourist")
+		end
+		
+		local info = (colonist.traits.Child or colonist.traits.Senior) and Colonist.GetAge(colonist) or specialist
 		local hint, gamepad_hint
 		if selected then
 			rollover_description = rollover_description .. T(11594, "<newline><newline><lock_icon> Locked passengers will remain selected when the filter changes.")
@@ -581,25 +675,20 @@ function TraitsObject:GetPassengerRocketLaunchIssue()
 	end
 end
 
-if FirstLoad then
-	g_UITraitsObject = false
-end
-
 function TraitsObjectCreateAndLoad(context)
-	if not g_UITraitsObject then 
-		g_UITraitsObject = TraitsObject:new()
-		g_UITraitsObject:InitData(context)
-	end
-	return g_UITraitsObject
+	local object = TraitsObject:new()
+	object:InitData(context)
+
+	return object
 end
 
 function BuyApplicants(host)
 	CreateRealTimeThread(function()
 		local price = GetMissionSponsor().applicants_price
 		local count = const.BuyApplicantsCount
-		if UICity:GetFunding() >= price then
+		if UIColony.funds:GetFunding() >= price then
 			if WaitMarsQuestion(host, T(6882, "Warning"), T{6883, "Are you sure you want to buy <count> applicants for <funding(price)>?", count = count, price = price}, T(1138, "Yes"), T(1139, "No"), "UI/Messages/death.tga") == "ok" then
-				UICity:ChangeFunding(-price, "Applicants")
+				UIColony.funds:ChangeFunding(-price, "Applicants")
 				local now = GameTime()
 				for i=1,count do
 					GenerateApplicant(now)
@@ -628,13 +717,14 @@ function LaunchPassengerRocket(host)
 		return
 	end
 	
-	local mode = UICity.launch_mode
+	local target_city = MainCity
+	local mode = target_city.launch_mode
 	local label = SetupLaunchLabel(mode)
 
 	CreateRealTimeThread(function(obj, mode, label)
 		g_ApplicantPoolFilter = obj.filter
 		local capacity = obj:GetPassengerCapacity(mode)
-		local amount, data = PrepareApplicantsForTravel(UICity, host, capacity)
+		local amount, data = PrepareApplicantsForTravel(target_city, host, capacity)
 		if not amount then return end
 		Msg("PassengerRocketLaunched", label)
 		local cargo = {}
@@ -653,10 +743,7 @@ function LaunchPassengerRocket(host)
 			SaveAccountStorage(5000)
 		end
 		
-		CreateGameTimeThread(function(mode, label) -- let the new rockets properly GameInit so they can actually be used by OrderLanding
-			Sleep(1)
-			UICity:OrderLanding(cargo, 0, false, label)
-		end, mode, label)
+		target_city:OrderLanding(cargo, 0, false, label)
 	end, obj, mode, label)
 end
 
@@ -750,7 +837,7 @@ function SanatoriumTraitsCombo(object)
 	return BuildingTraitsCombo(object, g_SanatoriumTraits)
 end
 
-function OnMsg.NewMapLoaded()
+function OnMsg.PostNewGame()
 	GenerateBuildingTraitLists()
 end
 
@@ -892,7 +979,7 @@ function TraitFilterColonist(trait_filter, unit_traits)
 	local match = 0
 	for trait, value in pairs(trait_filter or empty_table) do
 		if unit_traits[trait] then
-			match = match + (value and 1 or -1000)
+			match = match + (not value and 0 or value)
 		end
 	end
 	return match
@@ -996,19 +1083,22 @@ function OnMsg.Mystery8_BeginHealing()
 	g_StartVaccinating = true
 end
 
-function OnMsg.TechResearched(tech_id, city)
+function OnMsg.TechResearched(tech_id, research)
 	local morale = TraitPresets.Nerd.param*const.Scale.Stat
 	local id = TraitPresets.Nerd.id
 	local def = TechDef[tech_id]
 	local mod_id = id..tech_id
 	local display_text = T{3955, "<green><tech_name> researched! +<amount> (Nerd)</green>",tech_name = def.display_name}
 	local nerds = {}
-	for _, dome in ipairs(city.labels.Dome or empty_table) do
+
+	local domes = UIColony:GetCityLabels("Dome")
+	for _, dome in ipairs(domes) do
 		for _, colonist in ipairs(dome.labels.Nerd or empty_table) do
 			colonist:SetModifier("base_morale", mod_id, morale, 0, display_text)
 			nerds[#nerds+1] = colonist
 		end
 	end
+
 	if #nerds > 0 then
 		CreateGameTimeThread( function()
 			Sleep(3*const.DayDuration)
@@ -1022,7 +1112,7 @@ function OnMsg.TechResearched(tech_id, city)
 	
 	if tech_id == "NeuralEmpathy" then
 		-- find some colonists to make them empath
-		local list = city.labels.Colonist or empty_table
+		local list = UIColony:GetCityLabels("Colonist")
 		local eligible = {}
 		for i = 1, #list do
 			local traits = list[i].traits
@@ -1040,9 +1130,9 @@ function OnMsg.TechResearched(tech_id, city)
 			end
 		end
 		g_HiddenTraits["Empath"] = nil
-		local num = city:Random(def.param2, def.param3)
+		local num = SessionRandom:Random(def.param2, def.param3)
 		while num > 0 and #eligible > 0 do
-			local unit, idx = city:TableRand(eligible)
+			local unit, idx = SessionRandom:TableRand(eligible)
 			unit:AddTrait("Empath")
 			table.remove(eligible, idx)
 			num = num - 1
@@ -1095,10 +1185,9 @@ end
 	@result bool available - true if the trait is unlocked.
 ]]
 
-function IsTraitAvailable(trait, city)
-	city = city or UICity
+function IsTraitAvailable(trait)
 	local trait_id = type(trait) == "string" and trait or trait.id
-	return not TraitLocks[trait_id]
+	return TraitLocks and not TraitLocks[trait_id]
 end
 
 DefineModItemPreset("TraitPreset", {

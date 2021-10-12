@@ -15,20 +15,26 @@ function OnMsg.DataLoaded()
 	end
 end
 
+future_dlc_list = {"picard"}
+
 function OnMsg.GenerateDocs(project_folder, empty_name)
 	local output = { "# Documentation for *Technology Names*\n" }
 	local fields = Presets.TechFieldPreset.Default
 	for i = 1 , #fields do
 		local field = fields[i]
 		local field_id = field.id
-		if field_id ~= "Mysteries" then
+		if (not table.find(future_dlc_list, field.save_in)) and field_id ~= "Mysteries" then
 			output[#output+1] = "##  "..field_id
 			if field.description then
 				output[#output+1] = TDevModeGetEnglishText(field.description)
 			end
 			output[#output+1] = ""
 			local techs_by_name = {}
-			for _, tech in ipairs(Presets.TechPreset[field_id]) do
+			local techs_preset = Presets.TechPreset[field_id]
+			assert(techs_preset, print_format("No tech preset found for field", field_id))
+			for _, tech in ipairs(techs_preset or empty_table) do
+				assert(tech.display_name, print_format("Tech lacks a display_name", tech))
+				assert(tech.description, print_format("Tech lacks a description", tech))
 				local tech_info = {}
 				tech_info.name = TDevModeGetEnglishText(tech.display_name)
 				tech_info.desc = TDevModeGetEnglishText(tech.description)
@@ -98,7 +104,7 @@ end
 function TechEffect:OnGameInit(city, tech)
 end
 
-function TechEffect:OnResearchComplete(city, tech)
+function TechEffect:OnResearchComplete(research, tech)
 end
 
 function TechEffect:GetDescription()
@@ -181,8 +187,8 @@ function TechEffect_GiveFunding:GetDescription()
 	return "Give funding " .. (self.Funding > 0 and tostring(self.Funding) or "")
 end
 
-function TechEffect_GiveFunding:OnResearchComplete(city, tech)
-	city:ChangeFunding(self.Funding * 1000000)
+function TechEffect_GiveFunding:OnResearchComplete(research, tech)
+	UIColony.funds:ChangeFunding(self.Funding * 1000000)
 end
 
 --[[@@@
@@ -192,7 +198,7 @@ Change funding  by adding or removing any value(in millions).
 @result void
 ]]
 function ChangeFunding(value, source)
-	return UICity:ChangeFunding(value * 1000000, source)
+	return UIColony.funds:ChangeFunding(value * 1000000, source)
 end
 ----
 
@@ -215,8 +221,8 @@ function TechEffect_TechBoost:GetDescription()
 	return str
 end
 
-function TechEffect_TechBoost:OnResearchComplete(city, tech)
-	city:BoostTechField(self.Field, self.Percent)
+function TechEffect_TechBoost:OnResearchComplete(research, tech)
+	research:BoostTechField(self.Field, self.Percent)
 end
 	
 ----
@@ -240,8 +246,8 @@ function TechEffect_UnlockUpgrade:GetDescription()
 	return "Unlock upgrade " .. self.Upgrade
 end
 
-function TechEffect_UnlockUpgrade:OnResearchComplete(city, tech)
-	city:UnlockUpgrade(self.Upgrade)
+function TechEffect_UnlockUpgrade:OnResearchComplete(research, tech)
+	research:UnlockUpgrade(self.Upgrade)
 end
 
 --[[@@@
@@ -250,7 +256,7 @@ end
 	@param string upgrade_id - Unique upgrade id set in upgrade definition in building templates.
 --]]
 function UnlockUpgrade(upgrade_id)
-	UICity:UnlockUpgrade(upgrade_id)
+	UIColony:UnlockUpgrade(upgrade_id)
 end
 ----
 
@@ -285,13 +291,13 @@ function TechEffect_ModifyLabel:GetDescription()
 	end
 end
 
-function TechEffect_ModifyLabel:OnResearchComplete(city, tech)
+function TechEffect_ModifyLabel:OnResearchComplete(research, tech)
 	local scale = ModifiablePropScale[self.Prop]
 	if not scale then
 		assert(false, print_format("Trying to modify a non-modifiable property", self.Label, "-", self.Prop))
 		return
 	end
-	city:SetLabelModifier(self.Label, self, Modifier:new{
+	UIColony.city_labels:SetLabelModifier(self.Label, self, Modifier:new{
 		prop = self.Prop,
 		amount = self.Amount * scale,
 		percent = self.Percent,
@@ -314,8 +320,9 @@ The final value of a property is calculated using the formula: _original * (100 
 See also: [ChangeLabelModifier](#ChangeLabelModifier) and [RemoveLabelModifier](#RemoveLabelModifier)
 ]]
 function CreateLabelModifier(id, label, property, amount, percent)
+	local label_container = UIColony.city_labels
 	if type(id) ~= "string" then ModLog(T(8678, "Creating modifier with invalid ID.")) return end
-	if not UICity then ModLog(T(8679, "Creating modifier outside of a running game.")) return end
+	if not label_container then ModLog(T(8679, "Creating modifier outside of a running game.")) return end
 	
 	local scale = ModifiablePropScale[property]
 	if not scale then
@@ -324,12 +331,12 @@ function CreateLabelModifier(id, label, property, amount, percent)
 	end
 	
 	local unique_id = property .. id
-	if UICity.label_modifiers[label] and UICity.label_modifiers[label][unique_id] then
+	if label_container.label_modifiers[label] and label_container.label_modifiers[label][unique_id] then
 		ModLog(T(8681, "Modifier with that ID already exists."))
 		return
 	end
 	
-	UICity:SetLabelModifier(label, unique_id, Modifier:new{
+	label_container:SetLabelModifier(label, unique_id, Modifier:new{
 		prop = property,
 		amount = (amount or 0)*scale,
 		percent = percent or 0,
@@ -348,17 +355,18 @@ Change an already existing label property modifier.
 See also: [CreateLabelModifier](#CreateLabelModifier) and [RemoveLabelModifier](#RemoveLabelModifier)
 ]]
 function ChangeLabelModifier(id, label, property, new_amount, new_percent)
+	local label_container = UIColony.city_labels
 	if type(id) ~= "string" then ModLog(T(8682, "Changing modifier with invalid ID.")) return end
-	if not UICity then ModLog(T(8683, "Changing modifier outside of a running game.")) return end
+	if not label_container then ModLog(T(8683, "Changing modifier outside of a running game.")) return end
 
 	local unique_id = property .. id
-	if not (UICity.label_modifiers[label] and UICity.label_modifiers[label][unique_id]) then
+	if not (label_container.label_modifiers[label] and label_container.label_modifiers[label][unique_id]) then
 		ModLog(T(8684, "Changing a non-existing modifier."))
 		return
 	end
 	
 	local scale = ModifiablePropScale[property]
-	UICity:SetLabelModifier(label, unique_id, Modifier:new{
+	label_container:SetLabelModifier(label, unique_id, Modifier:new{
 		prop = property,
 		amount = (new_amount or 0)*scale,
 		percent = new_percent or 0,
@@ -375,16 +383,17 @@ Removes an already existing label property modifier.
 See also: [CreateLabelModifier](#CreateLabelModifier) and [ChangeLabelModifier](#ChangeLabelModifier)
 ]]
 function RemoveLabelModifier(id, label, property)
+	local label_container = UIColony.city_labels
 	if type(id) ~= "string" then ModLog(T(8685, "Removing modifier with invalid ID.")) return end
-	if not UICity then ModLog(T(8686, "Removing modifier outside of a running game.")) return end
+	if not label_container then ModLog(T(8686, "Removing modifier outside of a running game.")) return end
 	
 	local unique_id = property .. id
-	if not (UICity.label_modifiers[label] and UICity.label_modifiers[label][unique_id]) then
+	if not (label_container.label_modifiers[label] and label_container.label_modifiers[label][unique_id]) then
 		ModLog(T(8687, "Removing a non-existing modifier."))
 		return
 	end
 	
-	UICity:SetLabelModifier(label, unique_id, false)
+	label_container:SetLabelModifier(label, unique_id, false)
 end
 
 --[[@@@
@@ -409,13 +418,13 @@ function ModifyConstructionCost(building_name, construction_resource, percent)
 	--same as above but for all buildings
 	if construction_resource ~= "all" then
 		for i=1,#buildings do
-			city:ModifyConstructionCost("add", buildings[i], construction_resource, percentp)
+			UIColony.construction_cost:ModifyConstructionCost("add", buildings[i], construction_resource, percentp)
 		end
 	else
 		for i=1,#buildings do
 			local building = buildings[i]
 			for j=1,#ConstructionResourceList do
-				city:ModifyConstructionCost("add", building, ConstructionResourceList[j], percent)
+				UIColony.construction_cost:ModifyConstructionCost("add", building, ConstructionResourceList[j], percent)
 			end
 		end
 	end
@@ -427,7 +436,7 @@ Research technology and gain its effect. If the technology property 'repeatable'
 @param string tech_id - technology internal id.
 ]]
 function GrantTech(tech_id)
-	UICity:SetTechResearched(tech_id, "notify")
+	UIColony:SetTechResearched(tech_id, "notify")
 end	
 
 --[[@@@
@@ -437,7 +446,7 @@ Discovers a tech, revealing it in the Research UI.
 ]]
 --[[
 function DiscoverTech(tech_id)
-	UICity:SetTechDiscovered(tech_id)
+	UIColony:SetTechDiscovered(tech_id)
 end--]]
 
 --[[@@@
@@ -446,7 +455,7 @@ Instantly grant research points, as if a research center generated them.
 @param int amount - amount of points to grant.
 ]]
 function GrantResearchPoints(amount)
-	UICity:AddResearchPoints(amount)
+	UIColony:AddResearchPoints(amount)
 end
 
 --[[@@@
@@ -456,7 +465,23 @@ Get the number of times a technology has been researched.
 @result - number of times this tech has been researched or nil, instead of zero.
 ]]
 function IsTechResearched(tech_id)
-	return UICity:IsTechResearched(tech_id)
+	return UIColony:IsTechResearched(tech_id)
+end
+
+--[[@@@
+Gets whether all required tech is researched.
+@function number Gameplay@IsBuildingTechResearched(string class)
+@param string class - building class id.
+@result - required building tech is researched.
+]]
+function IsBuildingTechResearched(class)
+	local requirements = BuildingTechRequirements[class]
+	for _,requirement in ipairs(requirements or empty_table) do
+		if not IsTechResearched(requirement.tech) then
+			return false
+		end
+	end
+	return true
 end
 
 --[[@@@
@@ -466,7 +491,7 @@ Check if a technology has been discovered.
 @result - index of discovery or nil, if not yet discovered.
 ]]
 function IsTechDiscovered(tech_id)
-	return UICity:IsTechDiscovered(tech_id)
+	return UIColony:IsTechDiscovered(tech_id)
 end
 
 --[[@@@
@@ -475,7 +500,7 @@ Check if a technology can be researched multiple times.
 @param string tech_id - technology internal id.
 ]]
 function IsTechRepeatable(tech_id)
-	return UICity:IsTechRepeatable(tech_id)
+	return UIColony:IsTechRepeatable(tech_id)
 end
 
 --[[@@@
@@ -484,9 +509,9 @@ You can read more details about the [Research](Research.md.html) and [Colonists]
 --]]
 
 function TechEditor_Research(socket, preset)
-	if not UICity then return end
+	if not UIColony then return end
 	local obj = socket.selected_object
 	if obj and IsKindOf(obj, "TechPreset") then
-		UICity:SetTechResearched(obj.id, "notify")
+		UIColony:SetTechResearched(obj.id, "notify")
 	end
 end

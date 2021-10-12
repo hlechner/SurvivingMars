@@ -84,6 +84,9 @@ local ForcedIntegerResources = {
 	["Unemployed"] = true,
 	["Drone"] = true,
 	["Research"] = true,
+	["Tourist"] = true,
+	["Prefab"] = true,
+	["Recon"] = true,
 }
 
 -- FormatResourceValueMaxResource(context_obj, value ) -> value/const.ResourceScale
@@ -222,11 +225,13 @@ FormatResourceFn("power", "Power")
 FormatResourceFn("air", "Air")
 FormatResourceFn("concrete", "Concrete")
 FormatResourceFn("metals", "Metals")
+FormatResourceFn("metalsDeep", "MetalsDeep")
 FormatResourceFn("polymers", "Polymers")
 FormatResourceFn("food", "Food")
 FormatResourceFn("research", "Research")
 FormatResourceFn("drone", "Drone")
 FormatResourceFn("colonist", "Colonist")
+FormatResourceFn("tourist", "Tourist")
 FormatResourceFn("home", "Home")
 FormatResourceFn("homeless", "Homeless")
 FormatResourceFn("work", "Work")
@@ -235,18 +240,22 @@ FormatResourceFn("fuel", "Fuel")
 FormatResourceFn("electronics", "Electronics")
 FormatResourceFn("machineparts", "MachineParts")
 FormatResourceFn("preciousmetals", "PreciousMetals")
+FormatResourceFn("preciousminerals", "PreciousMinerals")
+FormatResourceFn("preciousmineralsDeep", "PreciousMineralsDeep")
 FormatResourceFn("seeds", "Seeds")
 FormatResourceFn("wasterock", "WasteRock")
 FormatResourceFn("shuttle", "Shuttle")
 FormatResourceFn("blackcube", "BlackCube")
 FormatResourceFn("mysteryresource", "MysteryResource")
+FormatResourceFn("prefab", "Prefab")
+FormatResourceFn("recon", "Recon")
 
 TFormat.FormatResourceName = function(...)
 	assert(false, "Obsolete format function. Use 'resource' function instead.")
 	return TFormat.resource(...)
 end	
 
-TFormat.Sol = function() return UICity and UICity.day or 0 end
+TFormat.Sol = function() return UIColony and UIColony.day or 0 end
 TFormat.ColonistName = function(context_obj, x) 
 	if not x or not IsKindOf(x, "Colonist") then
 		printf("Invalid argument supplied to ColonistName(): %s", tostring(x))
@@ -259,6 +268,9 @@ TFormat.ResearchPoints = function(context_obj, points)
 end
 TFormat.time = function(context_obj, time)
 	return FormatDuration((time or 0) / const.HourDuration)
+end
+TFormat.timeH = function(context_obj, hours)
+	return FormatDuration(hours or 0)
 end
 TFormat.TraitName = function(context_obj,x)
 	if not x then return "" end
@@ -393,39 +405,38 @@ function ResearchTechsCombo(object)
 	return techs
 end
 
-function TraitsCombo(category, city, traitsonly)
+function TraitsCombo(category, traitsonly)
 	local nonerare, rare = GetCompatibleTraits({}, {}, {}, category)
 	local traits = {{value = "", text = ""}}
 	for i=1,#nonerare do
 		local trait = TraitPresets[nonerare[i]]
 		local name = trait.id
 		if not traitsonly or not const.ColonistSpecialization[name] then
-			if not city or IsTraitAvailable(trait, city) then
+			if IsTraitAvailable(trait) then
 				traits[#traits+1] = { value = trait.id, text = trait.display_name }
 			end
 		end
 	end
 	for i=1,#rare do
 		local trait = TraitPresets[rare[i]]
-		if not city or IsTraitAvailable(trait, city) then
+		if IsTraitAvailable(trait) then
 			traits[#traits+1] = { value = trait.id, text = trait.display_name }
 		end
 	end
 	return traits
 end
 
-function PositiveTraitsCombo(city)
-	return TraitsCombo("Positive", city)
+function PositiveTraitsCombo()
+	return TraitsCombo("Positive")
 end
 
 function BuildingTraitsCombo(object, TraitsList)
 	object = object or empty_table
 	local trait_presets = TraitPresets
 	local traits = {}
-	local city = rawget(object, "city") -- don't filter locked traits if there's no object given
 	for _, trait_id in ipairs(TraitsList) do
 		if trait_presets[trait_id] then
-			if not city or IsTraitAvailable(trait_id, city) then
+			if IsTraitAvailable(trait_id) then
 				traits[#traits + 1 ]={value = trait_id, text = trait_presets[trait_id].display_name}
 			end
 		else
@@ -435,14 +446,14 @@ function BuildingTraitsCombo(object, TraitsList)
 	return traits
 end
 
-function NegativeTraitsCombo(city)
-	return TraitsCombo("Negative", city)
+function NegativeTraitsCombo()
+	return TraitsCombo("Negative")
 end
 
-function BaseTraitsCombo(city, add_empty)
-	local traits = TraitsCombo("Positive", city)
-	table.iappend(traits, TraitsCombo("Negative", city))
-	table.iappend(traits, TraitsCombo("other", city))
+function BaseTraitsCombo(add_empty)
+	local traits = TraitsCombo("Positive")
+	table.iappend(traits, TraitsCombo("Negative"))
+	table.iappend(traits, TraitsCombo("other"))
 	traits = table.ifilter(traits, function(idx, t) 
 		local trait = TraitPresets[t.value] 
 		return trait and t.value ~= "" and trait.auto and not g_HiddenTraitsDefault[t.value] 
@@ -491,18 +502,21 @@ end
 
 function GetAvailableResidences(city)
 	local city = city or UICity
-	local domes = city.labels.Dome or empty_table
 	local sum = 0
-	for i = 1, #domes do
-		local dome = domes[i]
-		if dome.accept_colonists and dome.ui_working then
-			sum = sum + Max(0, dome:GetFreeLivingSpace())
+
+	local communities = city.labels.Community or empty_table
+	for i = 1, #communities do
+		local communitiy = communities[i]
+		if communitiy.ui_working then
+			sum = sum + Max(0, communitiy:GetFreeLivingSpace())
 		end	
 	end	
+
 	return sum
 end 
 
 function GetDomesInWalkableDistance(city, pos, exclude)
+	local city = city or UICity
 	exclude = exclude or empty_table
 	local domes, dome_dist = {}, {}
 	if pos == InvalidPos() then
@@ -510,17 +524,17 @@ function GetDomesInWalkableDistance(city, pos, exclude)
 		return domes
 	end
 	local safety_dome, safety_dist = nil, max_int
-	for _, dome in ipairs((city or UICity).labels.Dome or empty_table) do
-		if not dome.destroyed and not dome.demolishing and not rawget(exclude, dome) then
-			local is_walking, dist = IsInWalkingDist(dome, pos)
+	for _, community in ipairs(city.labels.Community or empty_table) do
+		if community:CanVisit() and not rawget(exclude, community) then
+			local is_walking, dist = IsInWalkingDist(community, pos)
 			if dist then
 				if safety_dist > dist then
-					safety_dome = dome
+					safety_dome = community
 					safety_dist = dist
 				end
-				if is_walking and dome.accept_colonists and dome.ui_working and dome:HasPower() and dome:HasWater() and dome:HasAir() then
-					dome_dist[dome] = dist
-					domes[#domes + 1] = dome
+				if is_walking and community.accept_colonists and community.ui_working and community:HasLifeSupport() then
+					dome_dist[community] = dist
+					domes[#domes + 1] = community
 				end
 			end
 		end
@@ -530,21 +544,13 @@ function GetDomesInWalkableDistance(city, pos, exclude)
 end
 
 -- domes are ordered by distance, the first one to match is the best
-function ChooseDome(traits, domes, safety_dome, free_space)
+function ChooseDome(traits, domes, safety_dome)
 	local best_dome = safety_dome
 	local best_eval = -1
-	local is_child = traits.Child
 	for _, dome in ipairs(domes or empty_table) do
-		local eval = TraitFilterColonist(dome.traits_filter, traits)
+		local eval = dome:GetScoreFor(traits)
 		if best_eval < eval then
-			local has_space
-			if free_space then
-				local space = free_space[dome] or dome:GetFreeLivingSpace(is_child)
-				free_space[dome] = space
-				has_space = space > 0
-			else
-				has_space = dome:HasFreeLivingSpace(is_child)
-			end
+			local has_space = dome:HasFreeLivingSpaceFor(traits)
 			if has_space then
 				best_dome = dome
 				best_eval = eval
@@ -568,13 +574,15 @@ function GetFreeWorkplacesAround(dome)
 	return sum_ui_on, sum_ui_off
 end
 
-function GetFreeWorkplaces(city)
-	local workplaces = city.labels.Workplace or empty_table	
+function GetFreeWorkplaces(city, specialization)
+	specialization = specialization or false
+	local workplaces = city.labels.Workplace or empty_table
 	local sum_ui_on = 0
 	local sum_ui_off = 0
 	for i=1,#workplaces do
 		local b = workplaces[i]
-		if not b.destroyed and not b.demolishing then
+		local specialized = not specialization or b.specialist == specialization
+		if specialized and (not b.destroyed and not b.demolishing) then
 			if b.ui_working then
 				sum_ui_on = sum_ui_on + b:GetFreeWorkSlots()
 			end
@@ -584,14 +592,40 @@ function GetFreeWorkplaces(city)
 	return sum_ui_on, sum_ui_off
 end
 
-function GetFreeLivingSpace(city, count_children)
+function GetFreeLivingSpace(city)
 	local free = 0
 	for _, home in ipairs(city.labels.Residence or empty_table) do
-		if not home.destroyed and (count_children or not home.children_only) then
+		if not home.destroyed then
 			free = free + home:GetFreeSpace()
 		end
 	end
 	return free
+end
+
+function GatherFreeLivingSpaces(residences)
+	assert(residences)
+	local free_inclusive = 0
+	local free_exclusive = 0
+	local free_traits = {}
+
+	for _, home in ipairs(residences or empty_table) do
+		if not home.destroyed then
+			local free_space = home:GetFreeSpace()
+			free_inclusive = free_inclusive + free_space
+
+			if home.children_only then
+				local trait_base = free_traits.Child or 0
+				free_traits.Child = trait_base + free_space
+			elseif home.exclusive_trait then
+				local trait_base = free_traits[home.exclusive_trait] or 0
+				free_traits[home.exclusive_trait] = trait_base + free_space
+			else
+				free_exclusive = free_exclusive + free_space
+			end
+		end
+	end
+
+	return { inclusive = free_inclusive, exclusive = free_exclusive, traits = free_traits }
 end
 
 -- "<on_off(IsResourceAvailable(res))>"
@@ -659,6 +693,19 @@ function AddEmpty(list, empty)
 	return items
 end
 
+function GetAverageStat(colonists, stat)
+	local list = colonists or empty_table
+	local sum = 0
+	local count = 0
+	for _, colonist in ipairs(list) do
+		if stat ~= "Satisfaction" or (stat == "Satisfaction" and colonist.traits.Tourist) then
+			sum = sum + colonist:GetStat(stat)
+			count = count + 1
+		end
+	end
+	return count > 0 and (sum / count) or 0
+end
+
 ---------------nested_list classes--------------
 DefineClass.ResourceAmount = {
 	__parents = { "PropertyObject", },
@@ -687,8 +734,13 @@ function ResourceAmount:GetText()
 	end
 end
 
+function GetResourceTranslation(resource)
+	local description = table.find_value(ResourceDescription, "name", resource)
+	return description.display_name
+end
+
 TFormat.has_researched = function (context_obj, tech_id)
-	return UICity:IsTechResearched(tech_id)
+	return UIColony:IsTechResearched(tech_id)
 end
 
 TFormat.has_prefabs = function (context_obj, template_id, min_count)

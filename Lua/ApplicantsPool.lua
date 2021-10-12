@@ -10,10 +10,40 @@ function GenerateApplicant(time, city)
 	local colonist = GenerateColonistData(city, nil, nil, {no_specialization = IsGameRuleActive("Amateurs") or nil})
 	local rand = Random(1, 100)
 	if rand<=5 then
-		colonist.traits["Tourist"] = true
+		MakeTourist(colonist)
 	end	
 	table.insert(g_ApplicantPool, 1, {colonist, time or GameTime()})
 	return colonist
+end
+
+function MakeTourist(applicant)
+	applicant.traits["Tourist"] = true
+	applicant.traits["Safari"] = true
+end
+
+local function InitApplicantPoolFilter()
+	ForEachPreset(TraitPreset, function(trait, group_list)
+		if trait.initial_filter then
+			g_ApplicantPoolFilter[trait.id] = TraitFilterState.Negative
+		end
+		if trait.initial_filter_up then
+			g_ApplicantPoolFilter[trait.id] = TraitFilterState.Positive
+		end	
+	end)
+end
+
+function SavegameFixups.ResetApplicantPool()
+	InitApplicantPoolFilter()
+end
+
+function SavegameFixups.FixupApplicantPool()
+	for k,v in pairs(g_ApplicantPoolFilter) do
+		if v == true then
+			 g_ApplicantPoolFilter[k] = TraitFilterState.Positive
+		elseif v == false then
+			 g_ApplicantPoolFilter[k] = TraitFilterState.Negative
+		end
+	end
 end
 
 function InitApplicantPool()
@@ -25,16 +55,14 @@ function InitApplicantPool()
 	for i=1,pool_size do
 		GenerateApplicant(-Random(0, drop_out_time/2))
 	end
-	
-	-- add initial trait filter
-	ForEachPreset(TraitPreset, function(trait, group_list)
-		if trait.initial_filter then
-			g_ApplicantPoolFilter[trait.id] = false
+	if IsGameRuleActive("MoreTourists") then
+		for i=1,20 do
+			local applicant = GenerateApplicant(-Random(0, drop_out_time/2))
+			MakeTourist(applicant)
 		end
-		if trait.initial_filter_up then
-			g_ApplicantPoolFilter[trait.id] = true
-		end	
-	end)
+	end
+	
+	InitApplicantPoolFilter()
 end
 
 function ClearApplicantPool()

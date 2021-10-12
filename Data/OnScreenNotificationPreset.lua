@@ -521,6 +521,16 @@ PlaceObj('OnScreenNotificationPreset', {
 })
 
 PlaceObj('OnScreenNotificationPreset', {
+	ImagePreview = "UI/Icons/Notifications/New/tourist.tga",
+	SortKey = 1007600,
+	group = "Default",
+	id = "HolidayRewards",
+	image = "UI/Icons/Notifications/New/tourist.tga",
+	text = T(838552707693, --[[OnScreenNotificationPreset HolidayRewards text]] "Departing Tourists: <tourist_count><newline>Received <funding(funds)> Funds, <applicants> applicants"),
+	title = T(170213331054, --[[OnScreenNotificationPreset HolidayRewards title]] "Tourism Rewards"),
+})
+
+PlaceObj('OnScreenNotificationPreset', {
 	ImagePreview = "UI/Icons/Notifications/New/colonist.tga",
 	SortKey = 1007600,
 	expiration = 150000,
@@ -780,6 +790,35 @@ PlaceObj('OnScreenNotificationPreset', {
 
 PlaceObj('OnScreenNotificationPreset', {
 	ImagePreview = "UI/Icons/Notifications/New/colonist.tga",
+	SortKey = 1000700,
+	VignetteImage = "UI/Onscreen/onscreen_gradient_red.tga",
+	VignettePulseDuration = 2000,
+	fx_action = "UINotificationColonistsDie",
+	group = "Colonists",
+	id = "OverstayingTourists",
+	image = "UI/Icons/Notifications/New/colonist_2.tga",
+	priority = "Important",
+	text = T(762736418811, --[[OnScreenNotificationPreset OverstayingTourists text]] "Overstaying Tourists: <count>"),
+	title = T(674133950999, --[[OnScreenNotificationPreset OverstayingTourists title]] "Overstaying Mars Tourists"),
+	voiced_text = T(630801844517, --[[voice:aide]] "We have Tourists spending too many Sols on Mars"),
+})
+
+PlaceObj('OnScreenNotificationPreset', {
+	ImagePreview = "UI/Icons/Notifications/New/tourist.tga",
+	SortKey = 1000710,
+	VignetteImage = "UI/Onscreen/onscreen_gradient_red.tga",
+	VignettePulseDuration = 2000,
+	expiration = 150000,
+	group = "Colonists",
+	id = "LeavingMarsTourists",
+	image = "UI/Icons/Notifications/New/tourist.tga",
+	text = T(718257959361, --[[OnScreenNotificationPreset LeavingMarsTourists text]] "Departing Tourists: <tourists_count>"),
+	title = T(12653, --[[OnScreenNotificationPreset LeavingMarsTourists title]] "Leaving Mars"),
+	voiced_text = T(521711805166, --[[voice:aide]] "Tourists are departing"),
+})
+
+PlaceObj('OnScreenNotificationPreset', {
+	ImagePreview = "UI/Icons/Notifications/New/colonist.tga",
 	SortKey = 1000900,
 	expiration = 150000,
 	fx_action = "UINotificationNewColonists",
@@ -817,7 +856,7 @@ PlaceObj('OnScreenNotificationPreset', {
 	id = "DeadColonistsInSpace",
 	image = "UI/Icons/Notifications/New/colonist_2.tga",
 	priority = "Important",
-	text = T(8851, --[[OnScreenNotificationPreset DeadColonistsInSpace text]] "<count> Colonists died in space while trying to reach Mars."),
+	text = T(8851, --[[OnScreenNotificationPreset DeadColonistsInSpace text]] "<count> Colonists died in space while trying to reach <destination>."),
 	title = T(8850, --[[OnScreenNotificationPreset DeadColonistsInSpace title]] "Passengers Dead"),
 })
 
@@ -895,6 +934,19 @@ PlaceObj('OnScreenNotificationPreset', {
 	text = T(5679, --[[OnScreenNotificationPreset StarvingColonists text]] "Starving Colonists: <count>"),
 	title = T(5678, --[[OnScreenNotificationPreset StarvingColonists title]] "Food Shortage"),
 	voiced_text = T(7070, --[[voice:aide]] "We have a Food shortage"),
+})
+
+PlaceObj('OnScreenNotificationPreset', {
+	ImagePreview = "UI/Icons/Notifications/New/colonist.tga",
+	SortKey = 1008600,
+	expiration = 150000,
+	fx_action = "UINotificationNewColonists",
+	group = "Colonists",
+	id = "NewTourists",
+	image = "UI/Icons/Notifications/New/tourist.tga",
+	text = T(101571176293, --[[OnScreenNotificationPreset NewTourists text]] "Arriving Tourists: <count>"),
+	title = T(653352487566, --[[OnScreenNotificationPreset NewTourists title]] "New Tourists"),
+	voiced_text = T(107847095271, --[[voice:aide]] "New Tourists have arrived"),
 })
 
 PlaceObj('OnScreenNotificationPreset', {
@@ -1410,6 +1462,7 @@ PlaceObj('OnScreenNotificationPreset', {
 	display_countdown = true,
 	expiration = 150000,
 	fx_action = "UINotificationMystery",
+	game_time = true,
 	group = "Mystery",
 	id = "Mystery10CrystalsAssemble",
 	priority = "Important",

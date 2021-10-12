@@ -516,11 +516,12 @@ PlaceObj('XTemplate', {
 						PlaceObj('XTemplateWindow', {
 							'comment', "stats: stress",
 							'__class', "XTextButton",
-							'Margins', box(25, 0, 0, 0),
+							'Margins', box(24, 0, 0, 0),
 							'MinWidth', 36,
 							'MinHeight', 31,
 							'MaxWidth', 36,
 							'MaxHeight', 31,
+							'MouseCursor', "UI/Cursors/Rollover.tga",
 							'OnPress', function (self, gamepad)
 								SetColonistsSorting(self, "stat_sanity")
 							end,
@@ -529,11 +530,12 @@ PlaceObj('XTemplate', {
 						PlaceObj('XTemplateWindow', {
 							'comment', "stats: comfort",
 							'__class', "XTextButton",
-							'Margins', box(25, 0, 0, 0),
+							'Margins', box(24, 0, 0, 0),
 							'MinWidth', 36,
 							'MinHeight', 31,
 							'MaxWidth', 36,
 							'MaxHeight', 31,
+							'MouseCursor', "UI/Cursors/Rollover.tga",
 							'OnPress', function (self, gamepad)
 								SetColonistsSorting(self, "stat_comfort")
 							end,
@@ -542,21 +544,36 @@ PlaceObj('XTemplate', {
 						PlaceObj('XTemplateWindow', {
 							'comment', "stats: morale",
 							'__class', "XTextButton",
-							'Margins', box(25, 0, 0, 0),
+							'Margins', box(24, 0, 0, 0),
 							'MinWidth', 36,
 							'MinHeight', 31,
 							'MaxWidth', 36,
 							'MaxHeight', 31,
+							'MouseCursor', "UI/Cursors/Rollover.tga",
 							'OnPress', function (self, gamepad)
 								SetColonistsSorting(self, "stat_morale")
 							end,
 							'Image', "UI/Icons/Sections/morale.tga",
 						}),
 						PlaceObj('XTemplateWindow', {
+							'comment', "stats: satisfaction",
+							'__class', "XTextButton",
+							'Margins', box(24, 0, 0, 0),
+							'MinWidth', 36,
+							'MinHeight', 31,
+							'MaxWidth', 36,
+							'MaxHeight', 31,
+							'MouseCursor', "UI/Cursors/Rollover.tga",
+							'OnPress', function (self, gamepad)
+								SetColonistsSorting(self, "stat_satisfaction")
+							end,
+							'Image', "UI/Icons/Sections/satisfaction.tga",
+						}),
+						PlaceObj('XTemplateWindow', {
 							'comment', "traits",
 							'__class', "XText",
 							'Id', "idTraitsTitle",
-							'Margins', box(30, 0, 0, 0),
+							'Margins', box(25, 0, 0, 0),
 							'Padding', box(0, 0, 0, 0),
 							'HAlign', "left",
 							'VAlign', "top",
@@ -572,7 +589,6 @@ PlaceObj('XTemplate', {
 							end,
 							'Translate', true,
 							'Text', T(235, --[[XTemplate ColonistsOverview Text]] "Traits"),
-							'TextHAlign', "center",
 							'TextVAlign', "center",
 						}),
 						PlaceObj('XTemplateWindow', {

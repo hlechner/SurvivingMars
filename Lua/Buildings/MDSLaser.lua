@@ -189,8 +189,9 @@ function MDSLaser:Track(meteor)
 				local vector = pos - origin
 				local total_len = vector:Len()
 				if total_len > 0 then
+					local map_id = self:GetMapID()
 					PlayFX("Laser", "start", self, meteor, origin, vector)
-					local beam = PlaceObject("DefenceLaserBeam")
+					local beam = PlaceObjectIn("DefenceLaserBeam", map_id)
 					local beam_len = beam:GetEntityBBox():max():z()
 					local beam_offset = point(0, 0, beam_len)
 					local beams = {}
@@ -208,7 +209,7 @@ function MDSLaser:Track(meteor)
 							break
 						end
 						next_pos = beam:GetRelativePoint(beam_offset)
-						beam = PlaceObject("DefenceLaserBeam")
+						beam = PlaceObjectIn("DefenceLaserBeam", map_id)
 					end
 					if self:Random(100) < self.hit_chance then
 						Msg("MeteorIntercepted", meteor, self)

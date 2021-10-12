@@ -3,19 +3,32 @@ GlobalVar("LandscapeLastMark", 0)
 GlobalVar("LandscapeMark", 0)
 GlobalVar("Landscapes", {})
 
-function ResetLandscapeGrid()
+local UnbuildableZ = buildUnbuildableZ()
+
+function ResetLandscapeGrid(map_id)
+	map_id = map_id or ActiveMapID
+	local game_map = GameMaps[map_id]
+	local landscape_grid = game_map.landscape_grid
+
+	game_map.buildable.GetZ = function(self, q, r)
+		if Landscape_Check(landscape_grid, q, r, true) then
+			return UnbuildableZ
+		end
+		return BuildableGrid.GetZ(self, q, r)
+	end
+
 	hr.RenderLandscape = 0
-	if HexMapWidth == 0 or HexMapHeight == 0 then
+	if game_map.hex_width == 0 or game_map.hex_height == 0 then
 		return
 	end
-	if not Landscape_IsLandscapeGrid(LandscapeGrid) then
-		local grid = NewGrid(HexMapWidth, HexMapHeight, 32, 0)
-		if LandscapeGrid then
-			grid:copy(LandscapeGrid)
+	if not Landscape_IsLandscapeGrid(landscape_grid) then
+		local grid = NewGrid(game_map.hex_width, game_map.hex_height, 32, 0)
+		if landscape_grid then
+			grid:copy(landscape_grid)
 		end
-		LandscapeGrid = grid
+		landscape_grid = grid
 	end
-	Landscape_SetGrid(LandscapeGrid)
+	Landscape_SetGrid(landscape_grid)
 	hr.RenderLandscape = next(Landscapes) and 1 or 0
 end
 
@@ -29,8 +42,14 @@ function OnMsg.NewMap()
 end
 
 SavegameFixups.ResetLandscapeGrid = ResetLandscapeGrid
+SavegameFixups.MultimapLandscaping = function()
+	for _,landscape in pairs(Landscapes) do
+		landscape.grid = ActiveGameMap.landscape_grid
+		landscape.map_id = MainMapID
+	end
+end
 
-function LandscapeFixProblems()
+local function LandscapeFixProblems()
 	for mark, landscape in pairs(Landscapes) do
 		if not landscape.site then
 			LandscapeDelete(landscape)
@@ -38,42 +57,29 @@ function LandscapeFixProblems()
 	end
 end
 
-function OnMsg.LoadGame()
+function OnMsg.PostLoadGame()
 	LandscapeFixProblems()
 	ResetLandscapeGrid()
 end
 
-function OnMsg.OnPassabilityChanged(rbox)
-	if Landscapes and LandscapeGrid then
-		Landscape_BlockPass(Landscapes, LandscapeGrid, rbox)
+function OnMsg.OnPassabilityChanged(rbox, map_id)
+	local map_id = map_id or ActiveMapID
+	local game_map = GameMaps[map_id]
+	if Landscapes and game_map and game_map.landscape_grid then
+		Landscape_BlockPass(Landscapes, game_map.landscape_grid, rbox)
 	end
 end
 
-function IsInMapPlayableArea(x, y)
-	if not x then
-		return
-	elseif not y then
-		x, y = x:xy()
-	end
-	local width, height = terrain.GetMapSize()
-	local border = mapdata.PassBorder or 0
-	return x >= border and x < width - border and y >= border and y < height - border
+function LandscapeMarkBuildable(map_id, pt)
+	local buildable = GameMaps[map_id].buildable
+	return BuildableGrid.GetZ(buildable, WorldToHex(pt)) ~= UnbuildableZ
 end
 
-local UnbuildableZ = buildUnbuildableZ()
-local origGetBuildableZ = GetBuildableZ
-function GetBuildableZ(q, r)
-	if Landscape_Check(LandscapeGrid, q, r, true) then
-		return UnbuildableZ
-	end
-	return origGetBuildableZ(q, r)
+function GetLandscapedTextureType(map_id)
+	return "DomeDemolish"
 end
 
-function LandscapeMarkBuildable(pt)
-	return origGetBuildableZ(WorldToHex(pt)) ~= UnbuildableZ
-end
-
-function LandscapeMarkStart(pt)
+function LandscapeMarkStart(map_id, pt)
 	local landscape = Landscapes[LandscapeMark]
 	if not landscape then
 		local mark0 = LandscapeLastMark
@@ -106,14 +112,16 @@ function LandscapeMarkStart(pt)
 			collision_objs = setmetatable({}, weak_keys_meta),
 			offset_objs = setmetatable({}, weak_keys_meta),
 			site = false,
-			texture_type = "DomeDemolish",
+			texture_type = GetLandscapedTextureType(map_id),
 			texture_cover = 75,
+			grid = GameMaps[map_id].landscape_grid,
+			map_id = map_id,
 		}
 		Landscapes[mark] = landscape
 		hr.LandscapeCurrentMark = mark
 		hr.RenderLandscape = 1
 	end
-	landscape.height = terrain.GetHeight(pt)
+	landscape.height = GetTerrainByID(map_id):GetHeight(pt)
 	landscape.start = pt
 	return landscape
 end
@@ -123,7 +131,7 @@ function LandscapeMarkCancel()
 	if not landscape then
 		return
 	end
-	local count, primes, bbox = Landscape_MarkErase(LandscapeMark, landscape.bbox, LandscapeGrid, true)
+	local count, primes, bbox = Landscape_MarkErase(LandscapeMark, landscape.bbox, landscape.grid, true)
 	landscape.bbox = bbox
 	landscape.primes = primes
 	return count
@@ -134,12 +142,13 @@ function LandscapeMarkSmooth(test, obstruct_handles, obstruct_marks, handle_filt
 	if not landscape or landscape.primes == 0 then
 		return 0
 	end
+	local game_map = GameMaps[landscape.map_id]
 	test = test or false
-	local success, hexes, bbox = Landscape_MarkSmooth(landscape, LandscapeGrid, ObjectGrid, test, obstruct_handles, obstruct_marks, handle_filter, ...)
+	local success, hexes, bbox = Landscape_MarkSmooth(landscape, landscape.grid, game_map.object_hex_grid.grid, test, obstruct_handles, obstruct_marks, handle_filter, ...)
 	landscape.bbox = Extend(landscape.bbox, bbox)
 	landscape.hexes = hexes
 	
-	local volume, material = Landscape_GetVolume(landscape, LandscapeGrid, const.Terraforming.WasteRockPerHexCube)
+	local volume, material = Landscape_GetVolume(landscape, landscape.grid, const.Terraforming.WasteRockPerHexCube)
 	landscape.volume = volume
 	landscape.material = material
 	
@@ -153,7 +162,6 @@ end
 
 local ClearCachedZ = CObject.ClearCachedZ
 local GetVisualPosXYZ = CObject.GetVisualPosXYZ
-local GetHeight = terrain.GetHeight
 local IsValidZ = CObject.IsValidZ
 local SetPos = CObject.SetPos
 local SetPosAndNormalOrientation = CObject.SetPosAndNormalOrientation
@@ -171,7 +179,7 @@ local function AdjustObjZ(obj, offsets)
 	if IsValidZ(obj) then
 		local dz = offsets[obj] or 0
 		local x, y = GetVisualPosXYZ(obj)
-		SetPos(obj, x, y, GetHeight(x, y) + dz)
+		SetPos(obj, x, y, GetTerrain(obj):GetHeight(x, y) + dz)
 	else
 		ClearCachedZ(obj)
 	end
@@ -179,6 +187,7 @@ local function AdjustObjZ(obj, offsets)
 		SetPosAndNormalOrientation(obj)
 	end
 end
+
 local function CollectOffsets(obj, offsets)
 	if not IsValidZ(obj) then
 		return
@@ -188,26 +197,29 @@ local function CollectOffsets(obj, offsets)
 		return
 	end
 	local x, y, z = GetVisualPosXYZ(obj)
-	local dz = z - GetHeight(x, y)
+	local dz = z - GetTerrain(obj):GetHeight(x, y)
 	if dz ~= 0 then
 		offsets[obj] = dz
 	end
 end
+
 local foreach_params_default = {
 	reject = "FlyingObject",
 }
+
 local foreach_params_collision = {
 	collections = true,
 	enum_flags = const.efCollision + const.efVisible,
 	reject = "Unit",
 }
+
 local function CollectObjs(obj, objs)
 	objs[obj] = true
 end
 
 function LandscapeProgressInit(landscape)
 	 -- first call of Landscape_Progress will init skip hexes
-	local bbox = Landscape_Progress(landscape, LandscapeGrid)
+	local bbox = Landscape_Progress(landscape, landscape.grid)
 	landscape.pass_bbox = bbox:grow(const.GridSpacing)
 	return landscape.pass_bbox
 end
@@ -225,16 +237,17 @@ function LandscapeProgressStep(landscape, forced)
 		return
 	end
 	if not landscape.changed then
-		Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_default, CollectOffsets, landscape.offset_objs)
+		Landscape_ForEachObject(landscape, landscape.grid, foreach_params_default, CollectOffsets, landscape.offset_objs)
 	end
-	local changed = Landscape_Progress(landscape, LandscapeGrid, volume_delta)
+	local changed = Landscape_Progress(landscape, landscape.grid, volume_delta)
 	if not changed or changed:IsEmpty() then
 		return
 	end
-	local collected = Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_collision, CollectObjs, landscape.collision_objs)
+	local collected = Landscape_ForEachObject(landscape, landscape.grid, foreach_params_collision, CollectObjs, landscape.collision_objs)
 	if collected > 0 or not landscape.changed then
 		landscape.changed = landscape.changed or changed
-		SuspendPassEdits(landscape)
+		local realm = GetRealmByID(landscape.map_id)
+		realm:SuspendPassEdits(landscape)
 		for obj in pairs(landscape.collision_objs) do
 			if IsValid(obj) then
 				ClearEnumFlags(obj, efVisible)
@@ -243,32 +256,35 @@ function LandscapeProgressStep(landscape, forced)
 		if not landscape.pass_bbox then
 			landscape.pass_bbox = changed:grow(const.GridSpacing)
 			if landscape.apply_block_pass then
-				terrain.RebuildPassability(landscape.pass_bbox)
+				GetTerrainByID(landscape.map_id):RebuildPassability(landscape.pass_bbox)
 			end
 		end
-		ResumePassEdits(landscape)
+		realm:ResumePassEdits(landscape)
 	end
 	landscape.volume_delta = 0
 	landscape.accum = Min(landscape.accum + volume_delta, landscape.volume)
-	Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_default, AdjustObjZ, landscape.offset_objs)
-	Flight_OnHeightChanged()
+	Landscape_ForEachObject(landscape, landscape.grid, foreach_params_default, AdjustObjZ, landscape.offset_objs)
+	FlightCaches[landscape.map_id]:OnHeightChanged()
 	return true
 end
 
-function LandscapeDamageSoil(mark)
+function LandscapeDamageSoil(map_id, mark)
 end
 
 function LandscapeFixBuildable(landscape)
-	Landscape_FixBuildable(landscape, LandscapeGrid, g_BuildableZ, UnbuildableZ, guim/3)
-	UICity:UpdateBuildableRatio(HexStoreToWorld(landscape.bbox, const.GridSpacing))
+	local game_map = GameMaps[landscape.map_id]
+	local city = Cities[landscape.map_id]
+	Landscape_FixBuildable(landscape, landscape.grid, game_map.buildable.z_grid, UnbuildableZ, guim/3)
+	city:UpdateBuildableRatio(HexStoreToWorld(landscape.bbox, const.GridSpacing))
 	BumpDroneUnreachablesVersion()
 end
 
-function LandscapeDelete(landscape)
+local function LandscapeDelete(landscape)
 	local mark = landscape.mark
 	
+	local realm = GetRealmByID(landscape.map_id)
 	if landscape.changed or landscape.pass_bbox then
-		SuspendPassEdits(landscape)
+		realm:SuspendPassEdits(landscape)
 	end
 	
 	if landscape.changed then
@@ -277,7 +293,7 @@ function LandscapeDelete(landscape)
 				SetEnumFlags(obj, efVisible)
 			end
 		end
-		LandscapeDamageSoil(mark)
+		LandscapeDamageSoil(landscape.map_id, mark)
 		LandscapeFixBuildable(landscape)
 		
 		local invalidate = hr.TerrainDebugDraw == 1 and DbgLastBuildableColors
@@ -289,14 +305,14 @@ function LandscapeDelete(landscape)
 	
 	Landscapes[mark] = nil
 	hr.RenderLandscape = next(Landscapes) and 1 or 0
-	Landscape_MarkErase(mark, landscape.bbox, LandscapeGrid)
+	Landscape_MarkErase(mark, landscape.bbox, landscape.grid)
 	
 	if landscape.pass_bbox then
-		terrain.RebuildPassability(landscape.pass_bbox)
+		GetTerrainByID(landscape.map_id):RebuildPassability(landscape.pass_bbox)
 	end
 
 	if landscape.changed or landscape.pass_bbox then
-		ResumePassEdits(landscape)
+		realm:ResumePassEdits(landscape)
 	end
 end
 
@@ -314,8 +330,8 @@ function LandscapeProgress(mark, volume_delta, volume_max)
 	LandscapeProgressStep(landscape)
 end
 
-function LandscapeCheck(...)
-	return Landscape_Check(LandscapeGrid, ...)
+function LandscapeCheck(landscape_grid, ...)
+	return Landscape_Check(landscape_grid, ...)
 end
 
 function LandscapeFinish(mark)
@@ -346,16 +362,19 @@ local foreach_params_surf = {
 	surfaces = EntitySurfaces.Collision,
 	reject = except_classes,
 }
+
 function LandscapeForEachObstructor(mark, callback, ...)
 	local landscape = Landscapes[mark]
 	if not landscape then
 		return
 	end
-	SuspendPassEdits("LandscapeForEachObstructor")
-	Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_decals, callback, ...)
-	Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_no_surf, callback, ...)
-	Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_surf, callback, ...)
-	ResumePassEdits("LandscapeForEachObstructor")
+
+	local realm = GetRealmByID(landscape.map_id)
+	realm:SuspendPassEdits("LandscapeForEachObstructor")
+	Landscape_ForEachObject(landscape, landscape.grid, foreach_params_decals, callback, ...)
+	Landscape_ForEachObject(landscape, landscape.grid, foreach_params_no_surf, callback, ...)
+	Landscape_ForEachObject(landscape, landscape.grid, foreach_params_surf, callback, ...)
+	realm:ResumePassEdits("LandscapeForEachObstructor")
 end
 
 local foreach_params_stock = {
@@ -376,7 +395,7 @@ function LandscapeForEachStockpile(mark, callback, ...)
 			callback(o, ...)
 		end
 	end
-	Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_stock, filter_parent, ...)
+	Landscape_ForEachObject(landscape, landscape.grid, foreach_params_stock, filter_parent, ...)
 end
 
 local foreach_params_unit = {
@@ -395,7 +414,7 @@ function LandscapeForEachUnit(mark, callback, ...)
 			callback(o, ...)
 		end
 	end
-	Landscape_ForEachObject(landscape, LandscapeGrid, foreach_params_unit, callback, ...)
+	Landscape_ForEachObject(landscape, landscape.grid, foreach_params_unit, callback, ...)
 end
 
 local exclude_terrains = { "Regolith", "Regolith_02", "Spider" }
@@ -412,30 +431,34 @@ function LandscapeChangeTerrain(mark, perc)
 		noise_max = noise_obj.Max
 		noise_grid = noise_obj:GetNoise(256, xxhash(landscape.bbox))
 	end
-	local inv = Landscape_SetTerrainType(landscape, LandscapeGrid, exclude_terrains, noise_max, noise_grid, perc)
+	local inv = Landscape_SetTerrainType(landscape, landscape.grid, exclude_terrains, noise_max, noise_grid, perc)
 	if noise_grid then
 		noise_grid:free()
 	end
-	terrain.InvalidateType(inv)
+	GetTerrainByID(landscape.map_id):InvalidateType(inv)
 	return inv
 end
 
 ----
 
-function LandscapeForEachHex(param, callback, ...)
-	local mark, bbox
+function LandscapeForEachHex(map_id, param, callback, ...)
+	local mark, bbox, landscape_grid
 	if IsBox(param) then
 		-- enum any landscape in a specific region
 		bbox = HexWorldToStore(param)
-		mark = -1 
+		mark = -1
+		landscape_grid = GameMaps[map_id].landscape_grid
 	else
 		local landscape = Landscapes[param] or param
 		if not landscape then
 			return
 		end
+		assert(landscape.map_id == map_id) -- If these are different we're trying to do something weird
+		
 		-- enum a specific landscape in its region
 		mark = landscape.mark
 		bbox = landscape.bbox
+		landscape_grid = landscape.grid
 	end
-	return Landscape_ForEachHex(mark, bbox, LandscapeGrid, callback, ...)
+	return Landscape_ForEachHex(mark, bbox, landscape_grid, callback, ...)
 end

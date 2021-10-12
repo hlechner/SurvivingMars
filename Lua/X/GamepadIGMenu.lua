@@ -12,6 +12,10 @@ function IsHUDResearchEnabled()
 	return (not g_Tutorial or g_Tutorial.EnableResearch) and true or false
 end
 
+function IsHUDMapOverviewEnabled()
+	return ActiveMapData.IsAllowedToEnterOverview
+end
+
 GamepadIGMenu_game_items = {
 	{ --build menu
 		name = "idBuild",
@@ -25,6 +29,7 @@ GamepadIGMenu_game_items = {
 		name = "idOverview",
 		display_name = T(3996, "Map Overview"),
 		icon = "UI/Icons/console_overview.tga",
+		enabled_fn = IsHUDMapOverviewEnabled,
 		action = function() HUD.idOverviewOnPress() end,
 		description = "",
 		close_parent = false,
@@ -191,3 +196,4 @@ function OnMsg.SelectionChange()
 	end
 end
 
+OnMsg.MessageBoxOpened = CloseXGamepadMainMenu

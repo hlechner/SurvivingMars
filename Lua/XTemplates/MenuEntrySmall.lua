@@ -69,6 +69,7 @@ PlaceObj('XTemplate', {
 			'name', "SetText(self, text)",
 			'func', function (self, text)
 				self.Text = text
+				self.idText.Translate = self.Translate
 				self.idText:SetText(text)
 			end,
 		}),

@@ -67,7 +67,7 @@ function OnMsg.NewWorkshift(workshift)
 end
 
 function WaitChangeWorkshift(workshift)
-	for i, bld in ipairs(UICity.labels.ShiftsBuilding or empty_table) do
+	for i, bld in ipairs(UIColony.city_labels.labels.ShiftsBuilding or empty_table) do
 		if IsValid(bld) then
 			bld:SetWorkshift(workshift)
 			if i % 50 == 0 then

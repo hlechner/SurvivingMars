@@ -15,6 +15,7 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 
 * [AutoAttachObject](LuaFunctionDoc_AutoAttachObject.md.html) 
 * [BaseBuilding](LuaFunctionDoc_BaseBuilding.md.html) 
+* BuildingRevealDarkness
 * BuildingVisualDustComponent
 * [CObject](LuaFunctionDoc_CObject.md.html) 
 * CityObject
@@ -36,9 +37,12 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 * [Object](LuaFunctionDoc_Object.md.html) 
 * [PinnableObject](LuaFunctionDoc_PinnableObject.md.html) 
 * PropertyObject
+* Refabable
 * Renamable
 * [RequiresMaintenance](LuaFunctionDoc_RequiresMaintenance.md.html) 
+* SafariSight
 * [Shapeshifter](LuaFunctionDoc_Shapeshifter.md.html) 
+* Shroudable
 * [SkinChangeable](LuaFunctionDoc_SkinChangeable.md.html) 
 * SyncObject
 * [TaskRequester](LuaFunctionDoc_TaskRequester.md.html) 
@@ -53,6 +57,9 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 
 **dome_comfort**
 : Dome Comfort
+
+**dome_morale**
+: Dome Morale
 
 **salvage_modifier**
 : Salvage Modifier
@@ -176,6 +183,30 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 
 **refund_on_salvage**
 : Refund on Salvage
+
+**disabled_in_environment1**
+: Map type where building should be disabled
+
+**disabled_in_environment2**
+: Map type where building should be disabled
+
+**disabled_in_environment3**
+: Map type where building should be disabled
+
+**disabled_in_environment4**
+: Map type where building should be disabled
+
+**snap_target_type**
+: Type to snap to when building
+
+**only_build_on_snapped_locations**
+: Only allow building on snap target
+
+**snap_error_text**
+: Snap error text
+
+**snap_error_short**
+: Snap error short
 #### Custom Labels
 
 
@@ -250,6 +281,9 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 
 **dome_comfort**
 : Dome Comfort
+
+**dome_morale**
+: Dome Morale
 
 **show_range_all**
 : Show range radii for all buildings of that class when selected
@@ -350,6 +384,9 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 **construction_cost_PreciousMetals**
 : Rare Metals Cost
 
+**construction_cost_PreciousMinerals**
+: Exotic Minerals Cost
+
 **construction_cost_BlackCube**
 : Black Cubes Cost
 
@@ -415,6 +452,9 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 **construction_cost_PreciousMetals**
 : Rare Metals Cost
 
+**construction_cost_PreciousMinerals**
+: Exotic Minerals Cost
+
 **construction_cost_BlackCube**
 : Black Cubes Cost
 
@@ -459,6 +499,9 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 
 **wonder**
 : Whether the building is considered a Wonder or not.
+
+**build_once**
+: Whether the building can be constructed multiple times
 
 **force_extend_bb_during_placement_checks**
 : During placement, entity bb will be extended this much to catch obstructors in the hex shape way out of the entity bb.
@@ -546,6 +589,11 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 
 **pin_obvious_blink**
 : Obvious Blink
+#### Refab
+
+
+**can_refab**
+: Specify if the object can be converted to a prefab.
 #### Resource Consumption
 
 
@@ -563,6 +611,25 @@ Buildings can have up to three upgrades aquired and applied throughout the game 
 
 **consumption_resource_stockpile_spot_name**
 : If there is any consumption, will try to attacha purely visual stockpile at this spot.
+#### Reveal
+
+
+**reveal_range**
+: Reveal Range
+#### Safari
+
+
+**sight_name**
+: sight_name
+
+**sight_category**
+: sight_category
+
+**sight_satisfaction**
+: sight_satisfaction
+
+**sight_visible_size**
+: sight_visible_size
 #### Upgrade 1
 
 

@@ -424,11 +424,11 @@ function ModItemAttachment:Visualize(enable)
 				else
 					pt = GetTerrainGamepadCursor()
 				end
-				local build_z = g_BuildableZ and GetBuildableZ(WorldToHex(pt)) or UnbuildableZ
+				local build_z = ActiveGameMap.buildable:GetZ(WorldToHex(pt)) or UnbuildableZ
 				if build_z ~= UnbuildableZ then
 					shape = classdef.GetFlattenShape(parent)
 				else
-					build_z = Max(GetWalkableZ(pt), terrain.GetSurfaceHeight(pt))
+					build_z = Max(GetWalkableZ(pt), GetActiveTerrain():GetSurfaceHeight(pt))
 				end
 				pt = pt:SetZ(build_z)
 				parent:SetPos(pt)
@@ -561,11 +561,11 @@ function ModItemAttachment:ActionGround(obj)
 	local parent = ModItemAttachment_ParentObj
 	local pt = parent:GetPos()
 	local shape
-	local build_z = g_BuildableZ and GetBuildableZ(WorldToHex(pt)) or UnbuildableZ
+	local build_z = ActiveGameMap.buildable:GetZ(WorldToHex(pt)) or UnbuildableZ
 	if build_z ~= UnbuildableZ then
 		shape = parent:GetFlattenShape()
 	else
-		build_z = Max(GetWalkableZ(pt), terrain.GetSurfaceHeight(pt))
+		build_z = Max(GetWalkableZ(pt), GetActiveTerrain():GetSurfaceHeight(pt))
 	end
 	pt = pt:SetZ(build_z)
 	parent:SetPos(pt)

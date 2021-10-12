@@ -93,7 +93,7 @@ end
 local function ClearInstalledModsCorruptedStatus()
 	local obj = g_ParadoxModsContextObj
 	if obj then
-		for _, mod in ipairs(obj.installed_mods) do
+		for _, mod in ipairs(obj.installed_mods or empty_table) do
 			mod.Corrupted = nil
 			mod.Warning = nil
 			mod.Warning_id = nil
@@ -148,8 +148,8 @@ function ModsUIGetModCorruptedStatus(mod)
 end
 
 function ModsUIIsModCompatible(mod)
-	local version = tonumber(mod.RequiredVersion)
-	return version >= ModMinLuaRevision and version <= LuaRevision
+	local version = tonumber(mod.RequiredVersion) or false
+	return version and (version >= ModMinLuaRevision and version <= LuaRevision)
 end
 
 local PopsModsUISortItems = false
@@ -446,7 +446,7 @@ function ModsUISetAllModsEnabledState(host, state)
 	g_PopsDisableAllModsThread = IsValidThread(g_PopsEnableModThread) and g_PopsEnableModThread or CreateRealTimeThread(function(host)
 		local obj = g_ParadoxModsContextObj
 		if not obj then return end
-		for _, mod in ipairs(obj.installed_mods) do
+		for _, mod in ipairs(obj.installed_mods or empty_table) do
 			local id = mod.ModID
 			local enabled = obj.enabled[id]
 			if enabled ~= state then
@@ -647,7 +647,7 @@ function ModsUIShowItemAction(host, action, value, mod_id)
 		end
 		return false
 	elseif action == "installed" and value then
-		local mod = table.find_value(obj.installed_mods, "ModID", id)
+		local mod = table.find_value(obj.installed_mods or empty_table, "ModID", id)
 		if not mod or mod.Source ~= "pops" then
 			return false
 		end
@@ -659,7 +659,7 @@ function ModsUIGetEnableAllButtonState()
 	local obj = g_ParadoxModsContextObj
 	if not obj then return end
 	local enabled = false
-	for _, mod in ipairs(obj.installed_mods) do
+	for _, mod in ipairs(obj.installed_mods or empty_table) do
 		if obj.enabled[mod.ModID] then
 			enabled = true
 		end

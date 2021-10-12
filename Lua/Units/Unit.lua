@@ -1,6 +1,6 @@
 DefineClass.Unit =
 {
-	__parents = { "Movable", "CommandObject", "UngridedObstacle", "DoesNotObstructConstruction", "SyncObject", "Renamable", "CameraFollowObject" },
+	__parents = { "CityObject", "Movable", "CommandObject", "UngridedObstacle", "DoesNotObstructConstruction", "SyncObject", "Renamable", "CameraFollowObject" },
 	encyclopedia_id = false,
 	flags = { cofComponentSound = true, efUnit = true, efWalkable = false, efCollision = false, efApplyToGrids = false, efSelectable = true, },
 	ShadowBias = "Units",
@@ -175,10 +175,11 @@ function Unit:OnStrandedFallback(dest, ...)
 	if status < 0 then
 		return
 	end
-	local dome1 = developer and GetDomeAtPoint(self:GetPos())
+	local object_hex_grid = GetObjectHexGrid(self)
+	local dome1 = developer and GetDomeAtPoint(object_hex_grid, self:GetPos())
 	Sleep(status)
-	local dome2 = developer and GetDomeAtPoint(self:GetPos())
-	assert(dome1 == dome2 or OpenAirBuildings)
+	local dome2 = developer and GetDomeAtPoint(object_hex_grid, self:GetPos())
+	assert(dome1 == dome2 or GetOpenAirBuildings(self:GetMapID()))
 	return true
 end
 
@@ -210,9 +211,13 @@ function Unit:ResolveGotoDest(dest, ...)
 	return dest:IsValidZ() and dest:SetInvalidZ() or dest
 end
 
+function Unit:Unsiege()
+end
+
 function Unit:TraverseTunnel()
 	local end_point = pf.GetPathPoint(self, pf.GetPathPointCount(self))
-	local tunnel, param = pf.GetTunnel(self:GetPos(), end_point)
+	local realm = GetRealm(self)
+	local tunnel, param = realm:GetTunnel(self:GetPos(), end_point)
 	if not tunnel then
 		self:ClearPath()
 	elseif not tunnel:TraverseTunnel(self, self:GetPos(), end_point, param) then
@@ -278,7 +283,10 @@ function Unit:EnterBuilding(building, entrance_type, spot_name) -- works only if
 	if not IsValid(building) or not building:IsValidPos() then
 		--retest after goto.
 		return false
-	elseif IsKindOf(building, "Dome") then
+	end
+
+	assert(self:GetMapID() == building:GetMapID())
+	if IsKindOf(building, "Dome") then
 		if IsUnitInDome(self) == building then
 			return true
 		end
@@ -337,6 +345,12 @@ function Unit:ExitBuilding(building, target, entrance_type, spot_name)
 	if not building:IsValidPos() then
 		return
 	end
+
+	assert(building:GetMapID() == self:GetMapID())
+	if building:GetMapID() ~= self:GetMapID() then
+		return
+	end
+
 	entrance_type = entrance_type or self.entrance_type or "entrance"
 	if not target then
 		target = self:IsValidPos() and self or RotateRadius(100*guim, AsyncRand(360*60), building:GetPos())
@@ -359,7 +373,9 @@ function Unit:ExitBuilding(building, target, entrance_type, spot_name)
 	if not entrance then
 		return
 	end
-	if self:IsValidPos() and terrain.IsPassable(entrance[1], self.pfclass) then
+
+	local terrain = GetTerrain(self)
+	if self:IsValidPos() and terrain:IsPassable(entrance[1], self.pfclass) then
 		self:Goto_NoDestlock(entrance[1])
 	end
 	building:LeadOut(self, entrance)
@@ -386,6 +402,14 @@ end
 function Unit:OnEnterDomeFail(dome)
 end
 
+function Unit:GetNavigationPos()
+	if self.holder then
+		return self.holder:GetPos()
+	else
+		return self:GetPos()
+	end
+end
+
 function Unit:GotoUnitSpot(unit, spot)
 	-- pathfinding failure shields
 	if IsValid(unit) and self:ExitHolder(unit) and IsValid(unit) and self:Goto(unit, spot) then 
@@ -395,7 +419,8 @@ function Unit:GotoUnitSpot(unit, spot)
 		return false
 	end
 	if unit:GetDist2D(self) - unit:GetRadius() - self:GetRadius() < 5*guim then return true end
-	local pt = GetPassablePointNearby(unit:GetPos(), self.pfclass)
+	local realm = GetRealm(self)
+	local pt = realm:GetPassablePointNearby(unit:GetPos(), self.pfclass)
 	if self:Goto(pt) and IsValid(unit) then return true end
 	Sleep(1000)
 end
@@ -475,14 +500,7 @@ function Unit:GoToRandomPosInDome(dome)
 		return
 	end
 	self:ExitHolder()
-	local pt
-	local pts = dome.walkable_points
-	if #pts == 0 then
-		pt = dome:PickColonistSpawnPt()
-	else
-		local idx = self:Random(1, #pts)
-		pt = pts[idx]
-	end
+	local pt = dome:GetRandomPos()
 	if not self:IsValidPos() then
 		self:SetPos(pt)
 		return
@@ -493,54 +511,65 @@ end
 function Unit:GoToRandomPos(max_radius, min_radius, center, filter, ...)
 	self:ExitHolder()
 	min_radius = min_radius or 0
+	local map_id = self:GetMapID()
 	if not center or not center:IsValid() then
 		if self:IsValidPos() then
 			center = self:GetVisualPos2D()
 		else
-			local mw, mh = terrain.GetMapSize()
+			local mw, mh = GetTerrainByID(map_id):GetMapSize()
 			center = point(mw / 2, mh / 2)
 		end
 	end
 	local pt
 	if type(filter) ~= "function" then
 		-- savegame compat
-		pt = GetRandomPassableAround(center, max_radius, min_radius, self.city, ...)
+		pt = GetRandomPassableAroundOnMap(map_id, center, max_radius, min_radius, self.city, ...)
 	else
-		pt = GetRandomPassableAround(center, max_radius, min_radius, self.city, filter, ...)
+		pt = GetRandomPassableAroundOnMap(map_id, center, max_radius, min_radius, self.city, filter, ...)
 	end
 	if pt then
 		return self:Goto(pt)
 	end
 end
 
-local HexGridGetObject = HexGridGetObject
 local WorldToHex = WorldToHex
-function FilterDontExitDome(x, y, dome)
-	local q, r = WorldToHex(x, y)
-	local domei = HexGridGetObject(ObjectGrid, q, r, "DomeInterior")
-	return dome == (domei and domei.dome)
-end
-function FilterDontEnterDome(x, y)
-	local q, r = WorldToHex(x, y)
-	return not HexGridGetObject(ObjectGrid, q, r, "DomeInterior") and not HexGridGetObject(ObjectGrid, q, r, "Dome")
-end
 
 function Unit:ExitImpassable(dome)
-	local open_domes = OpenAirBuildings
-	if terrain.IsPassable(self) then
+	local open_domes = GetOpenAirBuildings(self:GetMapID())
+	local game_map = GetGameMap(self)
+	if game_map.terrain:IsPassable(self) then
 		if open_domes or dome == nil then
 			return
 		end
 	end
+	
+	if (dome and dome:GetMapID() ~= self:GetMapID()) then
+		dome = false
+	end
+
 	local pt
 	if not open_domes then
 		if dome == nil then
 			dome = IsUnitInDome(self)
 		end
+		local object_hex_grid = game_map.object_hex_grid
+		
+		local function FilterDontExitDome(x, y)
+			local q, r = WorldToHex(x, y)
+			local domei = object_hex_grid:GetObject(q, r, "DomeInterior")
+			return dome == (domei and domei.dome)
+		end
+
+		local function FilterDontEnterDome(x, y)
+			local q, r = WorldToHex(x, y)
+			return not object_hex_grid:GetObject(q, r, "DomeInterior") and not object_hex_grid:GetObject(q, r, "Dome")
+		end
+
 		local filter = dome and FilterDontExitDome or FilterDontEnterDome
-		pt = GetPassablePointNearby(self, -1, -1, filter, dome)
+
+		pt = game_map.realm:GetPassablePointNearby(self, -1, -1, filter, object_hex_grid.grid, dome)
 	else
-		pt = GetPassablePointNearby(self)
+		pt = game_map.realm:GetPassablePointNearby(self)
 	end
 	if not pt then
 		return
@@ -564,6 +593,7 @@ end
 function Unit:SetHolder(building)
 	local holder = self.holder
 	building = building or false
+	assert(not building or building:GetMapID() == self:GetMapID())
 	if holder == building or building and not building:IsKindOf("Holder") then
 		return
 	end
@@ -695,13 +725,23 @@ function Unit:IsDead()
 	return not IsValid(self)
 end
 
-function Unit:ResolveObjAt(pos, interaction_mode)
-end
-
 function Unit:AddToLabels()
 end
 
 function Unit:RemoveFromLabels()
+end
+
+function Unit:DetachFromRealm(map_id)
+	self:ClearCommandQueue()
+	self:RemoveFromLabels()
+end
+
+function Unit:AttachedToRealm(map_id)
+	self:AddToLabels()
+	-- Some holders move together will its contents
+	if self.holder and self.holder:GetMapID() ~= map_id then
+		self:SetHolder(false)
+	end
 end
 
 function SavegameFixups.DeleteStuckArrows()
@@ -754,7 +794,7 @@ function Unit:CreateSelectionArrow()
 		return
 	end
 
-	self.selection_dir_arrow = PlaceParticles("Selection_Direction_Rover")
+	self.selection_dir_arrow = PlaceParticlesIn("Selection_Direction_Rover", self:GetMapID())
 	self.selection_dir_arrow:SetGameFlags(const.gofLockedOrientation)
 	self:Attach(self.selection_dir_arrow)
 	self.selection_dir_arrow:SetScale(MulDivRound(self.direction_arrow_scale, self.selection_scale_uniform, 100))
@@ -770,10 +810,17 @@ function Unit:CreateSelectionArrow()
 	end, self)
 end
 
+function Unit:CanInteractWithObject(obj, interaction_mode)
+	return false
+end
+
+function Unit:InteractWithObject(obj, interaction_mode)
+end
+
 ----- Vehicle
 
 DefineClass.Vehicle = {
-	__parents = { "Unit" },
+	__parents = { "Unit", "UnitRevealDarkness" },
 	flags = { gofSpecialOrientMode = true },
 	orient_mode = "terrain",
 }
@@ -808,10 +855,11 @@ AppearLocationPresets = {
 	RandomPass = {
 		text = "Random Passable",
 		resolve = function(unit)
-			local pos = GetRandomPassable()
+			local map_id = unit:GetMapID()
+			local pos = GetRandomPassable(unit.city)
 			if pos then
 				local x, y = pos:xy()
-				x, y = FindDropPos(x, y, unit and unit.pfclass)
+				x, y = FindDropPos(map_id, x, y, unit and unit.pfclass)
 				if x then
 					return point(x, y)
 				end
@@ -825,10 +873,11 @@ AppearLocationPresets = {
 			for x=1,10 do
 				for y=1,10 do
 					if x == 1 or x == 10 or y == 1 or y == 10 then
-						sectors[#sectors + 1] = g_MapSectors[x][y]
+						sectors[#sectors + 1] = unit.city.MapSectors[x][y]
 					end
 				end
 			end
+			local map_id = unit:GetMapID()
 			while true do
 				local sector, idx = table.rand(sectors)
 				if not sector then
@@ -837,10 +886,10 @@ AppearLocationPresets = {
 				end
 				table.remove(sectors, idx)
 				local center, radius = sector.area:GetBSphere()
-				local pos = GetRandomPassableAround(center, radius)
+				local pos = GetRandomPassableAroundOnMap(map_id, center, radius)
 				if pos then
 					local x, y = pos:xy()
-					x, y = FindDropPos(x, y, unit and unit.pfclass, radius)
+					x, y = FindDropPos(map_id, x, y, unit and unit.pfclass, radius)
 					if x then
 						return point(x, y)
 					end
@@ -976,7 +1025,7 @@ function Unit:WaitToAppear(holder, pos, dome, pinned)
 				self:SetOutside(false)
 				self:GoToRandomPosInDome(dome)
 			else
-				self:SetPos(GetRandomPassable())
+				self:SetPos(GetRandomPassable(self.city))
 			end
 		end
 		self:UpdateOutside()
@@ -992,6 +1041,17 @@ function Unit:Appear(location)
 	self.disappeared = nil
 	self.appear_location = location
 	Wakeup(self.thread_running_destructors or self.command_thread)
+end
+
+function Unit:Disembark(building, entrance_type)
+	self:DetachFromMap()
+	self:SetHolder(building)
+	
+	local entrances = building:GetEntrance(nil, entrance_type, nil, self)
+	self:SetPos(entrances[1])
+	self:SetOutside(false)
+	self:UpdateOutside()
+	self:ExitBuilding(building, nil, entrance_type)
 end
 
 function SavegameFixups.UndisappearStuckDrones()

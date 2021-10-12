@@ -27,7 +27,8 @@ PlaceObj('GameRules', {
 	flavor = T(701672144364, --[[GameRules ColonyPrefab flavor]] '<grey>"Geez, all that money we waste on space exploration; just think how many bombs that would buy!"<newline><right>Craig Bruce</grey><left>'),
 	id = "ColonyPrefab",
 	PlaceObj('Effect_Code', {
-		OnApplyEffect = function (self, city, parent)
+		OnApplyEffect = function (self, colony, parent)
+		local city = MainCity
 city:AddPrefabs("StirlingGenerator", 6)
 city:AddPrefabs("DomeBasic", 1)
 city:AddPrefabs("MoistureVaporator", 2)
@@ -59,7 +60,7 @@ PlaceObj('GameRules', {
 	challenge_mod = -150,
 	description = T(177740838839, --[[GameRules EasyResearch description]] "Adds 3000 research points per Sol and reveals all technologies. <NoAchievements()>"),
 	display_name = T(831225179496, --[[GameRules EasyResearch display_name]] "Easy Research"),
-	flavor = T(354566377512, --[[GameRules EasyResearch flavor]] '<grey>"Simplicity is the ultimate sophistication."\n<right>Leonardo Da Vinci</grey><left>'),
+	flavor = T(12818, --[[GameRules EasyResearch flavor]] '<grey>"Nothing in life is to be feared; It is only to be understood."\n<right>Marie Curie</grey><left>'),
 	group = "Default",
 	id = "EasyResearch",
 })
@@ -80,7 +81,7 @@ PlaceObj('GameRules', {
 	description = T(124593571837, --[[GameRules FastRockets description]] "Rockets travel ten times faster"),
 	display_name = T(10546, --[[GameRules FastRockets display_name]] "Fast Rockets"),
 	exclusionlist = "LongRide",
-	flavor = T(354566377512, --[[GameRules FastRockets flavor]] '<grey>"Simplicity is the ultimate sophistication."\n<right>Leonardo Da Vinci</grey><left>'),
+	flavor = T(12819, --[[GameRules FastRockets flavor]] '<grey>"We know the human limits, and for us this remains a dream. Most likely the first flight will be one way. But I am ready."\n<right>Valentina Tereshkova</grey><left>'),
 	group = "Default",
 	id = "FastRockets",
 })
@@ -150,7 +151,7 @@ PlaceObj('GameRules', {
 	challenge_mod = -200,
 	description = T(10547, --[[GameRules IronColonists description]] "Colonists can't lose Health or Sanity below 50 and cannot become Earthsick. There is no Founder stage. <NoAchievements()>"),
 	display_name = T(306398332726, --[[GameRules IronColonists display_name]] "Iron Colonists"),
-	flavor = T(354566377512, --[[GameRules IronColonists flavor]] '<grey>"Simplicity is the ultimate sophistication."\n<right>Leonardo Da Vinci</grey><left>'),
+	flavor = T(12820, --[[GameRules IronColonists flavor]] '<grey>"Looking back, we were the luckiest people in the world. There was no choice but to be pioneers; no time to be beginners."\n<right>Margaret Hamilton</grey><left>'),
 	group = "Default",
 	id = "IronColonists",
 })
@@ -163,6 +164,16 @@ PlaceObj('GameRules', {
 	flavor = T(354566377512, --[[GameRules MoreApplicants flavor]] '<grey>"Simplicity is the ultimate sophistication."\n<right>Leonardo Da Vinci</grey><left>'),
 	group = "Default",
 	id = "MoreApplicants",
+})
+
+PlaceObj('GameRules', {
+	SortKey = 100515,
+	challenge_mod = -10,
+	description = T(437731615776, --[[GameRules MoreTourists description]] "20 additional Tourist Applicants"),
+	display_name = T(156769780909, --[[GameRules MoreTourists display_name]] "More Tourists"),
+	flavor = T(380143816581, --[[GameRules MoreTourists flavor]] '<grey>"The more clearly we can focus our attention on the wonders and realities of the universe about us, the less taste we shall have for destruction."\n<right>Rachel Carson</grey><left>'),
+	group = "Default",
+	id = "MoreTourists",
 })
 
 PlaceObj('GameRules', {
@@ -246,7 +257,7 @@ PlaceObj('GameRules', {
 	group = "Default",
 	id = "Inflation",
 	PlaceObj('Effect_Code', {
-		OnApplyEffect = function (self, city, parent)
+		OnApplyEffect = function (self, colony, parent)
 CreateGameTimeThread(function()
 	while true do
 		local ok, day = WaitMsg("NewDay")

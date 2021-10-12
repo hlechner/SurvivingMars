@@ -44,6 +44,7 @@ DefineClass.BaseBuilding = {
 }
 
 function BaseBuilding:GameInit()
+	if not ActiveMapData.GameLogic then return end
 	self:AddToCityLabels()
 	
 	CreateGameTimeThread(function(self) -- delay until GameInit is completed
@@ -54,6 +55,10 @@ end
 
 function BaseBuilding:Done()
 	SetShapeMarkers(self, false)
+	
+	if IsValidThread(self.anim_control_thread) then
+		DeleteThread(self.anim_control_thread)
+	end
 end
 
 function BaseBuilding:AddToCityLabels()
@@ -77,7 +82,8 @@ function GetBuildingsParamInNotification(displayed_in_notif)
 	for i = 1, #keys do
 		local item = keys[i]
 		local count = building_counts[item]
-		local name = count > 1 and BuildingTemplates[item].display_name_pl or  BuildingTemplates[item].display_name
+		local template = BuildingTemplates[item]
+		local name = count > 1 and template.display_name_pl or template.display_name
 		rollover_text[#rollover_text + 1] = T{10365, "<count> <name>", count = count, name = name}
 	end
 	rollover_text = table.concat(rollover_text, "\n")
@@ -100,9 +106,9 @@ end
 
 function BaseBuilding:UpdateNotWorkingBuildingsNotification()
 	if self:ShouldShowNotWorkingNotification() then
-		table.insert_unique(g_NotWorkingBuildings, self)
+		RequestNewObjsNotif(g_NotWorkingBuildings, self, self:GetMapID())
 	else
-		table.remove_entry(g_NotWorkingBuildings, self)
+		DiscardNewObjsNotif(g_NotWorkingBuildings, self, self:GetMapID())
 	end
 end
 --[[@@@
@@ -114,6 +120,7 @@ Will set the working state of the building with whatever CanWork returns. This m
 function BaseBuilding:UpdateWorking(expected_state)
 	local can_work = self:CanWork()
 	assert(expected_state == nil or can_work == expected_state, "CanWork method inconsistency")
+	assert(IsValid(self))
 	self:SetWorking(can_work)
 end
 
@@ -242,6 +249,7 @@ function BaseBuilding:GetUIWorkingStatus()
 	end
 	return T(7328, "Turned Off")
 end
+
 --[[@@@
 Returns whether work is possible in terms of game rules for this building.
 
@@ -324,7 +332,7 @@ end
 function BaseBuilding:IsSupplyGridDemandStoppedByGame()
 	return self:IsMalfunctioned() or not self:HasWorkforce() or self.suspended or
 			self.destroyed or (IsKindOf(self, "Demolishable") and self.demolishing) or self.frozen or 
-			(IsKindOf(self, "BuildingDepositExploiterComponent") and not self:HasNearbyDeposits() and not self.city:IsTechResearched("NanoRefinement")) or false
+			(IsKindOf(self, "BuildingDepositExploiterComponent") and not self:HasNearbyDeposits() and not self.city.colony:IsTechResearched("NanoRefinement")) or false
 end
 
 function BaseBuilding:UpdateConsumption(update)

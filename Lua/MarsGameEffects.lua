@@ -14,10 +14,12 @@ end
 DefineClass.Effect_Code = {
 	__parents = { "Tech_Effect" },
 	properties = {
-		{ category = "General", id = "OnInitEffect", editor = "func", params = "self, city, parent", max_lines = 60, 
+		{ category = "General", id = "OnInitEffect", editor = "func", params = "self, colony, parent", max_lines = 60, 
 			name = T(1000725, "OnInitEffect"), help = T(1000726, "Called early during the player setup - player structures not fully inited."), },
-		{ category = "General", id = "OnApplyEffect", editor = "func", params = "self, city, parent", max_lines = 60,
+		{ category = "General", id = "OnApplyEffect", editor = "func", params = "self, colony, parent", max_lines = 60,
 			name = T(1000727, "OnApplyEffect"), help = T(1000728, "Called when the effect needs to be applied."), },
+		{ category = "General", id = "OnLoadEffect", editor = "func", params = "self, colony, parent", max_lines = 60,
+			name = T(13760, "OnLoadEffect"), help = T(13761, "Called after the player colony is loaded"), },
 	},
 	EditorName = "Code effect",
 }
@@ -57,8 +59,8 @@ DefineClass.Effect_Funding = {
 	Description = T(8782, "<Funding>"),
 }
 
-function Effect_Funding:OnApplyEffect(city)
-	city:ChangeFunding(self.Funding * 1000000, self.Reason)
+function Effect_Funding:OnApplyEffect(colony)
+	colony.funds:ChangeFunding(self.Funding * 1000000, self.Reason)
 end
 
 
@@ -74,8 +76,8 @@ DefineClass.Effect_TechBoost = {
 	Description = T(8783, "<u(Field)> <opt_percent(Percent)>"),
 }
 
-function Effect_TechBoost:OnApplyEffect(city)
-	city:BoostTechField(self.Field, self.Percent)
+function Effect_TechBoost:OnApplyEffect(colony)
+	colony:BoostTechField(self.Field, self.Percent)
 end
 
 
@@ -98,8 +100,8 @@ DefineClass.Effect_UnlockUpgrade = {
 	Description = T(8784, "<u(Upgrade)>"),
 }
 
-function Effect_UnlockUpgrade:OnApplyEffect(city)
-	city:UnlockUpgrade(self.Upgrade)
+function Effect_UnlockUpgrade:OnApplyEffect(colony)
+	colony:UnlockUpgrade(self.Upgrade)
 end
 
 
@@ -117,7 +119,7 @@ DefineClass.Effect_ModifyUpgrade = {
 	Description = T(8785, "<u(Upgrade)>.<u(Prop)> <opt_amount(Amount)> <opt_percent(Percent)>"),
 }
 
-function Effect_ModifyUpgrade:OnApplyEffect(city)
+function Effect_ModifyUpgrade:OnApplyEffect(colony)
 	RegisterUpgradeModifierModifier(self.Upgrade, self.Prop, self.Amount, self.Percent)
 end
 
@@ -136,13 +138,13 @@ DefineClass.Effect_ModifyLabel = {
 	Description = T(8786, "<u(Label)>.<u(Prop)> <opt_amount(Amount)> <opt_percent(Percent)>"),
 }
 
-function Effect_ModifyLabel:OnApplyEffect(city, parent)
+function Effect_ModifyLabel:OnApplyEffect(colony, parent)
 	local scale = ModifiablePropScale[self.Prop]
 	if not scale then
 		assert(false, print_format("Trying to modify a non-modifiable property", self.Label, "-", self.Prop))
 		return
 	end
-	city:SetLabelModifier(self.Label, self, Modifier:new{
+	colony.city_labels:SetLabelModifier(self.Label, self, Modifier:new{
 		prop = self.Prop,
 		amount = self.Amount * scale,
 		percent = self.Percent,
@@ -178,17 +180,18 @@ DefineClass.Effect_ModifyLabelOverTime = {
 	Description = T(8786, "<u(Label)>.<u(Prop)> <opt_amount(Amount)> <opt_percent(Percent)>"),
 }
 
-function Effect_ModifyLabelOverTime:OnApplyEffect(city, parent)
+function Effect_ModifyLabelOverTime:OnApplyEffect(colony, parent)
 	CreateGameTimeThread(function()
 		local amount = 0
 		local percent = 0
 		local scale = ModifiablePropScale[self.Prop] or 1
 		local interval = self.TimeUnits * self.TimeInterval
+		local labels = colony.city_labels
 		for rep=1,self.Repetitions do
 			Sleep(interval)
 			amount = amount + self.Amount
 			percent = percent + self.Percent
-			city:SetLabelModifier(self.Label, self, Modifier:new{
+			labels:SetLabelModifier(self.Label, self, Modifier:new{
 				prop = self.Prop,
 				amount = amount * scale,
 				percent = percent,
@@ -213,15 +216,15 @@ DefineClass.Effect_CompoundEfficiency = {
 	Description = T(8787, "<u(Label)>.<u(Prop)> <opt_amount(Threshold)> <opt_amount(Amount)> <opt_percent(Percent)>"),
 }
 
-function Effect_CompoundEfficiency:OnApplyEffect(city, parent)
+function Effect_CompoundEfficiency:OnApplyEffect(colony, parent)
 	local id = parent and parent.id
-	local effects = city.compound_effects[self.Label] or {}
+	local effects = colony.compound_effects[self.Label] or {}
 	local scale = ModifiablePropScale[self.Prop]
 	assert(not effects[id])
 	effects[id] = { threshold = self.Threshold, amount = self.Amount * scale, percent = self.Percent, prop = self.Prop }
-	city.compound_effects[self.Label] = effects
+	colony.compound_effects[self.Label] = effects
 	
-	local domes = city.labels.Dome or empty_table
+	local domes = colony.city_labels.labels.Dome or empty_table
 	for i = 1, #domes do
 		domes[i]:ApplyCompoundEffects(self.Label, id)
 	end
@@ -240,7 +243,7 @@ DefineClass.Effect_ModifyResupplyParam = {
 	Description = T(8788, "<u(Item)>.<u(Param)> <opt_percent(Percent)>"),
 }
 
-function Effect_ModifyResupplyParam:OnApplyEffect(city, parent)
+function Effect_ModifyResupplyParam:OnApplyEffect(colony, parent)
 	ModifyResupplyParam(self.Item, self.Param, self.Percent)
 end
 
@@ -255,7 +258,7 @@ DefineClass.Effect_UnlockResupplyItem = {
 	Description = T(8789, "<u(Item)>"),
 }
 
-function Effect_UnlockResupplyItem:OnApplyEffect(city, parent)
+function Effect_UnlockResupplyItem:OnApplyEffect(colony, parent)
 	local def = RocketPayload_GetMeta(self.Item)
 	if def then
 		if type(def.verifier) == "function" then
@@ -277,12 +280,12 @@ DefineClass.Effect_UnlockTrait = {
 	Description = T(8790, "<u(Trait)>"),
 }
 
-function Effect_UnlockTrait:OnInitEffect(city, parent)
+function Effect_UnlockTrait:OnInitEffect(colony, parent)
 	local trait = self.Trait
 	LockTrait(trait, parent.id)
 end
 
-function Effect_UnlockTrait:OnApplyEffect(city,parent)
+function Effect_UnlockTrait:OnApplyEffect(colony, parent)
 	local trait = self.Trait
 	UnlockTrait(trait, parent.id)
 end
@@ -298,8 +301,8 @@ DefineClass.Effect_UnlockDeeperDeposits = {
 	Description = T(8791, "<opt_amount(depth_levels)>"),
 }
 
-function Effect_UnlockDeeperDeposits:OnApplyEffect(city, parent)
-	city:IncrementDepositDepthExploitationLevel(self.depth_levels)
+function Effect_UnlockDeeperDeposits:OnApplyEffect(colony, parent)
+	colony:IncrementDepositDepthExploitationLevel(self.depth_levels)
 	UpdateScannedSectorVisuals("scanned")	
 end
 
@@ -318,16 +321,17 @@ DefineClass.Effect_ModifyConstructionCost = {
 	Description = T(8792, "<Building> <u(Stage)> <u(Resource)> <opt_percent(Percent)>"),
 }
 
-function Effect_ModifyConstructionCost:OnApplyEffect(city, parent)
+function Effect_ModifyConstructionCost:OnApplyEffect(colony, parent)
 	local category = self.Category
 	local resource = self.Resource
+	local construction_cost = UIColony.construction_cost
 	if category == "" then --when no category is selected, then we're modifying for a single building
 		if resource ~= "all" then --only 1 resource
-			city:ModifyConstructionCost("add", self.Building, resource, self.Percent, self.Stage)
+			construction_cost:ModifyConstructionCost("add", self.Building, resource, self.Percent, self.Stage)
 		else
 			--modify all construction resources
 			for i=1,#ConstructionResourceList do
-				city:ModifyConstructionCost("add", self.Building, ConstructionResourceList[i], self.Percent, self.Stage)
+				construction_cost:ModifyConstructionCost("add", self.Building, ConstructionResourceList[i], self.Percent, self.Stage)
 			end
 		end
 	else
@@ -342,13 +346,13 @@ function Effect_ModifyConstructionCost:OnApplyEffect(city, parent)
 		--same as above but for all buildings
 		if resource ~= "all" then
 			for i=1,#buildings do
-				city:ModifyConstructionCost("add", buildings[i], resource, self.Percent, self.Stage)
+				construction_cost:ModifyConstructionCost("add", buildings[i], resource, self.Percent, self.Stage)
 			end
 		else
 			for i=1,#buildings do
 				local building = buildings[i]
 				for j=1,#ConstructionResourceList do
-					city:ModifyConstructionCost("add", building, ConstructionResourceList[j], self.Percent, self.Stage)
+					construction_cost:ModifyConstructionCost("add", building, ConstructionResourceList[j], self.Percent, self.Stage)
 				end
 			end
 		end
@@ -368,11 +372,11 @@ DefineClass.Effect_GrantTech = {
 	Description = T(8793, "<u(Field)>.<u(Research)>"),
 }
 
-function Effect_GrantTech:OnApplyEffect(city, parent)
+function Effect_GrantTech:OnApplyEffect(colony, parent)
 	if self.Research == "" then
 		return
 	end
-	city:SetTechResearched(self.Research)
+	colony:SetTechResearched(self.Research)
 end
 
 ----
@@ -387,12 +391,12 @@ DefineClass.Effect_GrantPrefab = {
 	Description = T(12291, "<Amount> <Prefab>"),
 }
 
-function Effect_GrantPrefab:OnApplyEffect(city)
+function Effect_GrantPrefab:OnApplyEffect(colony)
 	local amount = self.Amount
 	local prefab = self.Prefab
 	if prefab == "DronePrefab" then
-		city.drone_prefabs = UICity.drone_prefabs + amount
+		MainCity.drone_prefabs = MainCity.drone_prefabs + amount
 	else
-		city:AddPrefabs(prefab, amount, false)
+		MainCity:AddPrefabs(prefab, amount, false)
 	end
 end

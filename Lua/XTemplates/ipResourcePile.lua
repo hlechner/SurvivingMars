@@ -25,7 +25,7 @@ PlaceObj('XTemplate', {
 					self:SetIcon("UI/Icons/IPButtons/urgent_priority.tga")
 				end
 				
-					self:SetVisible(UICity.mystery and UICity.mystery.class == "BlackCubeMystery" and UICity.mystery.can_destroy_cubes)
+					self:SetVisible(UIColony.mystery and UIColony.mystery.class == "BlackCubeMystery" and UIColony.mystery.can_destroy_cubes)
 			end,
 			'OnPressParam', "TogglePriority",
 			'AltPress', true,
@@ -33,7 +33,7 @@ PlaceObj('XTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'comment', "salvage",
 			'__context_of_kind', "BlackCubeStockpileBase",
-			'__condition', function (parent, context) return UICity.mystery and UICity.mystery_id=="BlackCubeMystery" and UICity.mystery.can_destroy_cubes end,
+			'__condition', function (parent, context) return UIColony.mystery and UIColony.mystery_id=="BlackCubeMystery" and UIColony.mystery.can_destroy_cubes end,
 			'__template', "InfopanelButton",
 			'RolloverHintGamepad', T(7657, --[[XTemplate ipResourcePile RolloverHintGamepad]] "<ButtonY> Activate"),
 			'OnContextUpdate', function (self, context, ...)
@@ -77,7 +77,7 @@ PlaceObj('XTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'__template', "InfopanelSection",
 			'OnContextUpdate', function (self, context, ...)
-				self:SetVisible(not IsKindOf(context, "BlackCubeStockpileBase") or UICity.mystery.can_destroy_cubes == true )
+				self:SetVisible(not IsKindOf(context, "BlackCubeStockpileBase") or UIColony.mystery.can_destroy_cubes == true )
 			end,
 			'Title', T(489, --[[XTemplate ipResourcePile Title]] "Available resources"),
 			'Icon', "UI/Icons/Sections/deposit.tga",

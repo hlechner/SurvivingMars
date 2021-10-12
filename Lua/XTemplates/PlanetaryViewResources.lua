@@ -107,13 +107,13 @@ PlaceObj('XTemplate', {
 				'Text', T(12112, --[[XTemplate PlanetaryViewResources Text]] "Research"),
 			}),
 			PlaceObj('XTemplateWindow', {
+				'comment', "Other Resources",
 				'__class', "XText",
-				'Id', "idTerraformingResourceLabel",
 				'Padding', box(0, 0, 0, 0),
 				'HandleMouse', false,
 				'TextStyle', "PGLandingPosDetails",
 				'Translate', true,
-				'HideOnEmpty', true,
+				'Text', T(744641294225, --[[XTemplate PlanetaryViewResources Text]] "Other Resources"),
 			}),
 			}),
 		PlaceObj('XTemplateWindow', {
@@ -205,7 +205,7 @@ PlaceObj('XTemplate', {
 			}),
 			PlaceObj('XTemplateWindow', {
 				'__class', "XText",
-				'Id', "idTerraformingResource",
+				'Id', "idOtherResources",
 				'Padding', box(0, 0, 0, 0),
 				'HandleMouse', false,
 				'TextStyle', "PGChallengeDescription",

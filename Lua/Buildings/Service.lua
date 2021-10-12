@@ -1,17 +1,10 @@
-local stat_scale = const.Scale.Stat
 DefineClass.StatsChange = {
-	__parents = { "Building"},
-	properties = {
-		{ category = "Service", template = true, modifiable = true, id = "health_change", name = T(728, "Health change on visit"), default = 0, scale = "Stat", editor = "number" },
-		{ category = "Service", template = true, modifiable = true, id = "sanity_change", name = T(729, "Sanity change on visit"), default = 0, scale = "Stat", editor = "number" },
-		{ category = "Service", template = true, modifiable = true, id = "service_comfort", name = T(730, "Service Comfort"), default = 40*stat_scale, editor = "number", scale = "Stat" },
-		{ category = "Service", template = true, modifiable = true, id = "comfort_increase", name = T(731, "Comfort increase on visit"), default = 10*stat_scale, editor = "number", scale = "Stat"},
-	},
+	__parents = { "StatsChangeBase", "Building"},
 }
 
 g_DiffDomeStrId = "_diff_dome"
 
-function StatsChange:Service(unit, duration, reason,comfort_threshold, interest)
+function StatsChange:Service(unit, duration, reason, comfort_threshold, interest)
 	-- comfort on visit
 	local comfort_threshold = comfort_threshold or self:GetEffectiveServiceComfort()
 	local is_diff_dome = self.parent_dome and unit.dome ~= self.parent_dome
@@ -30,22 +23,13 @@ function StatsChange:Service(unit, duration, reason,comfort_threshold, interest)
 		
 		unit:ChangeComfort(comfort_increase, reason)
 	end
-	
-	local performance = self:GetEffectivePerformance()
-	unit:ChangeHealth(self.health_change * performance / 100, reason)
-	unit:ChangeSanity(self.sanity_change * performance / 100, reason)
+
+	StatsChangeBase.Service(self, unit, reason)
+
 	self:ConsumeOnVisit(unit, interest)
 	if duration then
- 		unit:PlayPrg(GetVisitPrg(self), duration, self)
+		unit:PlayPrg(GetVisitPrg(self), duration, self)
 	end
-end
-
-function StatsChange:GetEffectiveServiceComfort()
-	return self.service_comfort
-end
-
-function StatsChange:GetEffectivePerformance()
-	return 100
 end
 
 local typeVisit = g_ConsumptionType.Visit
@@ -56,76 +40,14 @@ function StatsChange:ConsumeOnVisit(unit)
 end
 
 DefineClass.Service = {
-	__parents = { "StatsChange", "Holder" },
-	
-	properties = {
-		{  category = "Service", template = true, id = "interest1",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest2",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest3",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest4",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest5",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest6",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest7",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest8",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest9",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest10",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "interest11",   name = T(732, "Service interest"), default = "",  editor = "combo", items = function() return ServiceInterestsList end},
-		{  category = "Service", template = true, id = "max_visitors",    name = T(733, "Visitor slots per shift"), default = 5,  editor = "number", min = 1, modifiable = true}, 	
-		{  category = "Service", template = true, id = "visit_duration",  name = T(734, "Visit duration"),        	 default = 5,  editor = "number", min = 1, max = 10,  slider = true, modifiable = true}, 	
-		{  category = "Service", template = true, id = "usable_by_children",name = T(735, "Usable by children"),      default = false, editor = "bool"},
-		{  category = "Service", template = true, id = "children_only",   name = T(736, "Children Only"),           default = false, editor = "bool"},
-
-	},
-	visitors = false,  -- colonists arrays in this service building
-	visitors_per_day = false, 
-	visitors_lifetime = false,
+	__parents = { "StatsChange", "ServiceBase", "Holder" },
 }
-
-function Service:Init()
-	self.visitors = {}	
-	self.visitors_per_day = 0
-	self.visitors_lifetime = 0
-end
-
-function Service:Done()
-	self:OnDestroyed()
-end
-
-function Service:OnDestroyed()
-	local visitors = self.visitors
-	if #visitors == 0 then
-		return
-	end
-	for i = #visitors, 1, -1 do
-		local visitor = visitors[i]
-		if IsValid(visitor) then
-			self:Unassign(visitor)
-		end
-	end
-	self.visitors = {}
-end
 
 function Service:GetIPDescription()
 	return 
 		T{737, "<description>\nServices: <em><list></em>", 
 			description = self.description, 
 			list = self:IsKindOf("Service") and self:GetServiceList() or Service.GetServiceList(self)}
-end
-
-function Service:GetServiceList()
-	local interests = {}
-	interests[#interests + 1] = GetInterestDisplayName(self.interest1)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest2)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest3)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest4)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest5)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest6)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest7)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest8)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest9)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest10)
-	interests[#interests + 1] = GetInterestDisplayName(self.interest11)
-	return TList(interests)
 end
 
 function Service:SetCustomLabels(obj, add)
@@ -189,48 +111,33 @@ function Service:SetCustomLabels(obj, add)
 	end
 end
 
-function Service:IsOneOfInterests(interest)
-	return 
-		self.interest1 == interest 
-		or self.interest2 == interest
-		or self.interest3 == interest
-		or self.interest4 == interest
-		or self.interest5 == interest
-		or self.interest6 == interest
-		or self.interest7 == interest
-		or self.interest8 == interest
-		or self.interest9 == interest
-		or self.interest10 == interest
-		or self.interest11 == interest
-end
-
 function Service:BuildingDailyUpdate(...)
 	self.visitors_per_day = 0
 end
 
-function Service:HasFreeVisitSlots()
-	return #self.visitors < self.max_visitors
+function Service:CanBeUsedBy(colonist)
+	if not self.working then
+		return false, ServiceFailure.Closed
+	else
+		return ServiceBase.CanBeUsedBy(self, colonist)
+	end
 end
 
 function Service:CanService(unit)
-	local is_child = unit.traits["Child"]
-	if is_child and not self.usable_by_children or not is_child and self.children_only then
-		return false
+	if ServiceBase.CanService(self, unit) then
+		local insufficient_consumptions = self:DoesHaveConsumption() and self.consumption_type == g_ConsumptionType.Visit and self.consumption_stored_resources <= 0
+		return not insufficient_consumptions
 	end
-	if self:DoesHaveConsumption() and self.consumption_type == g_ConsumptionType.Visit and self.consumption_stored_resources <= 0 then
-		return false
-	end
-	return true
+	return false
 end
 
 function Service:Assign(unit)
-	assert(self:HasFreeVisitSlots())
-	table.insert(self.visitors, unit)
+	ServiceBase.Assign(self, unit)
 	self:UpdateServiceOccupation()
 end
 
 function Service:Unassign(unit)
-	table.remove_entry(self.visitors, unit)
+	ServiceBase.Unassign(self, unit)
 	self:UpdateServiceOccupation()
 end
 
@@ -239,9 +146,7 @@ function Service:UpdateServiceOccupation()
 end
 
 function Service:Service(unit, duration, daily_interest)
-	self.visitors_per_day = self.visitors_per_day + 1
-	self.visitors_lifetime = self.visitors_lifetime + 1
-	duration = duration or self.visit_duration * const.HourDuration
+	duration = ServiceBase.ServiceInternal(self, unit, duration, daily_interest)
 	local comfort_threshold = self:GetEffectiveServiceComfort()
 	local reason
 	if unit.traits.Extrovert and self:IsOneOfInterests("interestSocial") and unit.dome and #unit.dome.labels.Colonist>30 then -- party animal		

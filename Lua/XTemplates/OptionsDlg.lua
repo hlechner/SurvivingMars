@@ -10,7 +10,7 @@ PlaceObj('XTemplate', {
 		'__class', "XDialog",
 		'HandleMouse', true,
 		'InitialMode', "options",
-		'InternalModes', "options,properties,items,controller, credits,mod_options,mod_choice",
+		'InternalModes', "options,properties,items,controller,credits,mod_options,mod_choice,dlc_info",
 	}, {
 		PlaceObj('XTemplateFunc', {
 			'name', "OnDelete",
@@ -67,7 +67,7 @@ PlaceObj('XTemplate', {
 		'__template', "NewOverlayDlg",
 		'HandleMouse', true,
 		'InitialMode', "options",
-		'InternalModes', "options,properties,items,mod_options,mod_choice",
+		'InternalModes', "options,properties,items,mod_options,mod_choice,dlc_info",
 	}, {
 		PlaceObj('XTemplateFunc', {
 			'name', "OnDelete",

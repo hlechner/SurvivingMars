@@ -1,12 +1,27 @@
-GlobalVar("MapLowestZ", max_int)
-GlobalVar("MapHighestZ", 0)
+GlobalVar("MapLowestZ", {})
+GlobalVar("MapHighestZ", {})
 
-function OnMsg.NewMapLoaded()
-	if MapLowestZ == max_int and not mapdata.IsPrefabMap then
-		local tavg, tmin, tmax = terrain.GetAreaHeight()
-		MapLowestZ = tmin
-		MapHighestZ = tmax
+local function FillMapExtremeValues(map_id)
+	local map_data = ActiveMaps[map_id]
+	if not MapLowestZ[map_id] and not map_data.IsPrefabMap then
+		local tavg, tmin, tmax = GetTerrainByID(map_id):GetAreaHeight()
+		MapLowestZ[map_id] = tmin
+		MapHighestZ[map_id] = tmax
 	end
+end
+
+function SavegameFixups.Elevation_Multimap()
+	MapLowestZ = {}
+	MapHighestZ = {}
+	FillMapExtremeValues(MainMapID)
+end
+
+function OnMsg.NewMapLoaded(map_id)
+	FillMapExtremeValues(map_id)
+end
+
+function OnMsg.PreSwitchMap(prev_map_id, map_id)
+	FillMapExtremeValues(map_id)
 end
 
 ----- MinimumElevationMarker is used to determine lowest point on map
@@ -37,12 +52,13 @@ function MinimumElevationMarker:GameInit()
 		print("Killing extra MinimumElevationMarkers!")
 		DoneObject(self)
 	end
-	if MapLowestZ == max_int then
-		MapLowestZ = self:GetVisualPos():z()
+	local map_id = self:GetMapID()
+	if MapLowestZ[map_id] == max_int then
+		MapLowestZ[map_id] = self:GetVisualPos():z()
 	end
 	there_can_be_only_one_height_marker = self
 end
 
-function GetElevation(pos)
-	return pos:z() and (Max(pos:z() - MapLowestZ, 0) / guim) or 0
+function GetElevation(pos, map_id)
+	return pos:z() and (Max(pos:z() - MapLowestZ[map_id], 0) / guim) or 0
 end

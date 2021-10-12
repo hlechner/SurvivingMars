@@ -1,8 +1,18 @@
-GlobalVar("g_MapSectors", {})
-GlobalVar("g_ExplorationQueue", {})
+GlobalVar("g_MapSectors", {}) -- Deprecated
+GlobalVar("g_ExplorationQueue", {}) -- Deprecated
+GlobalVar("g_InitialSector", false) -- Deprecated
+GlobalVar("g_MapArea", false) -- Deprecated
 GlobalVar("g_ExplorationNotificationShown", false)
-GlobalVar("g_InitialSector", false)
-GlobalVar("g_MapArea", false)
+GlobalVar("DeepSectorsScanned", 0)
+
+DefineClass.Exploration = {
+	MapSectors = {},
+	ExplorationQueue = {},
+	ExplorationNotificationShown = false,
+	InitialSector = false,
+	MapArea = false,
+	DialogType = "",
+}
 
 SectorStatusToDisplay = {
 	["unexplored"] = T(976, "Unexplored"),
@@ -24,33 +34,19 @@ DefineClass.RevealedMapSector = {
 }
 
 function RevealedMapSector:GameInit()
-	if self.sector_x > 0 and self.sector_y > 0 and #g_MapSectors > 0 and self.status ~= "unexplored" then
-		--printf("loaded map sector %s: %s", g_MapSectors[self.sector_x][self.sector_y].id, self.status)
-		local sector = g_MapSectors[self.sector_x][self.sector_y]
+	local city = UICity
+	if self:GetMapID() ~= city.map_id then
+		return
+	end
+	if self.sector_x > 0 and self.sector_y > 0 and #city.MapSectors > 0 and self.status ~= "unexplored" then
+		--printf("loaded map sector %s: %s", city.MapSectors[self.sector_x][self.sector_y].id, self.status)
+		local sector = city.MapSectors[self.sector_x][self.sector_y]
 		if sector.status == "unexplored" or sector.status == "scanned" and self.status == "deep scanned" then
-		sector.revealed_obj = self
-		sector:Scan(self.status)
-	end
-end
-end
---[[
-function MergeRevealed()
-	local objs = GetObjects{class = "RevealedMapSector", area = "realm"}
-	for i = 1, #objs do
-		local obj = objs[i]
-		local sector = g_MapSectors[obj.sector_x][obj.sector_y]
-		sector.revealed_obj = sector.revealed_obj or obj
-		if sector.revealed_obj.status == "unexplored" and obj.status ~= "unexplored" then
-			sector.revealed_obj.status = obj.status
-		end
-		if sector.revealed_obj.status == "scanned" and obj.status ~= "deep scanned" then
-			sector.revealed_obj.status = obj.status
-		end
-		if obj ~= sector.revealed_obj then
-			DoneObject(obj)
+			sector.revealed_obj = self
+			sector:Scan(self.status)
 		end
 	end
-end--]]
+end
 
 local function GoToOverview()
 	local dlg = GetInGameInterface()
@@ -58,17 +54,23 @@ local function GoToOverview()
 		dlg:SetMode("overview")
 	end
 end
+
 local function GoToSector(obj, params)
-	local sector = g_MapSectors[params.x][params.y]
+	local sector = UICity.MapSectors[params.x][params.y]
 	ViewObjectMars(sector.area:Center())
 end
-function UnexploredSectorsExist()
+
+function UnexploredSectorsExist(city)
 	local can_scan
 	local fully_scanned = true
 
-	local sectors = g_MapSectors
+	local sectors = city.MapSectors
+	if not sectors then return can_scan, false end
+	
 	for x = 1, const.SectorCount do
 		local sectors = sectors[x]
+		if not sectors then return can_scan, false end
+		
 		for y = 1, const.SectorCount do
 			local sector = sectors[y]
 			if sector:CanBeScanned() then
@@ -81,6 +83,7 @@ function UnexploredSectorsExist()
 	end
 	return can_scan, fully_scanned
 end
+
 local function SetSectorSubsurfaceDepositsVisibleExpiration(sector, expiration)
 	local function show_markers(markers)
 		if not markers then
@@ -96,6 +99,34 @@ local function SetSectorSubsurfaceDepositsVisibleExpiration(sector, expiration)
 	
 	show_markers(sector.markers.subsurface)
 	show_markers(sector.markers.deep)
+end
+
+local function AddSectorScannedNotification(sector, status, old_status)
+	Sleep(10) -- allow newly placed deposits to GameInit properly
+	
+	local texts = {}
+	sector:GatherDiscoveredDepositsTexts(texts, "short", "new")
+	
+	local results
+	if #texts == 0 then
+		results = T(980, "No resources")
+	else		
+		results = table.concat(texts, " ")
+	end
+	
+	DeepSectorsScanned = DeepSectorsScanned + (status == "deep scanned" and 1 or 0)
+	
+	AddOnScreenNotification("SectorScanned", GoToSector, {name = sector.display_name, results = results, x = sector.col, y = sector.row}, nil, sector.city.map_id)
+	Msg("SectorScanned", status, sector.col, sector.row)
+	local research_points = GetMissionSponsor().research_points_per_explored_sector or 0
+	if research_points > 0 and GameTime() > 100 then
+		GrantResearchPoints(research_points)
+	end
+	local expiration = OnScreenNotificationPresets["SectorScanned"].expiration
+	SetSectorSubsurfaceDepositsVisibleExpiration(sector, expiration)
+	
+	sector.revealed_surf = nil
+	sector.revealed_deep = nil
 end
 
 DefineClass.MapSector = {
@@ -146,18 +177,17 @@ function MapSector:CanBeScanned()
 	return g_Consts.DeepScanAvailable ~= 0
 end
 
-GlobalVar("MapSectorNotifyThread", false)
 
-local function CheckScanAvailability()
+function Exploration:CheckScanAvailability()
 	-- scan availability notification
-	local can_scan, fully_scanned = UnexploredSectorsExist()
+	local can_scan, fully_scanned = UnexploredSectorsExist(self)
 	if not can_scan then
-		RemoveOnScreenNotification("SectorScanAvailable")
+		RemoveOnScreenNotification("SectorScanAvailable", self.map_id)
 	end
 	if fully_scanned then
-		MapDelete(true, "OrbitalProbe")
+		GetRealm(self):MapDelete(true, "OrbitalProbe")
 	end
-	RefreshSectorInfopanel(g_ExplorationQueue[1])
+	RefreshSectorInfopanel(self.ExplorationQueue[1])
 end
 
 local function OnDepositsSpawned()
@@ -191,9 +221,7 @@ function MapSector:HasMarkersOfType(class, list)
 		end
 	end
 end
-
-GlobalVar("DeepSectorsScanned", 0)
-
+	
 function MapSector:Scan(status, scanner)
 	if status == "unexplored" or status == self.status then
 		return
@@ -202,9 +230,9 @@ function MapSector:Scan(status, scanner)
 	
 	-- exploration queue
 	self:RemoveFromQueue()
-	DelayedCall(0, CheckScanAvailability)
+	DelayedCall(0, self.city.CheckScanAvailability, self.city)
 	
-	if self:RevealDeposits(self.markers.block, self.deposits.block) > 0 then
+	if RevealDeposits(self.markers.block, self.deposits.block) > 0 then
 		Msg("ExplorationBlockerSpawned")
 	end
 	if self:HasBlockers() then
@@ -218,7 +246,7 @@ function MapSector:Scan(status, scanner)
 	self.blocked_scanner = nil
 	
 	-- save map compatibility	
-	self.revealed_obj = self.revealed_obj or RevealedMapSector:new{sector_x = self.col, sector_y = self.row}
+	self.revealed_obj = self.revealed_obj or RevealedMapSector:new({sector_x = self.col, sector_y = self.row}, self:GetMapID())
 	self.revealed_obj.status = status
 	self.revealed_surf = {}
 	self.revealed_deep = {}
@@ -226,13 +254,13 @@ function MapSector:Scan(status, scanner)
 	-- spawn deposits
 	local placed = 0
 	if self.status == "unexplored" then
-		placed = placed + self:RevealDeposits(self.markers.surface, self.deposits.surface, nil, self.revealed_surf)
-		placed = placed + self:RevealDeposits(self.markers.subsurface, self.deposits.subsurface, nil, self.revealed_deep)
+		placed = placed + RevealDeposits(self.markers.surface, self.deposits.surface, nil, self.revealed_surf)
+		placed = placed + RevealDeposits(self.markers.subsurface, self.deposits.subsurface, nil, self.revealed_deep)
 	end
 	if status == "deep scanned" then	
-		placed = placed + self:RevealDeposits(self.markers.deep, self.deposits.deep, nil, self.revealed_deep)
+		placed = placed + RevealDeposits(self.markers.deep, self.deposits.deep, nil, self.revealed_deep)
 	elseif status == "scanned" and scanner == "probe" and GetMissionSponsor().id == "BlueSun" then
-		placed = placed + self:RevealDeposits(self.markers.deep, self.deposits.deep, "PreciousMetals", self.revealed_deep)
+		placed = placed + RevealDeposits(self.markers.deep, self.deposits.deep, "PreciousMetals", self.revealed_deep)
 	end	
 	if placed > 0 then
 		DelayedCall(0, OnDepositsSpawned) --@ end of current tick
@@ -246,37 +274,11 @@ function MapSector:Scan(status, scanner)
 	self:UpdateDecal()
 	
 	-- scan notification & results
-	DeleteThread(self.notify_thread)
-	self.notify_thread = CreateGameTimeThread(function(self, status, old_status)
-		Sleep(10) -- allow newly placed deposits to GameInit properly
-		
-		local texts = {}
-		self:GatherResourceTexts(texts, old_status, "short", "new")
-		
-		local results
-		if #texts == 0 then
-			results = T(980, "No resources")
-		else		
-			results = table.concat(texts, " ")
-		end
-		
-		DeepSectorsScanned = DeepSectorsScanned + (status == "deep scanned" and 1 or 0)
-		
-		AddOnScreenNotification("SectorScanned", GoToSector, {name = self.display_name, results = results, x = self.col, y = self.row})
-		Msg("SectorScanned", status, self.col, self.row)
-		local research_points = GetMissionSponsor().research_points_per_explored_sector or 0
-		if research_points > 0 and GameTime() > 100 then
-			GrantResearchPoints(research_points)
-		end
-		local expiration = OnScreenNotificationPresets["SectorScanned"].expiration
-		SetSectorSubsurfaceDepositsVisibleExpiration(self, expiration)
-		
-		self.revealed_surf = nil
-		self.revealed_deep = nil
-	end, self, status, old_status)
-
-	-- infopanels
-	RefreshSectorInfopanel(self)
+	if IsExplorationAvailable_Queue(self.city) then
+		DeleteThread(self.notify_thread)
+		self.notify_thread = CreateGameTimeThread(AddSectorScannedNotification, self, status, old_status)
+		RefreshSectorInfopanel(self)
+	end
 end
 
 function MapSector:GetTowerBoost(city)
@@ -309,25 +311,30 @@ function MapSector:RemoveFromQueue()
 		self.queue_text = nil
 	end
 	
-	local idx = table.find(g_ExplorationQueue, self)
+	local idx = table.find(self.city.ExplorationQueue, self)
 	if idx then
-		table.remove(g_ExplorationQueue, idx)		
+		table.remove(self.city.ExplorationQueue, idx)		
 		if idx == 1 then
 			self:SetScanFx(false)
-			if #g_ExplorationQueue > 0 and GetInGameInterfaceMode() == "overview" then
-				g_ExplorationQueue[1]:SetScanFx(true)
+			if #self.city.ExplorationQueue > 0 and GetInGameInterfaceMode() == "overview" then
+				self.city.ExplorationQueue[1]:SetScanFx(true)
 			end			
 		end
-		DisplayExplorationQueue()
+		ShowExploration_Queue(self.city)
 	end
 end
 
 function MapSector:SetScanFx(enable, initial)
 	if enable and not IsValid(self.scan_obj) then
-		self.scan_obj = PlaceParticles("SensorTower_Sector_Scan")
+		local map_id = self:GetMapID()
+		self.scan_obj = PlaceParticlesIn("SensorTower_Sector_Scan", map_id)
 		self.scan_obj:SetPos(self:GetPos())
 		if not initial then
-			PlayFX("SectorScan", "start") -- for sound
+			PlayFX({
+				actionFXClass = "SectorScan",
+				actionFXMoment = "start",
+				action_map_id = map_id,
+			})
 		end
 	elseif not enable then
 		if IsValid(self.scan_obj) then
@@ -343,12 +350,12 @@ function MapSector:UpdateDecal()
 		self.decal = nil		
 	end
 	if self:HasBlockers() then
-		self.decal = PlaceObject("SectorUnexplored")
+		self.decal = PlaceObjectIn("SectorUnexplored", self:GetMapID())
 		self.decal:SetColorModifier(red)
 	elseif self.status == "unexplored" then
-		self.decal = PlaceObject("SectorUnexplored")
+		self.decal = PlaceObjectIn("SectorUnexplored", self:GetMapID())
 	elseif self.status == "scanned" and UICity and g_Consts.DeepScanAvailable ~= 0 then
-		self.decal = PlaceObject("SectorScanned")
+		self.decal = PlaceObjectIn("SectorScanned", self:GetMapID())
 	end	
 
 	if IsValid(self.decal) then
@@ -360,82 +367,6 @@ function MapSector:UpdateDecal()
 		self.decal:SetScale(MulDivRound(self.area:sizex(), 100, 100*guim)+1) -- +1 to compensate rounding error
 	end
 end
-
---[[
-function IsDepositObstructed_Lua(x, y, radius)
-	local q, r = WorldToHex(x, y)
-	if HexGetBuildingOrCable(q, r) then
-		return true
-	end
-	
-	-- check surronding hexes if the area overlaps them
-	local pos = point(x, y)
-	local center = point(HexToWorld(q, r))
-	for i = 1, #HexSurroundingsCheckShape do
-		local dq, dr = HexSurroundingsCheckShape[i]:xy()
-		
-		if dq ~= 0 or dr ~= 0 then
-			local adj_center = point(HexToWorld(q+dq, r+dr))
-			local v = adj_center - center
-
-			local edge_center = center + v/2		
-			local edge_vector = SetLen(point(v:y(), -v:x()), const.HexSize)
-			
-			if IntersectLineWithCircle2D(edge_center - edge_vector/2, edge_center + edge_vector/2, pos, radius) then
-				if HexGetBuildingOrCable(q+dq, r+dr) then
-					return true
-				end
-			end
-		end
-	end
-	
-	return false
-end
-
-local IsDepositObstructed_C = IsDepositObstructed
-function IsDepositObstructed(...)
-	local res1 = IsDepositObstructed_Lua(...) or false
-	local res2 = IsDepositObstructed_C(...) or false
-	assert(res1 == res2)
-	return res2
-end
---]]
-
---[[
-function dbgHexObstructors(radius)
-	DbgClearVectors()
-	
-	local pt = GetTerrainCursor()
-	radius = radius or 3*guim
-	
-	local q, r = WorldToHex(pt)
-	
-	local center = point(HexToWorld(q, r)):SetTerrainZ()
-	
-	DbgAddVector(center, point(0, 0, 10*guim), RGB(0, 255, 0))
-	DbgAddCircle(center, const.HexSize, RGB(0, 255, 0))
-	
-	DbgAddCircle(pt, radius, RGB(255, 0, 255))
-	
-	for i = 1, #HexSurroundingsCheckShape do
-		local dq, dr = HexSurroundingsCheckShape[i]:xy()
-		
-		if dq ~= 0 or dr ~= 0 then
-			local adj = point(HexToWorld(q+dq, r+dr)):SetTerrainZ()
-			local v = adj - center
-			local edge_center = center + v/2
-			DbgAddVector(center, v, RGB(255, 255, 0))
-			
-			local edge_vector = SetLen(point(v:y(), -v:x()), const.HexSize)
-			
-			if IntersectLineWithCircle2D(edge_center - edge_vector/2, edge_center + edge_vector/2, pt, radius) then
-				DbgAddVector(edge_center - edge_vector/2, edge_vector, RGB(255, 0, 0))
-			else
-				DbgAddVector(edge_center - edge_vector/2, edge_vector, RGB(0, 255, 255))
-			end
-		end
-	end
-end--]]
 
 function MapSector:GetDepositList(marker)
 	local depth_class = marker:GetDepthClass()
@@ -460,32 +391,38 @@ function MapSector:UnregisterDeposit(marker)
 	end
 end
 
-function GetMapSectorTile()
-	local border = mapdata.PassBorder or 0
-	local width = terrain.GetMapWidth()
-	local height = terrain.GetMapHeight()
+function GetMapSectorTile(map_id)
+	local map_data = ActiveMaps[map_id]
+	local border = map_data.PassBorder or 0
+	local terrain = GetTerrainByID(map_id)
+	local width = terrain:GetMapWidth()
+	local height = terrain:GetMapHeight()
 	assert(width == height) -- the selection art assumes square shape
 	return (width - 2 * border) / 10
 end
 
-local function PosToSectorXY(x, y)
-	assert(hr.CameraRTSBorderAtMinZoom == hr.CameraRTSBorderAtMaxZoom)
-	local border = mapdata.PassBorder or 0
+local function PosToSectorXY(map_id, x, y)
+	local map_data = ActiveMaps[map_id]
+	local border = map_data.PassBorder or 0
 	x, y = x - border, y - border	
-	local tile = GetMapSectorTile()
+	local tile = GetMapSectorTile(map_id)
 	return Clamp(1 + x / tile, 1, 10), Clamp(1 + y / tile, 1, 10)
 end
 
-function MapSector:RevealDeposits(list, amounts, resource, revealed_list)
-	local city = UICity
+function RevealDepositsInRange(realm, position, range)
+	local markers = realm:MapGet(position, range, "DepositMarker")
+	return RevealDeposits(markers)
+end
+
+function RevealDeposits(list, resource_amount, resource, revealed_list)
 	local placed = 0
 	for i = 1, #(list or "") do
 		local marker = list[i]
 		if IsValid(marker) and not marker.is_placed and (not resource or marker.resource == resource) then
 			local deposit = marker:PlaceDeposit()
 			if deposit then
-				if amounts and deposit.resource then
-					amounts[deposit.resource] = (amounts[deposit.resource] or 0) + deposit.max_amount
+				if resource_amount and deposit.resource then
+					resource_amount[deposit.resource] = (resource_amount[deposit.resource] or 0) + deposit.max_amount
 				end
 				placed = placed + 1
 				if revealed_list then
@@ -500,98 +437,177 @@ function MapSector:RevealDeposits(list, amounts, resource, revealed_list)
 	return placed
 end
 
-local function ProcessDepositMarkers(markers, amounts)
+local function InitDepositInfoTable()
+	local deposits = {}
+	for _, deposit_desc in ipairs(DepositDescription) do
+		deposits[deposit_desc.name] = { amount = 0, count = 0 }
+		local deposit = deposits[deposit_desc.name]
+		deposit[1] = { amount = 0, count = 0 } -- surface
+		deposit[2] = { amount = 0, count = 0 } -- subsurface
+	end
+	return deposits
+end
+
+local function ProcessDepositMarkers(markers, deposits, level)
 	for i = 1, #markers do
 		local marker = markers[i]
 		local deposit = marker.placed_obj
 		if marker.is_placed and IsValid(deposit) and IsKindOf(deposit, "Deposit") then
 			local resource = deposit.resource
-			local amount = 0
-			
-			if IsKindOf(deposit, "SurfaceDeposit") then
-				amount = deposit:GetAmount()
-			elseif IsKindOf(deposit, "SubsurfaceDeposit") and not TerrainDeposits[resource] then
-				amount = deposit.amount
-			elseif IsKindOf(deposit, "TerrainDeposit") then
-				amount = deposit:GetAmount()
-			end
-			
-			if amount > 0 then
-				amounts[resource] = (amounts[resource] or 0) + amount
+			if deposits[resource] then
+				local amount = 0
+				
+				if IsKindOf(deposit, "SurfaceDeposit") then
+					amount = deposit:GetAmount()
+				elseif IsKindOf(deposit, "SubsurfaceDeposit") and not TerrainDeposits[resource] then
+					amount = deposit.amount
+				elseif IsKindOf(deposit, "TerrainDeposit") then
+					amount = deposit:GetAmount()
+				end
+				
+				if amount > 0 then
+					local deposit = deposits[resource]
+					deposit.amount = (deposit.amount or 0) + amount
+					deposit.count = (deposit.count or 0) + 1
+
+					local deposit_level = deposits[resource][level]
+					deposit_level.amount = (deposit_level.amount or 0) + amount
+					deposit_level.count = (deposit_level.count or 0) + 1
+				end
 			end
 		end
 	end
 end
 
-function MapSector:GatherResourceTexts(texts, prev_status, short, new_only)
+local function FormatResourceTexts(deposits, short, texts)
+	local count = #texts
+	for _, resource_desc in ipairs(DepositDescription) do
+		if not resource_desc.hidden or Platform.developer then
+			local res = resource_desc.name
+			for i = 1, 2 do
+				local deposit = deposits[res][i]
+				local amount = deposit.amount
+				local count = deposit.count
+
+				local indicate_subsurface = i == 2 and resource_desc.multi_surface
+				local resource_icon = indicate_subsurface and res.."Deep" or res
+				local display_name = resource_desc.display_name
+
+				if amount and amount > 0 then
+					if short then
+						texts[#texts + 1] = T{722, "<resource(amount,res)>",
+							amount = amount,
+							res = resource_icon}
+					else
+						if count then
+							local resource_prefix = indicate_subsurface and T(13612, "Underground ") or ""
+							texts[#texts + 1] = T{13613, "<nodes> <resource_prefix><display_name><right><resource(amount,res)>",
+								amount = amount,
+								res = resource_icon,
+								display_name = display_name,
+								nodes=count,
+								resource_prefix=resource_prefix}
+						elseif indicate_subsurface then
+							texts[#texts + 1] = T{981, "Underground <display_name><right><resource(amount,res)>",
+								amount = amount, 
+								res = resource_icon,
+								display_name = display_name}
+						else
+							texts[#texts + 1] = T{982, "<display_name><right><resource(amount,res)>",
+								amount = amount,
+								res = resource_icon,
+								display_name = display_name}
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function MapSector:GatherDiscoveredDeposits(new_only)
+	local deposits = InitDepositInfoTable()
+	
+	if new_only then
+		ProcessDepositMarkers(self.revealed_surf, deposits, 1)
+		ProcessDepositMarkers(self.revealed_deep, deposits, 2)
+	else	
+		ProcessDepositMarkers(self.markers.surface, deposits, 1)
+		ProcessDepositMarkers(self.markers.subsurface, deposits, 2)
+		ProcessDepositMarkers(self.markers.deep, deposits, 2)
+	end
+	
+	return deposits
+end
+
+function MapSector:GatherDiscoveredDepositsTexts(texts, short, new_only)
 	if self.status == "unexplored" then
 		return
 	end
 
-	local amounts = { {}, {} } -- [1] is surface amounts, [2] is subsurface amounts
-	
-	if new_only then
-		ProcessDepositMarkers(self.revealed_surf, amounts[1])
-		ProcessDepositMarkers(self.revealed_deep, amounts[2])
-	else	
-		ProcessDepositMarkers(self.markers.surface, amounts[1])
-		ProcessDepositMarkers(self.markers.subsurface, amounts[2])
-		ProcessDepositMarkers(self.markers.deep, amounts[2])
-	end
-	
-	local count = #texts
-	for _, resource_desc in ipairs(ResourceDescription) do
-		local res = resource_desc.name
-		for i = 1, 2 do 
-			local amount = amounts[i][res]
-			local show_subsurface_icon = i == 2 and res == "Metals"
-			if amount and amount > 0 then
-				if short then
-					texts[#texts + 1] = T{722, "<resource(amount,res)>", 
-							amount = amount, 
-							res = show_subsurface_icon and res.."Deep" or res}
-				elseif show_subsurface_icon then
-					texts[#texts + 1] = T{981, "Underground <display_name><right><resource(amount,res)>", 
-							amount = amount, 
-							res = show_subsurface_icon and res.."Deep" or res,
-							resource_desc}
-				else
-					texts[#texts + 1] = T{982, "<display_name><right><resource(amount,res)>", 
-							amount = amount, 
-							res = res, 
-							resource_desc}
-					end
-			end
+	local deposits = self:GatherDiscoveredDeposits(new_only)
+	FormatResourceTexts(deposits, short, texts)
+end
+
+function Exploration:GatherDiscoveredDeposits()
+	local deposits = InitDepositInfoTable()
+
+	for j = 1, const.SectorCount do
+		local row = self.MapSectors[j]
+		for i = 1, const.SectorCount do
+			local sector = row[i]
+			
+			ProcessDepositMarkers(sector.markers.surface, deposits, 1)
+			ProcessDepositMarkers(sector.markers.subsurface, deposits, 2)
+			ProcessDepositMarkers(sector.markers.deep, deposits, 2)
 		end
 	end
---[[	if #texts > count then
-		table.insert(texts, count+1, T{"Deposit Resources:"})
-	end]]--
+
+	return deposits
+end
+
+function Exploration:GatherDiscoveredDepositsTexts(texts, short)
+	local deposits = self:GatherDiscoveredDeposits()
+	FormatResourceTexts(deposits, short, texts)
+end
+
+function IsExplorationAvailable_Queue(city)
+	local map_data = ActiveMaps[city.map_id]
+	return map_data.Environment ~= "Asteroid" and map_data.Environment ~= "Underground"
+end
+
+function IsExplorationAvailable_Sectors(city)
+	local map_data = ActiveMaps[city.map_id]
+	return map_data.Environment ~= "Asteroid"
 end
 
 function MapSector:QueueForExploration(add_first)
 	if g_Tutorial and not g_Tutorial.EnableExploration then
 		return
 	end
-
-	PlayFX("SectorClick", "start")
+	if not IsExplorationAvailable_Queue(self.city) then return end
+	PlayFX({
+		actionFXClass = "SectorClick",
+		actionFXMoment = "start",
+		action_map_id = self:GetMapID(),
+	})
 	local max = const.ExplorationQueueMaxSize
-	local queued = #g_ExplorationQueue 
+	local queued = #self.city.ExplorationQueue 
 	if self:CanBeScanned() and queued <= max then
-		local idx = table.find(g_ExplorationQueue, self)
+		local idx = table.find(self.city.ExplorationQueue, self)
 		if idx and idx>1 and add_first then
 			self:RemoveFromExplorationQueue(idx)
 			self:QueueForExploration(add_first)
 		elseif not idx and queued < max then
 			if add_first then
-				table.insert(g_ExplorationQueue,1,self)
+				table.insert(self.city.ExplorationQueue,1,self)
 			else
-				g_ExplorationQueue[#g_ExplorationQueue + 1] = self
+				self.city.ExplorationQueue[#self.city.ExplorationQueue + 1] = self
 			end	
-			DisplayExplorationQueue()
-			if #g_ExplorationQueue == 1 or add_first then
-				if add_first and g_ExplorationQueue[2] then
-					g_ExplorationQueue[2]:SetScanFx(false)
+			ShowExploration_Queue(self.city)
+			if #self.city.ExplorationQueue == 1 or add_first then
+				if add_first and self.city.ExplorationQueue[2] then
+					self.city.ExplorationQueue[2]:SetScanFx(false)
 				end
 				self:SetScanFx(true)
 			end
@@ -601,31 +617,36 @@ function MapSector:QueueForExploration(add_first)
 			return false
 		end
 	end
-	PlayFX("SectorScanInvalid", "start", nil, nil, self.area:Center():SetTerrainZ())
+	PlayFX({
+		actionFXClass = "SectorScanInvalid",
+		actionFXMoment = "start",
+		action_pos = self.area:Center():SetTerrainZ(),
+		action_map_id = self:GetMapID(),
+	})
 	return false
 end
 
 function MapSector:RemoveFromExplorationQueue(idx)
-	local idx = idx or table.find(g_ExplorationQueue, self)
+	local idx = idx or table.find(self.city.ExplorationQueue, self)
 	if idx then
 		PlayFX("SectorCancel", "start")
-		table.remove(g_ExplorationQueue, idx)
+		table.remove(self.city.ExplorationQueue, idx)
 		if self.queue_text then
 			DoneObject(self.queue_text)
 			self.queue_text = nil
 		end
 		if idx == 1 then
 			self:SetScanFx(false)
-			if #g_ExplorationQueue > 0 then
-				g_ExplorationQueue[1]:SetScanFx(true)			
+			if #self.city.ExplorationQueue > 0 then
+				self.city.ExplorationQueue[1]:SetScanFx(true)			
 			end
 		end
-		DisplayExplorationQueue()
+		ShowExploration_Queue(self.city)
 		return true
 	end
 end
 
-function GetMapSector(x, y)
+function GetMapSector(city, x, y)
 	if IsPoint(x) then
 		x, y = x:xy()
 	elseif IsValid(x) then
@@ -633,22 +654,26 @@ function GetMapSector(x, y)
 	elseif not x then
 		return
 	end
-	return GetMapSectorXY(x, y)
+	return GetMapSectorXY(city, x, y)
 end
 
-function GetMapSectorXY(mx, my)
-	local x, y = PosToSectorXY(mx, my)
-	local row = x and g_MapSectors[x]
+function GetMapSectorXY(city, mx, my)
+	local x, y = PosToSectorXY(city.map_id, mx, my)
+	local row = x and city.MapSectors and city.MapSectors[x]
 	return row and row[y]
 end
 
-function DisplayExplorationQueue(initial) -- create/update visuals
+function ShowExploration_Queue(city, initial)
+	if not city then
+		return
+	end
+
 	if GetInGameInterfaceMode() ~= "overview" then
 		return
 	end
 	
-	for i = 1, #g_ExplorationQueue do
-		local sector = g_ExplorationQueue[i]
+	for i = 1, #city.ExplorationQueue do
+		local sector = city.ExplorationQueue[i]
 		if i == 1 then
 			if sector.queue_text then
 				DoneObject(sector.queue_text)
@@ -659,7 +684,7 @@ function DisplayExplorationQueue(initial) -- create/update visuals
 			end
 		else
 			if not sector.queue_text then
-				sector.queue_text = PlaceObject("Text",{text_style = "ExplorationSector"})
+				sector.queue_text = PlaceObjectIn("Text", city:GetMapID(), {text_style = "ExplorationSector"})
 			end
 			sector.queue_text:SetText("" .. (i-1))
 			sector.queue_text:SetPos(sector.area:Center())
@@ -667,21 +692,26 @@ function DisplayExplorationQueue(initial) -- create/update visuals
 	end
 end
 
-function HideExplorationQueue()
-	for i = 1, #g_ExplorationQueue do
-		local sector = g_ExplorationQueue[i]
-		if sector.queue_text then
-			DoneObject(sector.queue_text)
-			sector.queue_text = nil
+function HideExploration_Queue(city)
+	if city then
+		for i = 1, #city.ExplorationQueue do
+			local sector = city.ExplorationQueue[i]
+			if sector.queue_text then
+				DoneObject(sector.queue_text)
+				sector.queue_text = nil
+			end
 		end
-	end
-	if #g_ExplorationQueue > 0 then
-		g_ExplorationQueue[1]:SetScanFx(false)
+		if #city.ExplorationQueue > 0 then
+			city.ExplorationQueue[1]:SetScanFx(false)
+		end
 	end
 end
 
-function ShowExploration(time)
-	local sectors = g_MapSectors
+function ShowExploration_Sectors(city, time)
+	if not city then
+		return
+	end
+	local sectors = city.MapSectors
 	if #sectors > 0 then
 		for x = 1, const.SectorCount do
 			local sectors = sectors[x]
@@ -693,27 +723,57 @@ function ShowExploration(time)
 			end
 		end
 	end
-	DisplayExplorationQueue(true)
 end
 
-function HideExploration(time)
-	local sectors = g_MapSectors
-	if #sectors > 0 then
-		for x = 1, const.SectorCount do
-			local sectors = sectors[x]
-			for y = 1, const.SectorCount do
-				local decal = sectors[y].decal
-				if IsValid(decal) then
-					decal:ClearEnumFlags(const.efVisible)
+function HideExploration_Sectors(city, time)
+	if city then
+		local sectors = city.MapSectors
+		if #sectors > 0 then
+			for x = 1, const.SectorCount do
+				local sectors = sectors[x]
+				for y = 1, const.SectorCount do
+					local decal = sectors[y].decal
+					if IsValid(decal) then
+						decal:ClearEnumFlags(const.efVisible)
+					end
 				end
 			end
 		end
 	end
-	HideExplorationQueue()
+end
+
+function OnMsg.PreSwitchMap(map_id, next_map_id)
+	local city = Cities[map_id]
+
+	if city then
+		if city.DialogType == "overview" then
+			if IsExplorationAvailable_Sectors(city) then
+				HideExploration_Sectors(city)
+			end
+			if IsExplorationAvailable_Queue(city) then
+				HideExploration_Queue(city)
+			end
+		end
+	end
+end
+
+function OnMsg.PostSwitchMap(map_id)
+	local next_city = Cities[map_id]
+	if next_city then
+		local igi_mode = GetInGameInterfaceMode()
+		if next_city and igi_mode == "overview" then
+			if IsExplorationAvailable_Sectors(next_city) then
+				ShowExploration_Sectors(next_city)
+			end
+			if IsExplorationAvailable_Queue(next_city) then
+				ShowExploration_Queue(next_city, true)
+			end
+		end
+	end
 end
 
 function UpdateScannedSectorVisuals(status)
-	local sectors = g_MapSectors
+	local sectors = MainCity.MapSectors
 	if #sectors > 0 then
 		for x = 1, const.SectorCount do
 			local sectors = sectors[x]
@@ -727,12 +787,12 @@ function UpdateScannedSectorVisuals(status)
 	end
 end
 
-function City:ExplorationTick()
+function Exploration:ExplorationTick()
 	local deep = g_Consts.DeepScanAvailable ~= 0
 
-	if #g_ExplorationQueue > 0 then
-		RemoveOnScreenNotification("SectorScanAvailable")
-		local sector = g_ExplorationQueue[1]
+	if #self.ExplorationQueue > 0 then
+		RemoveOnScreenNotification("SectorScanAvailable", self.map_id)
+		local sector = self.ExplorationQueue[1]
 		
 		-- tower boost
 		local boost = sector:GetTowerBoost(self)
@@ -757,16 +817,16 @@ function City:ExplorationTick()
 			g_ExplorationNotificationShown = false
 		end
 	else
-		local unexplored = UnexploredSectorsExist()
+		local unexplored = UnexploredSectorsExist(self)
 				
 		if unexplored and not g_ExplorationNotificationShown and (not g_Tutorial or g_Tutorial.EnableExplorationWarning) then
-			AddOnScreenNotification("SectorScanAvailable", GoToOverview)
+			AddOnScreenNotification("SectorScanAvailable", GoToOverview, nil, nil, self.map_id)
 			g_ExplorationNotificationShown = true
 		end
 	end
 end
 
-function InitSector(sector, eligible)
+function InitSector(realm, sector, eligible)
 	sector.exp_resources = {}
 	sector.markers = {
 		surface = {},
@@ -809,7 +869,7 @@ function InitSector(sector, eligible)
 		else -- deposit markers
 			sector:RegisterDeposit(marker)
 			local list
-			if IsKindOfClasses(marker, "TerrainDepositMarker", "SurfaceDepositMarker") then
+			if eligible and IsKindOfClasses(marker, "TerrainDepositMarker", "SurfaceDepositMarker") then
 				if not eligible[sector] and sector.row > 1 and sector.row < const.SectorCount and sector.col > 1 and sector.col < const.SectorCount then
 					eligible[#eligible + 1] = sector
 					eligible[sector] = true
@@ -817,18 +877,22 @@ function InitSector(sector, eligible)
 			end
 		end
 	end
-	MapForEach(sector.area, "PrefabFeatureMarker", "DepositMarker", exec)
+	realm:MapForEach(sector.area, "PrefabFeatureMarker", "DepositMarker", exec)
 end
 
 function OnMsg.LoadGame()
-	MapForEach(true, 
+	MapsForEach(true, 
 		"MapSector", 
 		function(sector)
-			sector:SetPos(sector.area:Center())
+			if not sector.area then
+				DoneObject(sector)
+			else
+				sector:SetPos(sector.area:Center())
+			end
 		end)
 end
 
-function InitialReveal(eligible, trand)
+local function InitialReveal(eligible, trand)
 	local filtered, best = {}, {}
 	local has_metals, has_concrete = {}, {}
 	
@@ -915,163 +979,166 @@ function InitialReveal(eligible, trand)
 	return revealed
 end
 
---[[
-function RenameSectors()
-	local orient = mapdata.OverviewOrientation
-	for j = 1, const.SectorCount do
-		local row = g_MapSectors[j]
-		for i = 1, const.SectorCount do
-			local sector = row[i]
-			local name
-			if orient == 0 then
-				name = string.char(string.byte("A") + 10 - j) .. (i - 1)
-			elseif orient == 90 then
-				name = string.char(string.byte("A") + 10 - i) .. (10 - j)
-			elseif orient == 180 then
-				name = string.char(string.byte("A") + j - 1) .. (10 - i)
-			elseif orient == 270 then
-				name = string.char(string.byte("A") + i - 1) .. (j - 1)
+function Exploration:InitialExplore(realm, eligible_sectors_with_surface_deposits_out)
+	SuspendPassEdits("InitialExplore")
+	
+	local _, trand = self:CreateMapRand("Exploration")
+	local revealed = InitialReveal(eligible_sectors_with_surface_deposits_out, trand) or ""
+	
+	local igi = GetInGameInterface()
+	
+	for i = 1, #revealed do
+		if not self.InitialSector then
+			self.InitialSector = revealed[i]
+			if igi and igi.mode == "overview" then
+				igi.mode_dialog.exit_to = self.InitialSector.area:Center()
 			end
-			sector.id = name
-			sector.display_name = name
+		end
+		revealed[i]:Scan("scanned")
+		print("starting sector selected: " .. revealed[i].id)
+	end
+	
+	if self.InitialSector then
+		local deposit, resource
+		local profile = GetCommanderProfile().id
+		
+		if profile == "hydroengineer" then
+			deposit, resource = "SubsurfaceDepositWater", "Water"
+		elseif profile == "astrogeologist" then
+			deposit, resource = "SubsurfaceDepositPreciousMetals", "PreciousMetals"
+		end
+		
+		if deposit and realm:MapCount("map", deposit) == 0 then
+			local marker = realm:MapFindNearest(self.InitialSector.area:Center(), "map", "SubsurfaceDepositMarker", function(o)
+					return not o.is_placed and o.resource == resource and o.depth_layer <= 1
+				end)
+			if marker then
+				marker.revealed = true
+				marker:PlaceDeposit()
+				if GetInGameInterfaceMode() == "overview" then
+					GetInGameInterfaceModeDlg():ScaleSmallObjects(0, "up")
+				end
+			end
 		end
 	end
-end--]]
+	
+	if #revealed > 0 then			
+		if GetInGameInterfaceMode() == "overview" then
+			local overview_dialog = GetInGameInterfaceModeDlg()
+			local last_revealed = revealed[#revealed]
+			overview_dialog:SelectSector(last_revealed, nil, "forced")
+		end
+	end
+	
+	ResumePassEdits("InitialExplore")
+end
 
-function City:UpdateBuildableRatio(bbox)
-	local UnbuildableZ = buildUnbuildableZ()
+function Exploration:UpdateBuildableRatio(bbox)
+	local unbuildable_z = buildUnbuildableZ()
+	local buildable_grid = GameMaps[self.map_id].buildable
+	
 	for j = 1, const.SectorCount do
-		local row = g_MapSectors[j]
+		local row = self.MapSectors[j]
 		for i = 1, const.SectorCount do
 			local sector = row[i]
 			if not bbox or bbox:Intersect2D(sector.area) ~= const.irOutside then
-				sector.play_ratio = BuildableGridRatio(g_BuildableZ, UnbuildableZ, 100, sector.area)
+				sector.play_ratio = BuildableGridRatio(buildable_grid.z_grid, unbuildable_z, 100, sector.area)
 			end
 		end
 	end
 end
 
-function City:InitExploration()
-	if not mapdata.GameLogic then return end
-
-	MapForEach("map", "Deposit", DoneObject)
-
-	assert(hr.CameraRTSBorderAtMinZoom == hr.CameraRTSBorderAtMaxZoom)
-	
-	local border = mapdata.PassBorder or 0
-	local tile = GetMapSectorTile()
-	local eligible = {} -- list of sectors containing surface deposits
-	
-	local orient = mapdata.OverviewOrientation
-	local UnbuildableZ = buildUnbuildableZ()
-	
-	local rand, trand = self:CreateMapRand("Exploration")
-
-	if not g_BuildableZ then
-		WaitMsg("BuildableGridReady")
+local function CreateSector(game_map, city, row, col, x, y, tile, orient, unbuildable_z, eligible_sectors)
+	local name
+	if orient == 0 then
+		name = string.char(string.byte("A") + 10 - col) .. (row - 1)
+	elseif orient == 90 then
+		name = string.char(string.byte("A") + 10 - row) .. (10 - col)
+	elseif orient == 180 then
+		name = string.char(string.byte("A") + col - 1) .. (10 - row)
+	elseif orient == 270 then
+		name = string.char(string.byte("A") + row - 1) .. (col - 1)
 	end
+
+	local realm = game_map.realm
+	local buildable_grid = game_map.buildable
+	local heat_grid = game_map.heat_grid
+
+	local bbox = box(x, y, x + tile, y + tile)
+	local sector_data = {
+		id = name, 
+		display_name = name,
+		area = bbox,
+		play_ratio = BuildableGridRatio(buildable_grid.z_grid, unbuildable_z, 100, bbox),
+		avg_heat = heat_grid:GetAverageHeatIn(bbox),
+		row = row,
+		col = col,
+		city = city,
+	}
+	local sector = MapSector:new(sector_data, game_map.map_id)
+	InitSector(realm, sector, eligible_sectors)
+	return sector
+end
+
+function Exploration:InitSectors(game_map, realm, eligible_sectors_with_surface_deposits_out)
+	local map_data = ActiveMaps[self.map_id]
+	local border = map_data.PassBorder or 0
+	local tile = GetMapSectorTile(self.map_id)
+
+	local orient = map_data.OverviewOrientation
+	local unbuildable_z = buildUnbuildableZ()
 	
+	local buildable_grid = game_map.buildable
+	local heat_grid = game_map.heat_grid
+	
+	self.ExplorationQueue = {}
+	self.MapSectors = {}
 	for j = 1, const.SectorCount do
 		local row = {}
-		g_MapSectors[j] = row
+		self.MapSectors[j] = row
 		local x = border + (j - 1) * tile
 		for i = 1, const.SectorCount do
-			local name
-			if orient == 0 then
-				name = string.char(string.byte("A") + 10 - j) .. (i - 1)
-			elseif orient == 90 then
-				name = string.char(string.byte("A") + 10 - i) .. (10 - j)
-			elseif orient == 180 then
-				name = string.char(string.byte("A") + j - 1) .. (10 - i)
-			elseif orient == 270 then
-				name = string.char(string.byte("A") + i - 1) .. (j - 1)
-			end
 			local y = border + (i - 1) * tile
-			local bbox = box(x, y, x + tile, y + tile)
-			local sector = MapSector:new{
-				id = name, 
-				display_name = name,
-				area = bbox,
-				play_ratio = BuildableGridRatio(g_BuildableZ, UnbuildableZ, 100, bbox),
-				avg_heat = GetAverageHeatIn(bbox),
-				row = i,
-				col = j,
-			}
-			InitSector(sector, eligible)			
+			local sector = CreateSector(game_map, self, i, j, x, y, tile, orient, unbuildable_z, eligible_sectors_with_surface_deposits_out)
 			row[i] = sector
-			g_MapSectors[sector] = true
+			self.MapSectors[sector] = true
 		end
 	end
-
-	g_MapArea = box(g_MapSectors[1][1].area:min(), g_MapSectors[const.SectorCount][const.SectorCount].area:max())
-
-	if MapCount(true, "RevealedMapSector") == 0 then
-		SuspendPassEdits("InitialExplore")
-		
-		-- find sector(s) to initially reveal	
-		local revealed = InitialReveal(eligible, trand) or ""
-		
-		local igi = GetInGameInterface()
-		
-		for i = 1, #revealed do
-			if not g_InitialSector then
-				g_InitialSector = revealed[i]
-				if igi and igi.mode == "overview" then
-					igi.mode_dialog.exit_to = g_InitialSector.area:Center()
-				end
-			end
-			revealed[i]:Scan("scanned")
-			print("starting sector selected: " .. revealed[i].id)
-		end
-		
-		if g_InitialSector then
-			local deposit, resource
-			local profile = GetCommanderProfile().id
-			
-			if profile == "hydroengineer" then
-				deposit, resource = "SubsurfaceDepositWater", "Water"
-			elseif profile == "astrogeologist" then
-				deposit, resource = "SubsurfaceDepositPreciousMetals", "PreciousMetals"
-			end
-			
-			if deposit and MapCount("map", deposit) == 0 then
-				local marker = MapFindNearest(g_InitialSector.area:Center(), "map", "SubsurfaceDepositMarker", function(o)
-						return not o.is_placed and o.resource == resource and o.depth_layer <= 1
-					end)
-				if marker then
-					marker.revealed = true
-					marker:PlaceDeposit()
-					if GetInGameInterfaceMode() == "overview" then
-						GetInGameInterfaceModeDlg():ScaleSmallObjects(0, "up")
-					end
-				end
-			end
-		end
-		
-		if #revealed > 0 then			
-			if GetInGameInterfaceMode() == "overview" then
-				local overview_dialog = GetInGameInterfaceModeDlg()
-				local last_revealed = revealed[#revealed]
-				overview_dialog:SelectSector(last_revealed, nil, "forced")
-			end
-		end
-		
-		ResumePassEdits("InitialExplore")
-	end
-			
-	-- exploration thread
-	CreateGameTimeThread(function(self)
-		while true do
-			self:ExplorationTick()
-			Sleep(const.ScanTick)
-		end
-	end, self)
-	
-	Msg("MapSectorsReady")
 end
 
+function Exploration:InitMapArea()
+	assert(#self.MapSectors > 0)
+	self.MapArea = box(
+		self.MapSectors[1][1].area:min(),
+		self.MapSectors[const.SectorCount][const.SectorCount].area:max())
+end
 
-function OnMsg.TechResearched(tech_id, city)
+function Exploration:Init()
+	local game_map = GameMaps[self.map_id]
+	local realm = game_map.realm
+
+	realm:MapForEach("map", "Deposit", DoneObject)
+
+	local eligible_sectors_with_surface_deposits = {}
+	self:InitSectors(game_map, realm, eligible_sectors_with_surface_deposits)
+	self:InitMapArea()
+
+	if IsExplorationAvailable_Queue(self) then
+		if realm:MapCount(true, "RevealedMapSector") == 0 then
+			self:InitialExplore(realm, eligible_sectors_with_surface_deposits)
+		end
+		CreateGameTimeThread(function(self)
+			while true do
+				self:ExplorationTick()
+				Sleep(const.ScanTick)
+			end
+		end, self)
+	end
+	
+	Msg("MapSectorsReady", self)
+end
+
+function OnMsg.TechResearched(tech_id, research)
 	local def = TechDef[tech_id]
 	local resource, anomaly
 	
@@ -1087,53 +1154,123 @@ function OnMsg.TechResearched(tech_id, city)
 	
 	if not resource and not anomaly then return end
 	
-	CalcBuildableGrid()
-	local UnbuildableZ = buildUnbuildableZ()
-	
-	local num = city:Random(def.param1, def.param2)
-	for i = 1, num do
-		local marker
-		if resource then
-			marker = PlaceObject("SubsurfaceDepositMarker")
-			marker.resource = resource
-			marker.grade = "Very High"
-			marker.max_amount = def.param3 * const.ResourceScale
-			marker.depth_layer = 2
-		else
-			-- anomaly
-			marker = PlaceObject("SubsurfaceAnomalyMarker")
-			marker.sequence = "Alien Artifacts"
-			marker.sequence_list = "BreakthroughAlienArtifacts"
-			marker.tech_action = "aliens"
-		end
+	for _, city in ipairs(Cities) do
+		local map_id = city.map_id
+		local game_map = GameMaps[map_id]
+		local buildable_grid = game_map.buildable
+		local terrain = game_map.terrain
+		local num = city:Random(def.param1, def.param2)
+		for i = 1, num do
+			local marker
+			if resource then
+				marker = PlaceObjectIn("SubsurfaceDepositMarker", map_id)
+				marker.resource = resource
+				marker.grade = "Very High"
+				marker.max_amount = def.param3 * const.ResourceScale
+				marker.depth_layer = 2
+			else
+				-- anomaly
+				marker = PlaceObjectIn("SubsurfaceAnomalyMarker", map_id)
+				marker.sequence = "Alien Artifacts"
+				marker.sequence_list = "BreakthroughAlienArtifacts"
+				marker.tech_action = "aliens"
+			end
 
-		-- pick position		
-		for i = 1, 50 do
-			local sector_x = city:Random(1, 10)
-			local sector_y = city:Random(1, 10)
-			local sector = g_MapSectors[sector_x][sector_y]
+			-- pick position
+			for i = 1, 50 do
+				local sector_x = city:Random(1, 10)
+				local sector_y = city:Random(1, 10)
+				local sector = city.MapSectors[sector_x][sector_y]
+				
+				--local maxx, maxy = sector.area:
+				local minx, miny = sector.area:minxyz()
+				local maxx, maxy = sector.area:maxxyz()
+				
+				local x = city:Random(minx, maxx)
+				local y = city:Random(miny, maxy)
+				
+				local q, r = WorldToHex(x, y)
+				local pt = point(x, y)
+				if buildable_grid:IsBuildable(q, r) and terrain:IsPassable(pt) then
+					marker:SetPos(pt)
+					break
+				end
+			end
 			
-			--local maxx, maxy = sector.area:
-			local minx, miny = sector.area:minxyz()		
-			local maxx, maxy = sector.area:maxxyz()
-			
-			local x = city:Random(minx, maxx)
-			local y = city:Random(miny, maxy)
-			
-			local q, r = WorldToHex(x, y)
-			local pt = point(x, y)
-			if GetBuildableZ(q, r) ~= UnbuildableZ and terrain.IsPassable(pt) then
-				marker:SetPos(pt)
-				break
+			if marker:IsValidPos() then
+				marker.revealed = true
+				marker:PlaceDeposit()
+			else
+				printf("couldn't find position to place %s deposit", resource)
+				DoneObject(marker)
+			end
+		end
+	end
+end
+
+function SavegameFixups.UpdateSectorNumberTextStyle()
+	for i = 2, #g_ExplorationQueue do
+		if g_ExplorationQueue[i].queue_text then
+			g_ExplorationQueue[i].queue_text:SetTextStyle("ExplorationSector")
+		end
+	end
+end
+
+function SavegameFixups.MoveExplorationDataToCity(metadata, lua_revision)
+	if not AppliedSavegameFixups.UpdateSectorNumberTextStyle then
+		AppliedSavegameFixups.UpdateSectorNumberTextStyle = true
+		SavegameFixups.UpdateSectorNumberTextStyle(metadata, lua_revision)
+	end
+	
+	local city = UICity
+	city.MapSectors = g_MapSectors
+	city.ExplorationQueue = g_ExplorationQueue
+	city.InitialSector = g_InitialSector
+	city.MapArea = g_MapArea
+	city.DialogType = "overview"
+	
+	g_MapSectors = false
+	g_ExplorationQueue = false
+	g_InitialSector = false
+	g_MapArea = false
+
+	for x = 1, const.SectorCount do
+		for y = 1, const.SectorCount do
+			city.MapSectors[x][y].city = city
+		end
+	end
+end
+
+function SavegameFixups.RestoreInvalidSectors()
+	local sectors = MainCity.MapSectors
+	if #sectors > 0 then
+		local map_id = MainCity.map_id
+		local tile = GetMapSectorTile(map_id)
+		local map_data = ActiveMaps[map_id]
+		local border = map_data.PassBorder or 0
+		local orient = map_data.OverviewOrientation
+		local game_map = GameMaps[map_id]
+		local unbuildable_z = buildUnbuildableZ()
+
+		for i = 1, const.SectorCount do
+			local sectors_row = sectors[i]
+			for j = 1, const.SectorCount do
+				local sector = sectors_row[j]
+				if not IsValid(sector) then
+					local x = border + (j - 1) * tile
+					local y = border + (i - 1) * tile
+
+					local sector = CreateSector(game_map, MainCity, i, j, x, y, tile, orient, unbuildable_z)
+					sectors_row[j] = sector
+					sectors[sector] = true
+				end
 			end
 		end
 		
-		if marker:IsValidPos() then
-			marker.revealed = true
-			marker:PlaceDeposit()
-		else
-			printf("couldn't find position to place %s deposit", resource)
-			DoneObject(marker)
+		for sector, _ in pairs(sectors) do
+			if is_table(sector) and not IsValid(sector) then
+				sectors[sector] = nil
+			end
 		end
 	end
 end

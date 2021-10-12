@@ -64,6 +64,42 @@ PlaceObj('XTemplate', {
 				'__template', "PGMissionSubtitle",
 			}),
 			PlaceObj('XTemplateWindow', {
+				'__class', "XContentTemplate",
+				'Margins', box(0, 15, 0, 0),
+				'Dock', "top",
+				'MaxWidth', 10000,
+				'MaxHeight', 10000,
+				'LayoutMethod', "VList",
+				'RespawnOnContext', false,
+			}, {
+				PlaceObj('XTemplateMode', {
+					'mode', "properties",
+				}, {
+					PlaceObj('XTemplateWindow', {
+						'__context', function (parent, context) return PGColonyNameObjectCreate() end,
+						'__class', "XText",
+						'Id', "idColonyName",
+						'Margins', box(16, 0, 0, 0),
+						'HAlign', "left",
+						'MaxHeight', 50,
+						'FoldWhenHidden', true,
+						'MouseCursor', "UI/Cursors/Rollover.tga",
+						'TextStyle', "PGLandingPosDetails",
+						'ContextUpdateOnOpen', true,
+						'Translate', true,
+						'Text', T(750710120851, --[[XTemplate PGMissionSponsor Text]] "<ColonyName>"),
+					}, {
+						PlaceObj('XTemplateFunc', {
+							'name', "OnHyperLink(self, hyperlink, argument, hyperlink_box, pos, button)",
+							'func', function (self, hyperlink, argument, hyperlink_box, pos, button)
+								local host = GetDialog(self)
+								self.context:RenameColony(host)
+							end,
+						}),
+						}),
+					}),
+				}),
+			PlaceObj('XTemplateWindow', {
 				'Margins', box(0, 15, 0, 20),
 				'Dock', "top",
 				'MaxWidth', 10000,
@@ -144,6 +180,15 @@ PlaceObj('XTemplate', {
 								CreateRealTimeThread(function()
 									OpenPreGameMainMenu()
 								end)
+							end,
+						}),
+						PlaceObj('XTemplateAction', {
+							'ActionId', "rename",
+							'ActionName', T(510122464827, --[[XTemplate PGMissionSponsor ActionName]] "RENAME COLONY"),
+							'ActionToolbar', "ActionBar",
+							'ActionGamepad', "RightThumbClick",
+							'OnAction', function (self, host, source)
+								g_ColonyNameObj:RenameColony(host)
 							end,
 						}),
 						PlaceObj('XTemplateAction', {

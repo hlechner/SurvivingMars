@@ -28,7 +28,7 @@ function PlaceGamepadTerrainObjects()
 	if IsValid(g_GamepadObjects) then 
 		g_GamepadObjects:delete()
 	end
-	if GetUIStyleGamepad() and mapdata.GameLogic then
+	if GetUIStyleGamepad() and ActiveMapData.GameLogic then
 		g_GamepadObjects = PlaceObject("GamepadTerrainObjects")
 	else
 		g_GamepadObjects = false
@@ -41,6 +41,7 @@ end
 OnMsg.GamepadUIStyleChanged = PlaceGamepadTerrainObjects
 OnMsg.LoadGame = PlaceGamepadTerrainObjects
 OnMsg.NewMapLoaded = PlaceGamepadTerrainObjects
+OnMsg.PostSwitchMap = PlaceGamepadTerrainObjects
 
 function GamepadTerrainObjects:Init()
 	self.units = {}
@@ -94,7 +95,7 @@ function GamepadTerrainObjects:Update()
 	
 	local extend = const.GridExtendDist or 0
 	local xpos = GetTerrainGamepadCursor(-extend)
-	if not xpos or xpos == InvalidPos() or not terrain.IsPointInBounds(xpos, -extend) or self.disable_update then
+	if not xpos or xpos == InvalidPos() or not GetActiveTerrain():IsPointInBounds(xpos, -extend) or self.disable_update then
 		return
 	end
 	
@@ -337,10 +338,11 @@ function GamepadTerrainObjects:GatherBuildings(buildings, cables)
 	
 	local blds
 	local q, r = WorldToHex(xpos)
+	local object_hex_grid = GetActiveObjectHexGrid()
 	if range == 0 then
-		blds = HexGridGetObjects(ObjectGrid, q, r)
+		blds = object_hex_grid:GetObjects(q, r)
 	else
-		blds = HexGridGetObjectsInRange(ObjectGrid, q, r, range)
+		blds = HexGridGetObjectsInRange(object_hex_grid.grid, q, r, range)
 	end
 	
 	--handle buildings
@@ -354,8 +356,8 @@ function GamepadTerrainObjects:GatherBuildings(buildings, cables)
 		end
 	end
 		
-	--look for supply rockets and treat them as buildings
-	self:GatherObjectsOfTypes(buildings, "SupplyRocket")
+	--look for rockets and treat them as buildings
+	self:GatherObjectsOfTypes(buildings, "RocketBase")
 end
 
 function GamepadTerrainObjects:GatherObjectsUnderCursor(objs, ...)
@@ -380,7 +382,7 @@ function GamepadTerrainObjects:GatherObjectsOfTypes(objs, classes, ...)
 	local query_width = self.width + 12 * guim
 	local query_filter = function(obj, gamepad_objs, width, ...)
 		local pos = obj:GetVisualPos()
-		if not terrain.IsPointInBounds(pos) or IsKindOfClasses(obj, ...) then
+		if not GetActiveTerrain():IsPointInBounds(pos) or IsKindOfClasses(obj, ...) then
 			return false
 		end
 		return gamepad_objs:PointInside(pos, width)

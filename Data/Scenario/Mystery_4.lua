@@ -9,7 +9,7 @@ PlaceObj('Scenario', {
 		'autostart', true,
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#(UICity.labels.Colonist or empty_table) >= 100",
+			'expression', "#(MainCity.labels.Colonist or empty_table) >= 100",
 			'duration', 5000,
 		}),
 		PlaceObj('SA_WaitMarsTime', {
@@ -18,7 +18,7 @@ PlaceObj('Scenario', {
 			'rand_duration', 3750000,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "Dream_StartMirages()",
+			'expression', "Dream_StartMirages(MainCity)",
 		}),
 		PlaceObj('SA_WaitMsg', {
 			'msg', "MysteryDream",
@@ -156,7 +156,7 @@ PlaceObj('Scenario', {
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 3,
 			'end_block', 4,
-			'expression', 'UICity:CountDomeLabel("Dreamer") >= 1',
+			'expression', 'MainCity:CountDomeLabel("Dreamer") >= 1',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6104, --[[Scenario Mystery 4 title]] "Inner Light: Fleeting Reality"),
@@ -249,7 +249,7 @@ PlaceObj('Scenario', {
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 12,
 			'end_block', 13,
-			'expression', 'UICity:CountDomeLabel("Dreamer") >= 20',
+			'expression', 'MainCity:CountDomeLabel("Dreamer") >= 20',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6113, --[[Scenario Mystery 4 title]] "Inner Light: Always Together"),
@@ -341,7 +341,7 @@ PlaceObj('Scenario', {
 			'choice1', T(6124, --[[Scenario Mystery 4 choice1]] "Wake up..."),
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "Dream_CreateDreamers(5)",
+			'expression', "Dream_CreateDreamers(MainCity, 5)",
 		}),
 		PlaceObj('SA_Block', {
 			'sa_id', 19,
@@ -391,7 +391,7 @@ PlaceObj('Scenario', {
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 28,
 			'end_block', 29,
-			'expression', 'UICity:CountDomeLabel("Dreamer") >= 40',
+			'expression', 'MainCity:CountDomeLabel("Dreamer") >= 40',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6130, --[[Scenario Mystery 4 title]] "Inner Light: Dying of the Light"),
@@ -485,7 +485,7 @@ PlaceObj('Scenario', {
 			'choice1', T(6124, --[[Scenario Mystery 4 choice1]] "Wake up..."),
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "Dream_CreateDreamers(5)",
+			'expression', "Dream_CreateDreamers(MainCity, 5)",
 		}),
 		PlaceObj('SA_Block', {
 			'sa_id', 37,
@@ -525,7 +525,7 @@ PlaceObj('Scenario', {
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 40,
 			'end_block', 41,
-			'expression', 'UICity:CountDomeLabel("Dreamer") >= 60',
+			'expression', 'MainCity:CountDomeLabel("Dreamer") >= 60',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6141, --[[Scenario Mystery 4 title]] "Inner Light: New Light"),
@@ -584,7 +584,7 @@ PlaceObj('Scenario', {
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 45,
 			'end_block', 46,
-			'expression', 'UICity:CountDomeLabel("Dreamer") >= 100',
+			'expression', 'MainCity:CountDomeLabel("Dreamer") >= 100',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6146, --[[Scenario Mystery 4 title]] "Inner Light: New Dawn"),
@@ -627,7 +627,7 @@ PlaceObj('Scenario', {
 			'sequence', "Update Mystery Log",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "Dream_StopMirages()",
+			'expression', "Dream_StopMirages(MainCity)",
 		}),
 		PlaceObj('SA_UnlockAchievement', {
 			'achievement', "CompletedMystery4",
@@ -695,7 +695,7 @@ PlaceObj('Scenario', {
 			'State', "Researched",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Sanatorium and #UICity.labels.Sanatorium > 0",
+			'expression', "MainCity.labels.Sanatorium and #MainCity.labels.Sanatorium > 0",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6155, --[[Scenario Mystery 4 title]] "Inner Light: Abrupt Wake Up"),
@@ -723,7 +723,7 @@ PlaceObj('Scenario', {
 			'State', "Researched",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.School and #UICity.labels.School > 0",
+			'expression', "MainCity.labels.School and #MainCity.labels.School > 0",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6159, --[[Scenario Mystery 4 title]] "Inner Light: Learning to Dream"),
@@ -746,7 +746,7 @@ PlaceObj('Scenario', {
 		'name', "Cloning Vats Hint",
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.CloningVats and #UICity.labels.CloningVats > 0",
+			'expression', "MainCity.labels.CloningVats and #MainCity.labels.CloningVats > 0",
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6162, --[[Scenario Mystery 4 title]] "Inner Light: Conceived in a Dream"),

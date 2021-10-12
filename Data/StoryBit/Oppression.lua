@@ -8,6 +8,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/10_protest.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickFromLabel', {
 			'Label', "Colonist",
@@ -27,6 +28,7 @@ PlaceObj('StoryBit', {
 			'Condition', ">=",
 			'Amount', 1,
 		}),
+		PlaceObj('IsMapEnvironment', nil),
 	},
 	ScriptDone = true,
 	Text = T(837464417554, --[[StoryBit Oppression Text]] "A young renegade, <DisplayName>, has been killed by our security forces in a tragic sequence of events. \n\nThe colony is shocked and many Colonists are coming forward with accusations of Security Officers using excessive force when confronting mere acts of vandalism.\n\nThe community, both Renegade and non-Renegade citizens, demand justice in the form of retaliatory actions against the Officers involved."),
@@ -42,6 +44,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1551084963,
 				user = "Radomir",
+			},
+			{
+				action = "Modified",
+				time = 1625147755,
 			},
 		},
 	}),

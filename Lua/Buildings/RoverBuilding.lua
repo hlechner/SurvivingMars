@@ -11,11 +11,12 @@ DefineClass.BaseRoverBuilding = {
 function BaseRoverBuilding:GameInit()
 	if self.rover_class then
 		CreateGameTimeThread(function()
-			local rover = PlaceObject(self.rover_class)
+			local rover = PlaceObjectIn(self.rover_class, self:GetMapID())
 			local spot = self:GetSpotBeginIndex("Rover")
 			local pos, angle = self:GetSpotLoc(spot)
 			rover:SetPos(pos)
 			rover:SetAngle(angle)
+			rover:TransformToEnvironment(GetEnvironment(self))
 			DoneObject(self)
 		end)
 	end
@@ -24,44 +25,8 @@ end
 DefineClass.RCRoverBuilding = { __parents = { "BaseRoverBuilding" }, rover_class = "RCRover" }
 DefineClass.RCTransportBuilding = { __parents = { "BaseRoverBuilding" }, rover_class = "RCTransport" }
 DefineClass.RCExplorerBuilding = { __parents = { "BaseRoverBuilding" }, rover_class = "ExplorerRover" }
-DefineClass.SupplyRocketBuilding = { 
-	__parents = { "BaseRoverBuilding", "RocketLandingSite" }, 
-	rover_class = false,
-}
-
-function DeleteRocketConstruction(pos)
-	local q, r = WorldToHex(pos)
-	local blds = HexGridGetObjects(ObjectGrid, q, r, nil, nil, function(o)
-		return IsKindOf(o, "LandingPad") or IsKindOf(o, "TradePad")
-	end)
-	for _, bld in ipairs(blds) do
-		bld.rocket_construction = nil
-	end
-end
-
-function SupplyRocketBuilding:GameInit()
-	CreateGameTimeThread(function()
-		g_UITotalRockets = g_UITotalRockets + 1
-		local rocket = PlaceBuilding(GetRocketClass(), {city = UICity, name = GenerateRocketName()})
-		UICity:AddToLabel("SupplyRocket", rocket)
-		rocket:SetPos(self:GetSpotPos(self:GetSpotBeginIndex("Rocket")))
-		rocket:SetAngle(self:GetAngle())
-		rocket:SetCommand("Unload")
-		rocket.landing_site = PlaceBuilding("RocketLandingSite")
-		local pos = self:GetPos()
-		rocket.landing_site:SetPos(pos)
-		rocket.landing_site:SetAngle(self:GetAngle())
-		DeleteRocketConstruction(pos)
-		DoneObject(self)
-	end)
-end
-
-function OnMsg.ConstructionSiteRemoved(construction_site)
-	if construction_site and construction_site.building_class=="SupplyRocketBuilding" then
-		local pos = construction_site:GetPos()
-		DeleteRocketConstruction(pos)
-	end
-end
+DefineClass.RCSafariBuilding = { __parents = { "BaseRoverBuilding" }, rover_class = "RCSafari" }
+DefineClass.SupplyRocketBuilding = { __parents = { "RocketBuildingBase" }, construction_rocket_class = false }
 
 function OnMsg.DataLoaded()
 	ClassDescendants("BaseRoverBuilding", function(classname, class)

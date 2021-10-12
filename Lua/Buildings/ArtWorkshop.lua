@@ -75,7 +75,7 @@ function Workshop:RemoveWorker(unit, shift)
 end
 
 function Workshop:GetWorkshopWorkersPercent()
-	return self.city:GetWorkshopWorkersPercent()
+	return UIColony:GetWorkshopWorkersPercent()
 end
 
 DefineClass.ArtWorkshop = {

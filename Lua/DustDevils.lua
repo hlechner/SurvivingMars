@@ -48,52 +48,53 @@ end
 
 function GenerateDustDevilClass(major)
 	local list = major and ListDustDevilMajor or ListDustDevil
-	local class = UICity:TableRand(list)
+	local class = SessionRandom:TableRand(list)
 	local classdef = class and g_Classes[class]
 	assert(class and classdef)
 	return classdef or DustDevil1
 end
 
 function GetDustDevilsDescr()
-	if mapdata.MapSettings_DustDevils == "disabled" then
+	if ActiveMapData.MapSettings_DustDevils == "disabled" then
 		return
 	end
 	
 	local data = DataInstances.MapSettings_DustDevils
-	local orig_data = data[mapdata.MapSettings_DustDevils] or data["DustDevils_VeryLow"]
+	local orig_data = data[ActiveMapData.MapSettings_DustDevils] or data["DustDevils_VeryLow"]
 	return OverrideDisasterDescriptor(orig_data)
 end
 
-function GenerateDustDevilTrajectory(pos, duration, speed, range)
+function GenerateDustDevilTrajectory(pos, map_id, duration, speed, range)
 	range = range or 0
 	local curve_step = 10 * guim
 	local check_step = guim / 2
 	local length = MulDivRound(speed, duration, 1000)
 	local count = Max(3, length / curve_step)
-	local last = GetRandomPassableAround(pos, curve_step) or (pos + point(guim, 0))
+	local last = GetRandomPassableAroundOnMap(map_id, pos, curve_step) or (pos + point(guim, 0))
 	local points = { pos, last }
 	local dir = last - pos
+	local terrain = GetTerrainByID(map_id)
 	for i = 3, count do
-		local new_dir = Rotate(SetLen(dir, curve_step), UICity:Random(-30 * 60, 30 * 60))
+		local new_dir = Rotate(SetLen(dir, curve_step), SessionRandom:Random(-30 * 60, 30 * 60))
 		if range > 0 and pos:Dist(last + new_dir) > range then
 			-- keep in range
 			for i = 1, 10 do
-				new_dir = Rotate(SetLen(dir, curve_step), UICity:Random(-30 * 60, 30 * 60))
+				new_dir = Rotate(SetLen(dir, curve_step), SessionRandom:Random(-30 * 60, 30 * 60))
 				if pos:Dist(last + new_dir) <= range then
 					break
 				end
 			end
 			if pos:Dist(last + new_dir) > range then
 				-- go around
-				local tangent_dir = Rotate(dir, 90 * 60 * (2 * UICity:Random(0, 1) - 1))
-				new_dir = Rotate(SetLen(tangent_dir, curve_step), UICity:Random(-15 * 60, 15 * 60))
+				local tangent_dir = Rotate(dir, 90 * 60 * (2 * SessionRandom:Random(0, 1) - 1))
+				new_dir = Rotate(SetLen(tangent_dir, curve_step), SessionRandom:Random(-15 * 60, 15 * 60))
 			end
 		end
-		local height = terrain.GetHeight(last)
+		local height = terrain:GetHeight(last)
 		local reachable = last
 		for t = check_step, curve_step, check_step do
 			local pt = last + MulDivTrunc(new_dir, t, curve_step)
-			if terrain.GetHeight(pt) - height < 3 * guim then
+			if terrain:GetHeight(pt) - height < 3 * guim then
 				reachable = pt
 			end
 		end
@@ -109,15 +110,14 @@ function GenerateDustDevilTrajectory(pos, duration, speed, range)
 	return points
 end
 
-function GenerateDustDevil(pos, descr, range, major)
+function GenerateDustDevilIn(pos, map_id, descr, range, major)
 	range = range or descr.movement_range or 0
-	local duration = UICity:Random(descr.duration, descr.duration + descr.duration_random)
-	local speed = UICity:Random(descr.speed, descr.speed + descr.speed_random)
-	local major = pos and (major or (UICity:Random(100) < descr.major_chance))
-	local trajectory = pos and GenerateDustDevilTrajectory(pos, duration, speed, range)
-	local electro = UICity:Random(100) < descr.electro_chance
-	local devil = GenerateDustDevilClass(major):new
-	{
+	local duration = SessionRandom:Random(descr.duration, descr.duration + descr.duration_random)
+	local speed = SessionRandom:Random(descr.speed, descr.speed + descr.speed_random)
+	local major = pos and (major or (SessionRandom:Random(100) < descr.major_chance))
+	local trajectory = pos and GenerateDustDevilTrajectory(pos, map_id, duration, speed, range)
+	local electro = SessionRandom:Random(100) < descr.electro_chance
+	local devil = GenerateDustDevilClass(major):new({
 		trajectory = trajectory,
 		speed = speed,
 		dust_radius = major and descr.major_devil_radius or descr.devil_radius,
@@ -127,46 +127,59 @@ function GenerateDustDevil(pos, descr, range, major)
 		colonist_health = descr.colonist_health,
 		drone_speed_down = descr.drone_speed_down,
 		drone_battery = electro and descr.electro_battery,
-	}
+	}, map_id)
 	if electro then
 		devil.fx_actor_class = major and "DustDevilMajorElectro" or "DustDevilElectro"
 	end
 	if major then
-		local minions = UICity:Random(descr.major_minions_min, descr.major_minions_max)
+		local minions = SessionRandom:Random(descr.major_minions_min, descr.major_minions_max)
 		devil:SpawnMinions(minions, descr)
 	end
 
 	return devil
 end
 
-function CreateDustDevilMarkerThread(descr, marker)
-	return CreateGameTimeThread(function(self, descr)
-		local start_pos = self:GetPos()
-		local radius = self.FeatureRadius
-		local warning_time = descr.warning_time
-		while true do
-			local spawn_time = UICity:Random(descr.marker_spawntime, descr.marker_spawntime + descr.marker_spawntime_random)
-			Sleep(Max(spawn_time - warning_time, 1000))
-			if not g_DustStorm and UICity:Random(100) < descr.marker_spawn_chance then
-				local pos = GetRandomPassableAround(start_pos, radius) or start_pos
-				local hit_time = Min(spawn_time, warning_time)
-				local devil = GenerateDustDevil(pos, descr, radius)
-				Sleep(hit_time)
-				if IsValid(devil) then		-- e.g. if not destroyed by a Dust Storm
-					devil:Start()
-				end
+function GenerateDustDevil(pos, descr, range, major)
+	return GenerateDustDevilIn(pos, MainMapID, descr, range, major)
+end
+
+local function DustDevilMarkerThreadUpdate(descr, marker)
+	local start_pos = marker:GetPos()
+	local radius = marker.FeatureRadius
+	local warning_time = descr.warning_time
+	local map_id = marker:GetMapID()
+	while true do
+		local spawn_time = SessionRandom:Random(descr.marker_spawntime, descr.marker_spawntime + descr.marker_spawntime_random)
+		Sleep(Max(spawn_time - warning_time, 1000))
+		if not HasDustStorm(map_id) and SessionRandom:Random(100) < descr.marker_spawn_chance then
+			local pos = GetRandomPassableAroundOnMap(map_id, start_pos, radius) or start_pos
+			local hit_time = Min(spawn_time, warning_time)
+			local devil = GenerateDustDevilIn(pos, map_id, descr, radius)
+			Sleep(hit_time)
+			if IsValid(devil) then -- e.g. if not destroyed by a Dust Storm
+				devil:Start()
 			end
 		end
+	end
+end
+
+function CreateDustDevilMarkerThread(descr, marker)
+	return CreateGameTimeThread(function(self, descr)
+		DustDevilMarkerThreadUpdate(descr, self)
 		self.thread = false
 	end, marker, descr)
 end
 
 GlobalGameTimeThread("DustDevils", function()
+	if IsGameRuleActive("NoDisasters") then return end
+	
 	local descr = GetDustDevilsDescr()
 	if not descr or descr.forbidden then	
 		return
 	end
 	
+	local city = MainCity
+
 	MapForEach(true,
 		"PrefabFeatureMarker",
 		function(marker)
@@ -176,27 +189,27 @@ GlobalGameTimeThread("DustDevils", function()
 		end)
 	
 	while true do
-		while g_DustStorm or DustStormsDisabled do
+		while HasDustStorm(city.map_id) or DustStormsDisabled do
 			Sleep(5000)
 		end
-		local spawn_time = UICity:Random(descr.spawntime, descr.spawntime + descr.spawntime_random)
+		local spawn_time = SessionRandom:Random(descr.spawntime, descr.spawntime + descr.spawntime_random)
 		local warning_time = descr.warning_time
 		Sleep(Max(spawn_time - warning_time, 1000))
 		
-		local count = UICity:Random(descr.count_min, descr.count_max) * descr.spawn_chance / 100
+		local count = SessionRandom:Random(descr.count_min, descr.count_max) * descr.spawn_chance / 100
 		for i = 1,count do
 			local hit_time = Min(spawn_time, warning_time)
 			Sleep(hit_time)
-			if g_DustStorm or DustStormsDisabled then
+			if HasDustStorm(city.map_id) or DustStormsDisabled then
 				break
 			end
-			local pos = GetRandomPassableAwayFromBuilding()
+			local pos = GetRandomPassableAwayFromBuilding(city)
 			if not pos then
 				break
 			end
-			local devil = GenerateDustDevil(pos, descr)
+			local devil = GenerateDustDevilIn(pos, city.map_id, descr)
 			devil:Start()
-			Sleep(UICity:Random(descr.spawn_delay_min, descr.spawn_delay_max))
+			Sleep(SessionRandom:Random(descr.spawn_delay_min, descr.spawn_delay_max))
 		end
 		
 		local new_descr = GetDustDevilsDescr()
@@ -237,7 +250,7 @@ function BaseDustDevil:Init()
 		self.line = Polyline:new{max_vertices = #self.trajectory}
 		local mesh = {}
 		for i = 1, #self.trajectory do
-			mesh[i] = self.trajectory[i]:SetZ(terrain.GetHeight(self.trajectory[i]))
+			mesh[i] = self.trajectory[i]:SetZ(GetActiveTerrain():GetHeight(self.trajectory[i]))
 		end
 		self.line:SetMesh(mesh, RGB(AsyncRand(256), AsyncRand(256), AsyncRand(256)))
 		self.line:SetPos(mesh[1])
@@ -297,11 +310,11 @@ function BaseDustDevil:Follow()
 		return
 	end
 	
-	local pos = GetRandomPassableAround(follow:GetPos(), follow.minions_radius) or follow:GetPos()
+	local pos = GetRandomPassableAroundOnMap(self:GetMapID(), follow:GetPos(), follow.minions_radius) or follow:GetPos()
 	self:SetPos(pos)
 	self:StartFX()
 	while IsValid(follow) do
-		local t = UICity:Random(2000, 5000)
+		local t = SessionRandom:Random(2000, 5000)
 		if follow.trajectory_idx then
 			local dist = self:GetDist2D(follow)
 			local speed = self.speed
@@ -312,14 +325,14 @@ function BaseDustDevil:Follow()
 			local dest = follow.trajectory[follow.trajectory_idx]
 			local step = MulDivRound(speed, t, 1000)
 			local dir = SetLen(dest - pos, step)
-			dir = Rotate(dir, UICity:Random(-30 * 60, 30 * 60))
+			dir = Rotate(dir, SessionRandom:Random(-30 * 60, 30 * 60))
 			dest = pos + dir
 			self:SetPos(dest, t)
 		end
 		if self:ApplyDust(t) == "kill" then
 			PlayFX("Kill", "start", self)
 			break
-		end
+		end 
 		Sleep(t)
 	end
 end
@@ -328,7 +341,8 @@ function BaseDustDevil:ApplyDust(delta)
 	local dust = MulDivRound(delta, self.dust_amount, 1000)
 	local battery = self.drone_battery and MulDivRound(delta, self.drone_battery, 1000)
 	local dust_radius = self.dust_radius + GetEntityMaxSurfacesRadius()
-	local objs = MapGet(self, dust_radius, "Building", "DroneBase", "Colonist", "DustGridElement", IsObjInOpenAir )
+	local realm = GetRealm(self)
+	local objs = realm:MapGet(self, dust_radius, "Building", "DroneBase", "Colonist", "DustGridElement", IsObjInOpenAir )
 	local new_drones = {}
 	
 	local function process_drones(self, new_drones)
@@ -374,7 +388,7 @@ function BaseDustDevil:ApplyDust(delta)
 						obj:UseBattery(battery)
 					end
 					if obj:IsKindOf("BaseRover") then
-						if UICity:Random(100) < obj.dust_devil_malfunction_chance then
+						if SessionRandom:Random(100) < obj.dust_devil_malfunction_chance then
 							obj:SetCommand("Malfunction")
 						end
 					end
@@ -390,7 +404,7 @@ function BaseDustDevil:ApplyDust(delta)
 		table.rand(affected_dges):Break()
 	end
 	process_drones(self, new_drones)
-	if GetDomeAtHex(WorldToHex(self)) then
+	if GetDomeAtHex(GetObjectHexGrid(self), WorldToHex(self)) then
 		return "kill"
 	end
 end
@@ -430,9 +444,9 @@ function DustDevilMajor:SpawnMinions(count, descr)
 	self.minions = {}
 	local total_delay = 0
 	for i = 1, count do
-		local minion = GenerateDustDevil(nil, descr)
+		local minion = GenerateDustDevilIn(nil, self:GetMapID(), descr)
 		minion.follow = self
-		local delay = UICity:Random(descr.minion_delay_min, descr.minion_delay_max)
+		local delay = SessionRandom:Random(descr.minion_delay_min, descr.minion_delay_max)
 		total_delay = total_delay + delay
 		minion.delay = total_delay
 		self.minions[i] = minion

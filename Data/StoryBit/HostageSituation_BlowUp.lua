@@ -5,7 +5,7 @@ PlaceObj('StoryBit', {
 	Effects = {
 		PlaceObj('KillColonist', nil),
 		PlaceObj('ForEachExecuteEffects', {
-			'Label', "Casino Complex",
+			'Label', "CasinoComplex",
 			'Filters', {},
 			'RandomCount', 1,
 			'Effects', {

@@ -54,6 +54,13 @@ PlaceObj('StoryBitCategory', {
 })
 
 PlaceObj('StoryBitCategory', {
+	Chance = 20,
+	Trigger = "RocketUnloaded",
+	group = "Default",
+	id = "RocketUnloaded",
+})
+
+PlaceObj('StoryBitCategory', {
 	Chance = 10,
 	Prerequisites = {},
 	Trigger = "SanityBreakdown",
@@ -209,9 +216,18 @@ PlaceObj('StoryBitCategory', {
 	Chance = 100,
 	Comment = "must be forced, must be out of normal story bit logic and out of the game rule which toggles them off",
 	Prerequisites = {},
-	Trigger = "PlanetaryAnomalyEvent",
+	Trigger = "RocketLaunchedEvent",
 	group = "PlanetaryAnomaly",
-	id = "PlanetaryAnomaly",
+	id = "PlanetaryAnomaly_1",
+})
+
+PlaceObj('StoryBitCategory', {
+	Chance = 100,
+	Comment = "must be forced, must be out of normal story bit logic and out of the game rule which toggles them off",
+	Prerequisites = {},
+	Trigger = "ReconDiscovery",
+	group = "ReconEvents",
+	id = "ReconDiscovery",
 })
 
 PlaceObj('StoryBitCategory', {

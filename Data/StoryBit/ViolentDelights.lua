@@ -22,7 +22,13 @@ PlaceObj('StoryBit', {
 	},
 	Enabled = true,
 	Image = "UI/Messages/Events/26_colonist.tga",
-	Prerequisites = {},
+	MainMapExclusive = false,
+	Prerequisites = {
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
+	},
 	ScriptDone = true,
 	Text = T(248574161401, --[[StoryBit ViolentDelights Text]] "Running naked with a wrench in hand, <DisplayName> has already managed to injure several people!\n\n<effect><injured_people> Colonists have suffered -<health_damage> Health."),
 	TextReadyForValidation = true,
@@ -32,6 +38,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(239132863586, --[[voice:narrator]] "A Colonist has snapped and has started attacking others around the Dome!"),
 	group = "Sanity Breakdown",
 	id = "ViolentDelights",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625148231,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "injured_people",
 		'Value', 5,

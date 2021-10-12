@@ -24,8 +24,8 @@ function OmegaTelescope:Done()
 end
 
 function OmegaTelescope:UnlockBreakthroughs(count)
-	local breakthroughs = self.city:GetUnregisteredBreakthroughs()
-	StableShuffle(breakthroughs, self.city:CreateResearchRand("OmegaTelescope"), 100)
+	local breakthroughs = UIColony:GetUnregisteredBreakthroughs()
+	StableShuffle(breakthroughs, UIColony:CreateResearchRand("OmegaTelescope"), 100)
 	local unlocked = 0
 	while unlocked < count do
 		local idx = #breakthroughs
@@ -33,13 +33,13 @@ function OmegaTelescope:UnlockBreakthroughs(count)
 		if not id then
 			break
 		end
-		if self.city:SetTechDiscovered(id) then
+		if self.city.colony:SetTechDiscovered(id) then
 			unlocked = unlocked + 1
 		end
 		table.remove(breakthroughs, idx)
 	end
 	if unlocked > 0 then
-		AddOnScreenNotification("MultipleBreakthroughsDiscovered", OpenResearchDialog, { count = count })
+		AddOnScreenNotification("MultipleBreakthroughsDiscovered", OpenResearchDialog, { count = count }, nil, self:GetMapID())
 	end
 end
 
@@ -144,14 +144,14 @@ function OmegaTelescope:GetResearchBoostPercent()
 	return self.working and const.OmegaTelescopeBoostPercent or 0
 end
 
-function GetOmegaTelescope(city)
-	city = city or UICity
-	local label = city.labels.OmegaTelescope
+function GetOmegaTelescope(colony)
+	colony = colony or UIColony
+	local label = colony.city_labels.labels.OmegaTelescope
 	return label and label[1]
 end
 
-function OmegaTelescopeResearchBoostPercent(city)
-	local telescope = GetOmegaTelescope(city)
+function OmegaTelescopeResearchBoostPercent(colony)
+	local telescope = GetOmegaTelescope(colony)
 	return telescope and telescope:GetResearchBoostPercent() or 0
 end
 

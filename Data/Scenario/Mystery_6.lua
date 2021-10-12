@@ -12,7 +12,7 @@ PlaceObj('Scenario', {
 			'expression', '_missionSponsor = GetMissionSponsor().display_name or ""',
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Colonist and #UICity.labels.Colonist >= 100",
+			'expression', "MainCity.labels.Colonist and #MainCity.labels.Colonist >= 100",
 			'duration', 1000,
 		}),
 		PlaceObj('SA_WaitMarsTime', {
@@ -64,7 +64,7 @@ PlaceObj('Scenario', {
 			'rand_duration', 1500000,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'PlaceObject("AttackRover", {city = UICity})',
+			'expression', 'PlaceObjectIn("AttackRover", map_id)',
 		}),
 		PlaceObj('SA_WaitMessage', {
 			'title', T(6255, --[[Scenario Mystery 6 title]] "Marsgate: Motives Unknown"),
@@ -100,7 +100,7 @@ PlaceObj('Scenario', {
 			'end_block', 2,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'PlaceObject("AttackRover", {city = UICity})',
+			'expression', 'PlaceObjectIn("AttackRover", map_id)',
 		}),
 		PlaceObj('SA_WaitMarsTime', {
 			'duration', 150000,
@@ -148,7 +148,7 @@ PlaceObj('Scenario', {
 			'sequence', "Update Mystery Log",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "UICity.mystery.enable_rover_repair = true",
+			'expression', "UIColony.mystery.enable_rover_repair = true",
 		}),
 		PlaceObj('SA_Exec', {
 			'expression', "_repairedRoverReward = 500 * 1000000",
@@ -317,7 +317,7 @@ PlaceObj('Scenario', {
 			'expression', "amountPreciousMetals = 30 * const.ResourceScale",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'PlaceResourceStockpile_Delayed(roverPos, "PreciousMetals", 30 * const.ResourceScale, 0, true)',
+			'expression', 'PlaceResourceStockpile_Delayed(roverPos, _specialMalfunctionedRover:GetMapID(), "PreciousMetals", 30 * const.ResourceScale, 0, true)',
 		}),
 		PlaceObj('SA_CustomNotification', {
 			'id', "Mystery6Reward",
@@ -461,7 +461,7 @@ PlaceObj('Scenario', {
 			'end_block', 18,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'PlaceObject("AttackRover", {city = UICity})',
+			'expression', 'PlaceObjectIn("AttackRover", map_id)',
 		}),
 		PlaceObj('SA_Block', {
 			'sa_id', 18,
@@ -499,7 +499,7 @@ PlaceObj('Scenario', {
 			'sequence', "Update Mystery Log",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "UICity.mystery.can_shoot_rovers = true",
+			'expression', "UIColony.mystery.can_shoot_rovers = true",
 		}),
 		PlaceObj('SA_HostileRoverCommand', {
 			'Command', "Attack",
@@ -569,13 +569,13 @@ PlaceObj('Scenario', {
 			'sequence', "Update Mystery Log",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "UICity.mystery.enable_rover_repair = true",
+			'expression', "UIColony.mystery.enable_rover_repair = true",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "UICity.mystery.reclaim_repaired_rovers = true",
+			'expression', "UIColony.mystery.reclaim_repaired_rovers = true",
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.HostileAttackRovers and #UICity.labels.HostileAttackRovers <= 0",
+			'expression', "MainCity.labels.HostileAttackRovers and #MainCity.labels.HostileAttackRovers <= 0",
 		}),
 		PlaceObj('SA_StopSequence', {
 			'sequence_list', "Mystery 6",
@@ -658,7 +658,7 @@ PlaceObj('Scenario', {
 			'sequence', "Update Mystery Log",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "UICity.mystery.enable_rover_repair = false",
+			'expression', "UIColony.mystery.enable_rover_repair = false",
 		}),
 		PlaceObj('SA_StopSequence', {
 			'sequence_list', "Mystery 6",
@@ -752,7 +752,7 @@ PlaceObj('Scenario', {
 			'sequence', "Update Mystery Log",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "UICity.mystery.enable_rover_repair = false",
+			'expression', "UIColony.mystery.enable_rover_repair = false",
 		}),
 		PlaceObj('SA_StopSequence', {
 			'sequence_list', "Mystery 6",
@@ -764,7 +764,7 @@ PlaceObj('Scenario', {
 			'rand_duration', 1500000,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "renegades = UICity.labels.Colonist and #UICity.labels.Colonist > 0 and (#UICity.labels.Colonist * _renegadesPercentage / 100) or 0",
+			'expression', "renegades = MainCity.labels.Colonist and #MainCity.labels.Colonist > 0 and (#MainCity.labels.Colonist * _renegadesPercentage / 100) or 0",
 		}),
 		PlaceObj('SA_WaitChoice', {
 			'title', T(6286, --[[Scenario Mystery 6 title]] "Marsgate: Wrong Side of History"),
@@ -883,7 +883,7 @@ PlaceObj('Scenario', {
 			'rand_duration', 2160000,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'local t = UICity.labels.HostileAttackRovers\nif #t > 0 then\nt[UICity:Random(#t)+1]:SetCommand("Malfunction")\nend',
+			'expression', 'local t = MainCity.labels.HostileAttackRovers\nif #t > 0 then\nt[SessionRandom:Random(#t)+1]:SetCommand("Malfunction")\nend',
 		}),
 		}),
 	PlaceObj('ScenarioSequence', {
@@ -938,7 +938,7 @@ PlaceObj('Scenario', {
 			'rand_duration', 360000,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "attackers = UICity.labels.HostileAttackRovers and #UICity.labels.HostileAttackRovers or 0",
+			'expression', "attackers = MainCity.labels.HostileAttackRovers and #MainCity.labels.HostileAttackRovers or 0",
 		}),
 		PlaceObj('SA_HostileRoverCommand', {
 			'Number', "attackers",

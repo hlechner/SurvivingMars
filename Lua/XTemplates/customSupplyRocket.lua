@@ -16,6 +16,25 @@ PlaceObj('XTemplate', {
 			'Icon', "UI/Icons/IPButtons/force_launch.tga",
 		}),
 		PlaceObj('XTemplateTemplate', {
+			'comment', "reward overview",
+			'__template', "InfopanelButton",
+			'RolloverText', T(12804, --[[XTemplate customSupplyRocket RolloverText]] "Shows the currently boarded <em>Tourists</em> and their <em>Holiday Rating</em>"),
+			'RolloverDisabledText', T(12805, --[[XTemplate customSupplyRocket RolloverDisabledText]] "Reward Overview not available if no Tourist has boarded"),
+			'RolloverTitle', T(763682723060, --[[XTemplate customSupplyRocket RolloverTitle]] "Open Reward Overview"),
+			'RolloverHint', T(225953016599, --[[XTemplate customSupplyRocket RolloverHint]] "<left_click> Open"),
+			'RolloverHintGamepad', T(238866178539, --[[XTemplate customSupplyRocket RolloverHintGamepad]] "<ButtonA> Open"),
+			'Id', "idRewardOverview",
+			'OnContextUpdate', function (self, context, ...)
+				if context.boarded and context:GetNumBoardedTourists() > 0 then
+					self:SetEnabled(true)
+				else
+					self:SetEnabled(false)
+				end
+			end,
+			'OnPressParam', "UIOpenTouristOverview",
+			'Icon', "UI/Icons/IPButtons/tourist.tga",
+		}),
+		PlaceObj('XTemplateTemplate', {
 			'comment', "auto export",
 			'__template', "InfopanelButton",
 			'RolloverHint', T(10110, --[[XTemplate customSupplyRocket RolloverHint]] "<left_click> Activate<newline><em>"),
@@ -75,7 +94,7 @@ PlaceObj('XTemplate', {
 		}),
 		PlaceObj('XTemplateTemplate', {
 			'comment', "send on expedition",
-			'__condition', function (parent, context) return not g_Tutorial and UICity.next_anomaly_day and context:IsRocketLanded() end,
+			'__condition', function (parent, context) return not g_Tutorial and UIColony.planetary_anomalies.next_anomaly_day and context:IsRocketLanded() end,
 			'__template', "InfopanelButton",
 			'RolloverText', T(758333922831, --[[XTemplate customSupplyRocket RolloverText]] "Send this rocket on an expedition\n\nStatus: <em><UILaunchStatus></em>"),
 			'RolloverTitle', T(949636784531, --[[XTemplate customSupplyRocket RolloverTitle]] "Send on Expedition"),
@@ -180,7 +199,7 @@ PlaceObj('XTemplate', {
 			'__template', "InfopanelSection",
 			'RolloverText', T(438631172842, --[[XTemplate customSupplyRocket RolloverText]] "Stored Other Resources."),
 			'OnContextUpdate', function (self, context, ...)
-				self:SetVisible(UICity:IsTechResearched("MartianVegetation") and context.landed and not context.cargo)
+				self:SetVisible(UIColony:IsTechResearched("MartianVegetation") and context.landed and not context.cargo)
 			end,
 			'Title', T(12018, --[[XTemplate customSupplyRocket Title]] "Other Resources"),
 			'Icon', "UI/Icons/Sections/advanced.tga",

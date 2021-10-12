@@ -51,12 +51,19 @@ DefineClass.StorageDepot = {
 
 function StorageDepot:GameInit()
 	if not self.exclude_from_lr_transportation and self.user_include_in_lrt then
-		LRManagerInstance:AddBuilding(self)
+		local lr_manager = GetLRManager(self)
+		lr_manager:AddBuilding(self)
 	end
 end
 
 function StorageDepot:AddToCityLabels()
+	ResourceStockpileBase.AddToCityLabels(self)
 	Building.AddToCityLabels(self)
+end
+
+function StorageDepot:RemoveFromCityLabels()
+	ResourceStockpileBase.RemoveFromCityLabels(self)
+	Building.RemoveFromCityLabels(self)
 end
 
 function StorageDepot:SetResourceAutoTransportationState(resource, state)
@@ -160,7 +167,7 @@ function StorageDepot:ReturnStockpiledResources()
 		for resource_flag, request in pairs(self.supply or empty_table) do
 			local amount = request:GetActualAmount()
 			if amount > 0 then
-				PlaceResourceStockpile_Delayed(pos, resource_flag, amount, self:GetAngle(), true)
+				PlaceResourceStockpile_Delayed(pos, self:GetMapID(), resource_flag, amount, self:GetAngle(), true)
 			end
 		end
 	end
@@ -170,7 +177,8 @@ end
 
 function StorageDepot:Done() --should this be in building::returnresources?
 	if not self.exclude_from_lr_transportation and self.user_include_in_lrt then
-		LRManagerInstance:RemoveBuilding(self)
+		local lr_manager = GetLRManager(self)
+		lr_manager:RemoveBuilding(self)
 	end
 	self:ReturnStockpiledResources()
 	if IsGameRuleActive("EndlessSupply") and FirstUniversalStorage and FirstUniversalStorage == self then
@@ -223,7 +231,13 @@ function StorageDepot:GetTargetEmptyStorage(resource)
 end
 
 function StorageDepot:GetMaxStorageForAnyOneResource()
-	return self:GetMaxStorage(type(self.resource) == "table" and self.resource[1] or self.resource)
+	local resource = nil
+	if type(self.resource) ~= "table" then
+		resource = self.resource
+	elseif #self.resource > 0 then
+		resource = self.resource[1]
+	end
+	return self:GetMaxStorage(resource)
 end
 
 function StorageDepot:GetMaxStorage(resource)
@@ -250,10 +264,11 @@ function StorageDepot:ToggleLRTService(broadcast)
 	end
 	if self.exclude_from_lr_transportation then return end
 	self.user_include_in_lrt = not self.user_include_in_lrt
+	local lr_manager = GetLRManager(self)
 	if self.user_include_in_lrt then
-		LRManagerInstance:AddBuilding(self)
+		lr_manager:AddBuilding(self)
 	else
-		LRManagerInstance:RemoveBuilding(self)
+		lr_manager:RemoveBuilding(self)
 	end
 end
 
@@ -285,7 +300,7 @@ DefineClass.UniversalStorageDepot = {
 		{ template = true, name = T(775, "Max Boxes On The X Axis"), category = "Storage Space", id = "max_x", editor = "number", default = 2, help = "Max amount of boxes per axis, for multiple resources its per resource type."},
 		{ template = true, name = T(7626, "Max Boxes On The Y Axis"), category = "Storage Space", id = "max_y", editor = "number", default = 5, help = "Max amount of boxes per axis, for multiple resources its per resource type." },
 		{ template = true, name = T(7627, "Max Boxes On The Z Axis"), category = "Storage Space", id = "max_z", editor = "number", default = 3, help = "Max amount of boxes per axis, for multiple resources its per resource type." },
-		{ template = true, name = T(776, "Storable Resources"), category = "Storage Space", id = "storable_resources", editor = "prop table", default = {"Concrete",  "Food", "Metals", "PreciousMetals","Polymers","Electronics", "MachineParts", "Fuel"}, help = "The type of resources this depot can store."},
+		{ template = true, name = T(776, "Storable Resources"), category = "Storage Space", id = "storable_resources", editor = "prop table", default = {"Concrete", "Food", "Metals", "PreciousMetals", "Polymers", "Electronics", "MachineParts", "Fuel"}, help = "The type of resources this depot can store."},
 		{ template = true, name = T(777, "Switch Fill Order"), category = "Storage Space", id = "switch_fill_order", editor = "bool", default = true, help = "When true will fill in x of the spot dir first then y, the opposite when false."},
 		{ template = true, name = T(7770, "Fill Group Idx"), category = "Storage Space", id = "fill_group_idx", editor = "number", default = 5, help = "When true will fill in x of the spot dir first then y, the opposite when false."},
 		
@@ -334,7 +349,11 @@ function UniversalStorageDepot:GameInit()
 			s_name = "Box"
 		end
 		
-		self.placement_offset[resource_name] = GetEntitySpotPos(self:GetEntity(), self:GetSpotBeginIndex(s_name))
+		if self:HasSpot(s_name) then
+			self.placement_offset[resource_name] = GetEntitySpotPos(self:GetEntity(), self:GetSpotBeginIndex(s_name))
+		else
+			self.placement_offset[resource_name] = point(0, 0)
+		end
 		
 		local amount = (self.stockpiled_amount[resource_name] or 0)
 		self:SetCount(amount, resource_name)
@@ -367,7 +386,7 @@ function UniversalStorageDepot:SetCount(new_count, resource)
 	return self:SetCountInternal(new_count, count, resource, placed_cubes, self.placement_offset[resource], -90*60, 0)
 end
 
-function UniversalStorageDepot:RegiterResourceRequest(resource_name)
+function UniversalStorageDepot:RegisterResourceRequest(resource_name)
 	local amount = (self.stockpiled_amount[resource_name] or 0)
 	local supply = self:AddSupplyRequest(resource_name, amount, bor(self.supply_r_flags, self.additional_supply_flags), nil, self.desired_amount)
 	local demand = self:AddDemandRequest(resource_name, self.max_storage_per_resource - amount, self.demand_r_flags + self.additional_demand_flags, nil, self.max_storage_per_resource - self.desired_amount)
@@ -395,7 +414,7 @@ function UniversalStorageDepot:CreateResourceRequests()
 	self.auto_transportation_states = {}
 	self.stockpiled_amount = self.stockpiled_amount or {}
 	for _, resource_name in ipairs(storable_resources) do
-		self:RegiterResourceRequest(resource_name)
+		self:RegisterResourceRequest(resource_name)
 	end
 end
 
@@ -425,6 +444,10 @@ end
 
 function UniversalStorageDepot:SetResourceAutoTransportationState(resource, state)
 	self.auto_transportation_states[resource] = state
+end
+
+function UniversalStorageDepot:RoverLoadResource(amount, resource, request)
+	self:AddResource(amount, resource, true)
 end
 
 function UniversalStorageDepot:AddResource(amount, resource)
@@ -480,7 +503,8 @@ end
 
 function UniversalStorageDepot:ToggleAcceptResource(res_id, broadcast)
 	if broadcast then
-		local depos = MapGet("map", "UniversalStorageDepot", function(obj)	return table.iequals(obj.resource, self.resource)	end) 
+		local realm = GetRealm(self)
+		local depos = realm:MapGet("map", "UniversalStorageDepot", function(obj)	return table.iequals(obj.resource, self.resource)	end) 
 		local is_storing = self:IsStoring(res_id)
 		for _, storage in ipairs(depos or empty_table) do
 			if storage:GetUIInteractionState() then
@@ -503,8 +527,9 @@ function UniversalStorageDepot:SetAcceptResource(res_id, toggle, to_store)
 	assert(req)
 	local is_storing = self:IsStoring(res_id)
 	local task_requests = self.task_requests
+	local lr_manager = GetLRManager(self)
 	if not self.exclude_from_lr_transportation and self.user_include_in_lrt then
-		LRManagerInstance:RemoveBuilding(self)
+		lr_manager:RemoveBuilding(self)
 	end
 	if is_storing and (toggle or not to_store) then
 		self:InterruptDrones(nil,function(drone) return drone.d_request==req and drone end)
@@ -519,7 +544,7 @@ function UniversalStorageDepot:SetAcceptResource(res_id, toggle, to_store)
 		s_req:AddFlags(const.rfStorageDepot)
 	end
 	if not self.exclude_from_lr_transportation and self.user_include_in_lrt then
-		LRManagerInstance:AddBuilding(self)
+		lr_manager:AddBuilding(self)
 	end	
 	self:ConnectToCommandCenters()
 end
@@ -567,6 +592,13 @@ end
 
 UniversalStorageDepot.CheatEmpty = UniversalStorageDepot.ClearAllResources
 
+function UniversalStorageDepot:CheatPrintRequests()
+	for resource, s_req in pairs(self.supply or empty_table) do
+		print(resource, "Actual:", s_req:GetActualAmount(), "Desired:", s_req:GetDesiredAmount(), "Target:", s_req:GetTargetAmount())
+		print("Demand", "Actual:", self.demand[resource]:GetActualAmount(), "Desired:", self.demand[resource]:GetDesiredAmount(), "Target:", self.demand[resource]:GetTargetAmount())
+	end
+end
+
 function UniversalStorageDepot:GetEmptyStorage(resource)
 	if not resource then
 		return self:GetMaxStorage() - self:GetStoredAmount()
@@ -610,17 +642,17 @@ function MysteryDepot:GetIPDescription()
 end
 
 function MysteryDepot:Getdescription()
-	local m = UICity and UICity.mystery or MysteryBase
+	local m = UIColony and UIColony.mystery or MysteryBase
 	return m.depot_description
 end
 
 function MysteryDepot:Getdisplay_name()
-	local m = UICity and UICity.mystery or MysteryBase
+	local m = UIColony and UIColony.mystery or MysteryBase
 	return m.depot_display_name
 end
 
 function MysteryDepot:Getdisplay_name_pl()
-	local m = UICity and UICity.mystery or MysteryBase
+	local m = UIColony and UIColony.mystery or MysteryBase
 	return m.depot_display_name_pl
 end
 
@@ -631,7 +663,7 @@ DefineClass.MechanizedDepot = {
 	__parents = { "Building", "StockpileController", "ResourceStockpileBase", "ElectricityConsumer" },
 	
 	properties = {
-		{ template = true, name = T(776, "Storable Resources"), category = "Storage Space", id = "storable_resources", editor = "prop table", default = {"Concrete",  "Food", "Metals", "PreciousMetals","Polymers","Electronics", "MachineParts", "Fuel"}, help = "The type of resources this depot can store."},
+		{ template = true, name = T(776, "Storable Resources"), category = "Storage Space", id = "storable_resources", editor = "prop table", default = {"Concrete", "Food", "Metals", "PreciousMetals", "PreciousMinerals", "Polymers", "Electronics", "MachineParts", "Fuel"}, help = "The type of resources this depot can store."},
 		{ template = true, name = T(774, "Max Storage Per Resource"),  category = "Storage Space", id = "max_storage_per_resource",  editor = "number", default = 30000, scale = const.ResourceScale },
 		
 		{ template = true, id = "desire_slider_max", name = T(10369, "Desire Slider Max"), category = "Storage Space", default = 40, editor = "number"},
@@ -699,11 +731,22 @@ function MechanizedDepot:ToggleLRTService(broadcast)
 		return
 	end
 	io_stockpile.user_include_in_lrt = not io_stockpile.user_include_in_lrt
+	local lr_manager = GetLRManager(self)
 	if io_stockpile.user_include_in_lrt then
-		LRManagerInstance:AddBuilding(io_stockpile)
+		lr_manager:AddBuilding(io_stockpile)
 	else
-		LRManagerInstance:RemoveBuilding(io_stockpile)
+		lr_manager:RemoveBuilding(io_stockpile)
 	end
+end
+
+function MechanizedDepot:AddToCityLabels()
+	ResourceStockpileBase.AddToCityLabels(self)
+	Building.AddToCityLabels(self)
+end
+
+function MechanizedDepot:RemoveFromCityLabels()
+	ResourceStockpileBase.RemoveFromCityLabels(self)
+	Building.RemoveFromCityLabels(self)
 end
 
 function MechanizedDepot:SetLRTService(val)
@@ -833,7 +876,10 @@ function MechanizedDepot:GameInit()
 	self.carried_cubes = { }
 	local first, last = self.hoist:GetSpotRange("Box")
 	for spot_idx = first, last do
-		local cube = PlaceObject(self.cube_class, { resource = self.resource, is_group = false })
+		local cube = PlaceObjectIn(self.cube_class, self:GetMapID(), {
+			resource = self.resource,
+			is_group = false,
+		})
 		self.hoist:Attach(cube, spot_idx)
 		cube:SetVisible(false)
 		table.insert(self.carried_cubes, cube)
@@ -860,7 +906,7 @@ function MechanizedDepot:CreateLane(pos, spot_idx, long_lane)
 	local adjust = long_lane and 1 or 0
 	--difference between row lengths and their adjustments must always be equal !
 	local max_rows = base_row_length + adjust
-	local lane = PlaceObject("MechanizedDepotStockLane", {
+	local lane = PlaceObjectIn("MechanizedDepotStockLane", self:GetMapID(), {
 		resource = self.resource,
 		max_rows = max_rows,
 		row_adjustment = adjust,
@@ -1431,7 +1477,8 @@ end
 
 function MechanizedDepot:ToggleAcceptResource(res_id, broadcast)
 	if broadcast then
-		local storages = MapGet("map", "MechanizedDepot", function(obj) return obj.resource == self.resource end )
+		local realm = GetRealm(self)
+		local storages = realm:MapGet("map", "MechanizedDepot", function(obj) return obj.resource == self.resource end )
 		local is_storing = self:IsStoring()
 		for _, storage in ipairs(storages or empty_table) do
 			if storage:GetUIInteractionState() then
@@ -1472,8 +1519,9 @@ function MechanizedDepot:SetAcceptResource(res_id, toggle, to_store)
 	local req = io_stockpile.demand[resource]
 	local task_requests = io_stockpile.task_requests
 	local is_storing = table.find(task_requests, req)
+	local lr_manager = GetLRManager(self)
 	if io_stockpile.user_include_in_lrt then
-		LRManagerInstance:RemoveBuilding(io_stockpile)
+		lr_manager:RemoveBuilding(io_stockpile)
 	end
 	if is_storing and (toggle or not to_store) then
 		io_stockpile:InterruptDrones(nil,function(drone) return drone.d_request==req and drone end)
@@ -1490,7 +1538,7 @@ function MechanizedDepot:SetAcceptResource(res_id, toggle, to_store)
 		self.is_unloading = false
 	end
 	if io_stockpile.user_include_in_lrt then
-		LRManagerInstance:AddBuilding(io_stockpile)
+		lr_manager:AddBuilding(io_stockpile)
 	end
 	io_stockpile:ConnectToCommandCenters()
 end
@@ -1773,8 +1821,12 @@ local single_angle = 90*60
 local group_angle = 0
 function MechanizedDepotStockLane:PlaceCubes(y, z, is_group)
 	y, z = y - 1, z - 1
+	local map_id = self:GetMapID()
 	if is_group then
-		local cube = PlaceObject(self.cube_class, {resource = self.resource, is_group = true})
+		local cube = PlaceObjectIn(self.cube_class, map_id, {
+			resource = self.resource,
+			is_group = true,
+		})
 		self:Attach(cube)
 		local offset = point(0, y*2 * self.offset_y, z * self.offset_z)
 		cube:SetAttachOffset(offset)
@@ -1782,7 +1834,9 @@ function MechanizedDepotStockLane:PlaceCubes(y, z, is_group)
 		table.insert(self.cubes[z + 1], cube)
 	else
 		for x=0,4 do
-			local cube = PlaceObject(self.cube_class, {resource = self.resource})
+			local cube = PlaceObjectIn(self.cube_class, map_id, {
+				resource = self.resource,
+			})
 			self:Attach(cube)
 			local offset = point(x * self.offset_x, y * self.offset_y, z * self.offset_z)
 			cube:SetAttachOffset(offset)
@@ -1810,17 +1864,17 @@ DefineClass.MechanizedMysteryDepot = {
 }
 
 function MechanizedMysteryDepot:Getdescription()
-	local m = UICity and UICity.mystery or MysteryBase
+	local m = UIColony and UIColony.mystery or MysteryBase
 	return m.mech_depot_description
 end
 
 function MechanizedMysteryDepot:Getdisplay_name()
-	local m = UICity and UICity.mystery or MysteryBase
+	local m = UIColony and UIColony.mystery or MysteryBase
 	return m.mech_depot_display_name
 end
 
 function MechanizedMysteryDepot:Getdisplay_name_pl()
-	local m = UICity and UICity.mystery or MysteryBase
+	local m = UIColony and UIColony.mystery or MysteryBase
 	return m.mech_depot_display_name_pl
 end
 
@@ -1851,7 +1905,7 @@ function SavegameFixups.PairStorageRequests()
 end
 
 function OnMsg.LoadGame()
-	MapForEach(true, "ResourceStockpileBase",
+	MapsForEach(true, "ResourceStockpileBase",
 		function(o)
 			o:PairRequests()
 		end)

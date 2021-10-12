@@ -193,7 +193,7 @@ function PlanetaryAnomaly:InitReward()
 		for _, prob in ipairs(chances) do
 			total_prob = total_prob + prob[2]
 		end
-		local roll = UICity:Random(total_prob)
+		local roll = SessionRandom:Random(total_prob)
 		local prob = 0
 		for _, reward in ipairs(chances) do
 			prob = prob + reward[2]
@@ -214,7 +214,7 @@ function PlanetaryAnomaly:InitReward()
 	elseif self.reward == "event" then
 		if not self.story_bit then
 			local story_bits = GetAvailableExpeditionStoryBitIds()
-			local idx = UICity:Random(2, #story_bits)
+			local idx = SessionRandom:Random(2, #story_bits)
 			self.story_bit = story_bits[idx]
 		end
 	end
@@ -224,19 +224,19 @@ function PlanetaryAnomaly:InitRequirements()
 	if self.requirements then return end --preinitialized by story bit
 	self.requirements = {} -- see RocketExpedition.lua / ExpeditionBegin for format
 	
-	local roll = UICity:Random(100)
+	local roll = SessionRandom:Random(100)
 	if roll < 25 then
 		-- specialists
-		self.requirements.num_crew = UICity:Random(3, 7)
+		self.requirements.num_crew = SessionRandom:Random(3, 7)
 		self.requirements.crew_specialization = table.rand(ColonistSpecializationList)
 		self.requirement_type = "specialists"
 	elseif roll < 50 then
 		-- non-specialists
-		self.requirements.num_crew = UICity:Random(5, 10)
+		self.requirements.num_crew = SessionRandom:Random(5, 10)
 		self.requirement_type = "colonists"
 	elseif roll < 75 then
 		-- drones
-		self.requirements.num_drones = UICity:Random(3, 10)
+		self.requirements.num_drones = SessionRandom:Random(3, 10)
 		self.requirement_type = "drones"
 	else
 		-- rover
@@ -266,12 +266,12 @@ GlobalVar("g_ScannedPlanetaryAnomaly", 0)
 
 function PlanetaryAnomaly:Scan(rocket)
 	local reward = self.reward
-	local city = rocket.city
+	local research = rocket.city.colony
 	if reward == "breakthrough" then
 		local def = TechDef[self.breakthrough_tech]
 		if not def then
 			assert(false, "No such breakthrough tech: " .. self.breakthrough_tech)
-		elseif city:SetTechDiscovered(self.breakthrough_tech) then
+		elseif research:SetTechDiscovered(self.breakthrough_tech) then
 			AddOnScreenNotification("PlanetaryAnomaly_BreakthroughDiscovered", OpenResearchDialog, {name = def.display_name, context = def, rollover_title = def.display_name, rollover_text = def.description})
 			reward = false
 		else
@@ -290,7 +290,7 @@ function PlanetaryAnomaly:Scan(rocket)
 		table.sort(fields)
 		local unlocks = {}
 		for i=1,#fields do
-			local tech_id = city:DiscoverTechInField(fields[i])
+			local tech_id = research:DiscoverTechInField(fields[i])
 			if tech_id then
 				unlocks[#unlocks + 1] = tech_id
 			end
@@ -319,23 +319,23 @@ function PlanetaryAnomaly:Scan(rocket)
 	
 	if reward then
 		if reward == "research" then
-			local points = city:TableRand{2000, 2500, 3000, 3500, 4000}
-			city:AddResearchPoints(points)
+			local points = SessionRandom:TableRand{2000, 2500, 3000, 3500, 4000}
+			research:AddResearchPoints(points)
 			AddOnScreenNotification("PlanetaryAnomaly_GrantRP", nil, {points = points, resource = "Research"})
 		elseif reward == "resources" then
 			assert(self.reward_resource)
 			local res = self.reward_resource
-			local amount = city:Random(20, 41) * const.ResourceScale
+			local amount = SessionRandom:Random(20, 41) * const.ResourceScale
 			rocket:AddResource(amount, res)
 			rocket.cargo = { { class = res, amount = amount / const.ResourceScale } } -- for UI purposes only
 			AddOnScreenNotification("PlanetaryAnomaly_GrantRP", nil, {points = amount, resource = res})
 		elseif reward == "event" then
 			if not self.story_bit or  self.story_bit == "" then
 				local story_bits = GetAvailableExpeditionStoryBitIds()
-				local idx = UICity:Random(2, #story_bits)
+				local idx = SessionRandom:Random(2, #story_bits)
 				self.story_bit = story_bits[idx]
 			end
-			ForceActivateStoryBit(self.story_bit, rocket)
+			ForceActivateStoryBit(self.story_bit, MainMapID, rocket)
 			Msg("PlanetaryAnomalyEvent", rocket)
 		elseif reward ~= "custom" then
 			assert(false, string.format("unknown reward type: %s", reward))

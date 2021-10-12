@@ -94,7 +94,7 @@ PlaceObj('XTemplate', {
 						elseif icon == "UI/Infopanel/colonist_empty.tga" then
 							return T(8988, "<right_click> Close this residential slot")
 						elseif icon == "UI/Infopanel/colonist_appointed.tga" then
-							return T(8989, "Colonist on route")
+							return T(8989, "Colonist en route")
 						else
 							return T(8990, "<right_click> Open this residential slot")
 						end
@@ -109,7 +109,7 @@ PlaceObj('XTemplate', {
 						elseif icon == "UI/Infopanel/colonist_empty.tga" then
 							return T(8992, "<ButtonX> Close this residential slot")
 						elseif icon == "UI/Infopanel/colonist_appointed.tga" then
-							return T(8989, "Colonist on route")
+							return T(8989, "Colonist en route")
 						else
 							return T(8993, "<ButtonX> Open this residential slot")
 						end

@@ -24,7 +24,6 @@ PlaceObj('XTemplate', {
 					SetCamera(table.unpack(DomeTraitsCameraParams))
 					DomeTraitsCameraParams = false
 				end
-				g_UITraitsObject = false
 				XDialog.Close(self, ...)
 			end,
 		}),
@@ -268,7 +267,7 @@ PlaceObj('XTemplate', {
 						CycleFilterTraits(host.context, -1, category)
 					end)
 				end,
-				'__condition', function (parent, context) return UICity and #(UICity.labels.Dome or "") > 1 end,
+				'__condition', function (parent, context) return UICity and #(UICity.labels.Community or "") > 1 end,
 			}),
 			PlaceObj('XTemplateAction', {
 				'ActionId', "next",
@@ -283,7 +282,7 @@ PlaceObj('XTemplate', {
 						CycleFilterTraits(host.context, 1, category)
 					end)
 				end,
-				'__condition', function (parent, context) return UICity and #(UICity.labels.Dome or "") > 1 end,
+				'__condition', function (parent, context) return UICity and #(UICity.labels.Community or "") > 1 end,
 			}),
 			PlaceObj('XTemplateAction', {
 				'ActionId', "clear",

@@ -133,8 +133,9 @@ function PlacePlanet(scene)
 	if IsValid(PlanetRotationObj) then
 		DoneObject(PlanetRotationObj)
 	end
-	PlayFX("Thrusters", "end", PlanetRocket)
+	
 	if IsValid(PlanetRocket) then
+		PlayFX("Thrusters", "end", PlanetRocket)
 		DoneObject(PlanetRocket)
 	end
 	if not scene then
@@ -184,7 +185,8 @@ function PlacePlanet(scene)
 		if scene == "PlanetEarthCloseup" then
 			local rocket_class = GetRocketClass()
 			local template = BuildingTemplates[rocket_class]
-			local rocket_entity = GetMissionSponsor():GetDefaultRocketSkin() or template.entity or "Rocket"
+			assert(template, print_format("Invalid rocket class", rocket_class))
+			local rocket_entity = GetMissionSponsor():GetDefaultRocketSkin() or (template and template.entity) or "Rocket"
 			local clsdef = g_Classes[template.template_class]
 			assert(IsValidEntity(rocket_entity))
 			rocket_obj = PlaceObject("Rocket")
@@ -332,6 +334,7 @@ DefineClass.LandingSpot = {
 		{ id = "longitude", name = T(6892, "Longitude"), editor = "number", default = 0, min = -180, max = 180, help = T(6893, "-180 to 180"), },
 		{ id = "display_name", name = T(1153, "Display Name"), editor = "text", default = "", translate = true, },
 		{ id = "quickstart", name = T(6894, "Quickstart"), editor = "bool", default = false, },
+		{ id = "map", name = T(13659, "Map"), editor = "combo", default = "", items = function (self) return PresetsCombo("MapDataPreset") end },
 	},
 	PropertyTranslation = true,
 	EditorMenubarName = "Landing Spots",
@@ -360,18 +363,19 @@ end
 DefineClass.LandingSiteObject = {
 	__parents = { "PropertyObject" },
 	properties = {
-		{id = "TerrainType",    name = T(4134, "Terrain"),         grid_filename = "Textures/Misc/Overlays/MarsTerrainType.png", editor = "landing_param", default = 0},
-		{id = "Altitude",       name = T(4135, "Altitude"),        grid_filename = "Textures/Misc/Overlays/MarsTopography.png",  editor = "landing_param", default = 0},
-		{id = "Metals",         name = T(3514, "Metals"),          grid_filename = "Textures/Misc/Overlays/MarsIron.png",        category = "Resources", resource = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(3514, "Metals"),          descr = T(4136, "Metals and Rare metals. Metals are important for field buildings while Rare Metals are exported to Earth and used in the production of Electronics.")} },
-		{id = "Concrete",       name = T(3513, "Concrete"),        grid_filename = "Textures/Misc/Overlays/MarsRegolith.png",    category = "Resources", resource = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(3513, "Concrete"),        descr = T(4137, "Concrete is used in the construction of many Colony buildings, especially in the interior of the Domes.")} },
-		{id = "Water",          name = T(681, "Water"),            grid_filename = "Textures/Misc/Overlays/MarsWater.png",       category = "Resources", resource = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(681, "Water"),           descr = T(4138, "Most vital resource for sustaining humans on Mars. Water can be extracted from deposits using Water Extractors.")} },
-		{id = "PreciousMetals", name = T(4139, "Rare Metals"),     grid_filename = "Textures/Misc/Overlays/MarsIron.png",									resource = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(4139, "Rare Metals"), descr = T(4140, "Rare Metals can be exported by refueled Rockets that return to Earth, increasing the Funding for the Colony. They are also used for creating Electronics.")} },
-		{id = "Temperature",    name = T(4141, "Temperature"),     grid_filename = "Textures/Misc/Overlays/MarsTemperature.png", editor = "landing_param", default = 0},
-		{id = "DustDevils",     name = T(4142, "Dust Devils"),     grid_filename = "Textures/Misc/Overlays/MarsTopography.png",  category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 5, 10, 15, 0}, rollover = {title = T(4142, "Dust Devils"),     descr = T(4143, "Dust Devils contaminate buildings in their area with Martian Sand. Contaminated buildings require maintenance and may malfunction. Dust devils contaminate nearby buildings quickly, but disappear relatively fast.")} },
-		{id = "DustStorm",      name = T(4144, "Dust Storms"),     grid_filename = "Textures/Misc/Overlays/MarsDust.png",        category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 10, 20, 30, 0}, rollover = {title = T(4144, "Dust Storms"),     descr = T(4145, "Dust Storms contaminate all field buildings with dust and can last several Sols. Colonies in areas with intense Dust Storms will require shorter maintenance cycles. MOXIEs and Moisture Vaporators are not operational during Dust Storms.")} },
-		{id = "Meteor",         name = T(4146, "Meteors"),         grid_filename = "Textures/Misc/Overlays/MarsMeteors.png",     category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 10, 20, 30, 0}, rollover = {title = T(4146, "Meteors"),         descr = T(4147, "Meteors can destroy or damage structures, colonists and vehicles in their impact area. Some meteors are composed of useful resources like Metal or Polymers.")} },
-		{id = "ColdWave",       name = T(4148, "Cold Waves"),      grid_filename = "Textures/Misc/Overlays/MarsTemperature.png", category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 10, 20, 30, 0}, rollover = {title = T(4149, "Cold Wave"),       descr = T(4150, "Cold Waves last several Sols, increasing the power consumption of vehicles, Drones and many field buildings. Water Towers are frozen during Cold Waves.")} },
-		{id = "Locales",        name = T(4151, "Mars Locales"),    grid_filename = "Textures/Misc/Overlays/MarsLocales.png", editor = "landing_param", default = 0},
+		{id = "TerrainType",      name = T(4134, "Terrain"),         grid_filename = "Textures/Misc/Overlays/MarsTerrainType.png", editor = "landing_param", default = 0},
+		{id = "Altitude",         name = T(4135, "Altitude"),        grid_filename = "Textures/Misc/Overlays/MarsTopography.png",  editor = "landing_param", default = 0},
+		{id = "Metals",           name = T(3514, "Metals"),          grid_filename = "Textures/Misc/Overlays/MarsIron.png",        category = "Resources", resource = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(3514, "Metals"),         descr = T(4136, "Metals and Rare metals. Metals are important for field buildings while Rare Metals are exported to Earth and used in the production of Electronics.")} },
+		{id = "Polymers",         name = T(3515, "Polymers"),              category = "Resources", resource = true, hidden = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(3515, "Polymers"),         descr = T(13660, "Polymers are used in the construction of many Colony buildings, especially in asteroid specific facilities.")} },
+		{id = "Concrete",         name = T(3513, "Concrete"),        grid_filename = "Textures/Misc/Overlays/MarsRegolith.png",    category = "Resources", resource = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(3513, "Concrete"),       descr = T(4137, "Concrete is used in the construction of many Colony buildings, especially in the interior of the Domes.")} },
+		{id = "Water",            name = T(681, "Water"),            grid_filename = "Textures/Misc/Overlays/MarsWater.png",       category = "Resources", resource = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(681, "Water"),           descr = T(4138, "Most vital resource for sustaining humans on Mars. Water can be extracted from deposits using Water Extractors.")} },
+		{id = "PreciousMetals",   name = T(4139, "Rare Metals"),     grid_filename = "Textures/Misc/Overlays/MarsIron.png",	     category = "Resources", resource = true, hidden = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(4139, "Rare Metals"),    descr = T(4140, "Rare Metals can be exported by refueled Rockets that return to Earth, increasing the Funding for the Colony. They are also used for creating Electronics.")} },
+		{id = "PreciousMinerals", name = T(13661, "Exotic Minerals"),         category = "Resources", resource = true, hidden = true, editor = "landing_param", default = 0, challenge_mod = {15, 10, 5, 0}, rollover = {title = T(13661, "Exotic Minerals"),    descr = T(13662, "Exotic Minerals can only be obtained from Asteroids. They are a valuable construction material for expanding into the underground, and can be exported to earth to increase the Funding for the Colony.")} },		{id = "Temperature",      name = T(4141, "Temperature"),     grid_filename = "Textures/Misc/Overlays/MarsTemperature.png", editor = "landing_param", default = 0},
+		{id = "DustDevils",       name = T(4142, "Dust Devils"),     grid_filename = "Textures/Misc/Overlays/MarsTopography.png",  category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 5, 10, 15, 0}, rollover = {title = T(4142, "Dust Devils"),     descr = T(4143, "Dust Devils contaminate buildings in their area with Martian Sand. Contaminated buildings require maintenance and may malfunction. Dust devils contaminate nearby buildings quickly, but disappear relatively fast.")} },
+		{id = "DustStorm",        name = T(4144, "Dust Storms"),     grid_filename = "Textures/Misc/Overlays/MarsDust.png",        category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 10, 20, 30, 0}, rollover = {title = T(4144, "Dust Storms"),     descr = T(4145, "Dust Storms contaminate all field buildings with dust and can last several Sols. Colonies in areas with intense Dust Storms will require shorter maintenance cycles. MOXIEs and Moisture Vaporators are not operational during Dust Storms.")} },
+		{id = "Meteor",           name = T(4146, "Meteors"),         grid_filename = "Textures/Misc/Overlays/MarsMeteors.png",     category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 10, 20, 30, 0}, rollover = {title = T(4146, "Meteors"),         descr = T(4147, "Meteors can destroy or damage structures, colonists and vehicles in their impact area. Some meteors are composed of useful resources like Metal or Polymers.")} },
+		{id = "ColdWave",         name = T(4148, "Cold Waves"),      grid_filename = "Textures/Misc/Overlays/MarsTemperature.png", category = "Threats", threat = true, editor = "landing_param", default = 0,   challenge_mod = {[-1] = 0, 0, 10, 20, 30, 0}, rollover = {title = T(4149, "Cold Wave"),       descr = T(4150, "Cold Waves last several Sols, increasing the power consumption of vehicles, Drones and many field buildings. Water Towers are frozen during Cold Waves.")} },
+		{id = "Locales",          name = T(4151, "Mars Locales"),    grid_filename = "Textures/Misc/Overlays/MarsLocales.png",     editor = "landing_param", default = 0},
 	},
 	dialog = false,
 	anim_duration = false,
@@ -511,6 +515,14 @@ function LandingSiteObject:GetGameRulesList()
 	return T(6761, "None")
 end
 
+function LandingSiteObject:GetMystery()
+	local challenge = self.challenge
+	if challenge and challenge.mystery then
+		return g_Classes[challenge.mystery].display_name
+	end
+	return T(6761, "None")
+end
+
 function LandingSiteObject:GetDeadlinePerfected()
 	local challenge = self.challenge	
 	return challenge and challenge.time_perfected / const.DayDuration
@@ -604,19 +616,25 @@ function LandingSiteObject:Custom()
 		end, nil, self, {max_len = 7})
 end
 
-function LandingSiteObject:RecalcThreatResourceLevels()
-	if GameState.gameplay then return end
+function LandingSiteObject:RecalcThreatAndResourceLevels(use_preset_resource_values)
 	local props = self:GetProperties()
 	for _, prop in ipairs(props) do
-		if prop.threat or prop.resource then
+		if prop.threat or prop.resource and (not prop.hidden or GameState.gameplay and prop.hidden) then
 			local id = prop.id
-			local value = CalcValueInQuarters(self.map_params[id] or 0)
-			if MaxThreat(id) then
-				value = 5
-			elseif NoThreats(id) then
-				value = -1
+			local value = 0
+			if use_preset_resource_values and prop.resource then
+				value = self:GetMapPresetResourceValue(id)
+			else
+				value = CalcValueInQuarters(self.map_params[id] or 0)
+				if MaxThreat(id) then
+					value = 5
+				elseif NoThreats(id) then
+					value = -1
+				end
 			end
+			
 			if self.map_params.latitude and self.map_params.longitude then
+				if not g_SelectedSpotChallengeMods then g_SelectedSpotChallengeMods = {} end
 				g_SelectedSpotChallengeMods[id] = prop.challenge_mod[value]
 			end
 			self.threat_resource_levels[id] = value
@@ -624,11 +642,49 @@ function LandingSiteObject:RecalcThreatResourceLevels()
 	end
 end
 
-function LandingSiteObject:GetThreatResourceImage(prop_meta)
-	return "UI/Common/pm_progress_bar_" .. (self.threat_resource_levels[prop_meta.id] or "") .. ".tga"
+function LandingSiteObject:CanDisplayResourceInformation(prop_meta)
+	if (not prop_meta.filter or prop_meta.filter()) and prop_meta.category == "Resources" then
+		return self:GetMapPresetResourceValue(prop_meta.id) > 0
+	end
+	return not prop_meta.hidden and not GameState.gameplay
+end
+
+function LandingSiteObject:GetMapPresetResourceValue(resource)
+	local map_data = ActiveMaps[self.map_params.map]
+	assert(map_data)
+	if not map_data then
+		return 0
+	end
+
+	local map_preset = DataInstances.RandomMapPreset[map_data.RandomMapPreset]
+	local res_enabled = map_preset["ResEnabled_" .. resource]
+	local res_preset = map_preset["ResPreset_" .. resource]
+	local preset_suffix = string.match(res_preset, "[a-zA-Z]+$")
+	if res_enabled then
+		local resource_values = { Low = 1, Average = 2, High = 3 }
+		assert(resource_values[preset_suffix], "Unexpected preset suffix " .. preset_suffix)
+		return resource_values[preset_suffix] or 0
+	else
+		return 0
+	end
+end
+
+function LandingSiteObject:GetThreatResourceImage(prop_meta, planetary_view)
+	local threat_level = self.threat_resource_levels[prop_meta.id] or 1
+	if planetary_view then
+		return "UI/Common/pm_progress_bar_" .. (threat_level .. "_02" or "02") .. ".tga"
+	else
+		return "UI/Common/pm_progress_bar_" .. (threat_level or "") .. ".tga"
+	end
 end
 
 PlanetUISpotLogoSizeCache = {}
+
+function CalculatePlanetUISpotLogoSize(image)
+	local image_size = PlanetUISpotLogoSizeCache[image] or point(UIL.MeasureImage(image))
+	PlanetUISpotLogoSizeCache[image] = image_size
+	return image_size:xy()
+end
 
 function LandingSiteObject:GetSpotImage(win)
 	if self.planetary_view and self.marker_id_to_spot_id then
@@ -636,15 +692,15 @@ function LandingSiteObject:GetSpotImage(win)
 		local spot = MarsScreenLandingSpots[spot_id]
 		if spot and spot.spot_type == "our_colony" then
 			local image = Presets.MissionLogoPreset.Default[g_CurrentMissionParams.idMissionLogo].image
-			local image_size = PlanetUISpotLogoSizeCache[image] or point(UIL.MeasureImage(image))
-			PlanetUISpotLogoSizeCache[image] = image_size
-			local x,y = image_size:xy()
+			local x,y = CalculatePlanetUISpotLogoSize(image)
 			return image, x, y, 90
 		elseif spot and spot.spot_type == "project" then
 			local image = Presets.POI.Default[spot.project_id].display_icon
-			local image_size = PlanetUISpotLogoSizeCache[image] or point(UIL.MeasureImage(image))
-			PlanetUISpotLogoSizeCache[image] = image_size
-			local x,y = image_size:xy()
+			local x,y = CalculatePlanetUISpotLogoSize(image)
+			return image, x/2, y, 90
+		elseif spot and spot.spot_type == "asteroid" then
+			local image = "UI/Icons/pm_asteroid.tga"
+			local x,y = CalculatePlanetUISpotLogoSize(image)
 			return image, x/2, y, 90
 		else
 			local image = "UI/Icons/Logos/anomaly.tga"
@@ -652,9 +708,7 @@ function LandingSiteObject:GetSpotImage(win)
 			if orbital then
 				image = "UI/Icons/pm_ capture_story_bit.tga"
 			end
-			local image_size = PlanetUISpotLogoSizeCache[image] or point(UIL.MeasureImage(image))
-			PlanetUISpotLogoSizeCache[image] = image_size
-			local x,y = image_size:xy()
+			local x,y = CalculatePlanetUISpotLogoSize(image)
 			return image, orbital and x/2 or x, y, orbital and 90 or 70
 		end
 	end
@@ -733,11 +787,24 @@ function LandingSiteObject:GetMarkerLatLong(marker_id)
 		preset = Presets.Challenge.Default[id]	
 	else
 		local presets = GetLandingSpotsForGroup(self.landing_preset_group)
-		preset = presets[id]
+		preset = presets[id] or table.find_value(presets, "display_name", id)
 		is_orbital = rawget(preset, "is_orbital")
 	end
 	return preset.latitude * 60, preset.longitude * 60,is_orbital		
 		
+end
+
+local function GetSpotID(spot)
+	return spot.id or spot.display_name
+end
+
+function LandingSiteObject:GetMarkerIDFromSpot(spot, index)
+	local marker_id = self.spot_id_to_marker_id[GetSpotID(spot)]
+	if not marker_id then
+		assert(index)
+		marker_id = "idMarker" .. index
+	end
+	return marker_id
 end
 
 function LandingSiteObject:MouseButtonDown(pos, button)
@@ -754,8 +821,8 @@ function LandingSiteObject:MouseButtonDown(pos, button)
 		self.dialog.desktop:SetMouseCapture(self.dialog)
 		local new_lat, new_long
 		local marker_id = self:MouseInBox(pos)
-		if marker_id then		
-			new_lat, new_long = self:GetMarkerLatLong(marker_id)			
+		if marker_id then
+			new_lat, new_long = self:GetMarkerLatLong(marker_id)
 		else
 			new_lat, new_long = PlanetGetClickCoords(pos)
 		end
@@ -944,6 +1011,16 @@ function LandingSiteObject:CreateLandingMarker(template, id, lat, long, dest)
 	attach:SetAttachOffset(self:CalcAttachOffset(_lat, _long, dest))
 end
 
+function LandingSiteObject:RemoveLandingMarker(spot)
+	local marker_id = self:GetMarkerIDFromSpot(spot)
+	DoneObject(spot)
+	DoneObject(self.dialog[marker_id])
+
+	local spot_id = self.marker_id_to_spot_id[marker_id]
+	self.marker_id_to_spot_id[marker_id] = nil
+	self.spot_id_to_marker_id[spot_id] = nil
+end
+
 local orbital_dist_mul = 24
 local orbital_dist_div = 21
 function LandingSiteObject:GetImageBoxes()
@@ -1003,16 +1080,18 @@ function LandingSiteObject:AttachPredefinedSpots()
 			ForEachPreset("Challenge", function(preset)
 				local marker_id = "idMarker" .. idx
 				self:CreateLandingMarker(template, marker_id, preset.latitude * 60, preset.longitude * 60)
-				self.marker_id_to_spot_id[marker_id] = preset.id
-				self.spot_id_to_marker_id[preset.id] = marker_id
+				local spot_id = GetSpotID(preset)
+				self.marker_id_to_spot_id[marker_id] = spot_id
+				self.spot_id_to_marker_id[spot_id] = marker_id
 				idx = idx + 1				
 			end)
 		else
 			for k, v in ipairs(presets) do
 				local marker_id = "idMarker" .. idx
 				self:CreateLandingMarker(template, marker_id, v.latitude * 60, v.longitude * 60, rawget(v,"is_orbital"))
-				self.marker_id_to_spot_id[marker_id] = v.id or k
-				self.spot_id_to_marker_id[v.id or k] = marker_id
+				local spot_id = GetSpotID(v)
+				self.marker_id_to_spot_id[marker_id] = spot_id
+				self.spot_id_to_marker_id[spot_id] = marker_id
 				idx = idx + 1
 			end
 		end
@@ -1040,6 +1119,7 @@ function LandingSiteObject:SetLatLong(new_lat, new_long, force_coords)
 	if self.lat_real ~= new_lat or self.long_real ~= new_long or force_coords then
 		self.lat_real = new_lat
 		self.long_real = new_long
+		self.map_params.map = ""
 		if self.challenge_mode then
 			self.snapped_id = false
 			ForEachPreset("Challenge", function(c)
@@ -1049,9 +1129,12 @@ function LandingSiteObject:SetLatLong(new_lat, new_long, force_coords)
 				if self:IsAtSpot(spot_lat, spot_long, snap_range, force_coords) then
 					self.lat = spot_lat
 					self.long = spot_long
-					self.snapped_id = self.spot_id_to_marker_id[c.id]
+					self.snapped_id = self:GetMarkerIDFromSpot(c)
 					self.map_params.landing_spot = nil
-					self:UpdateChallenge(c.id)
+					local presets = GetLandingSpotsForGroup(self.landing_preset_group)
+					local landing_spot_map = c:HasMember("landing_spot") and presets[c.landing_spot].map or nil
+					self.map_params.map = c.map or landing_spot_map
+					self:UpdateChallenge(GetSpotID(c))
 				end
 			end)
 			if self.snapped_id then
@@ -1067,8 +1150,10 @@ function LandingSiteObject:SetLatLong(new_lat, new_long, force_coords)
 				if self:IsAtSpot(spot_lat, spot_long, snap_range, force_coords) then
 					self.lat = spot_lat
 					self.long = spot_long
-					self.snapped_id = "idMarker" .. k
-					self.map_params.landing_spot = v.id
+					local spot_id = GetSpotID(v)
+					self.snapped_id = self:GetMarkerIDFromSpot(v, k)
+					self.map_params.landing_spot = spot_id
+					self.map_params.map = PropObjHasMember(v, "map") and v.map or false
 					self.selected_spot = v
 					self.dialog:UpdateActionViews(self.dialog.idActionBar)
 					return
@@ -1236,7 +1321,7 @@ function LandingSiteObject:CalcMarkersVisibility()
 		ForEachPreset("Challenge", function(c)
 			local phase = self:CalcAnimPhaseUsingLongitude(c.longitude * 60)
 			local dist = Min((cur_phase-phase)%self.anim_duration, (phase-cur_phase)%self.anim_duration)
-			local marker_id = self.spot_id_to_marker_id[c.id]
+			local marker_id = self:GetMarkerIDFromSpot(c)
 			self.dialog[marker_id]:SetVisible(dist <= 2400)
 		end)
 	else
@@ -1244,7 +1329,8 @@ function LandingSiteObject:CalcMarkersVisibility()
 		for k, v in ipairs(presets or empty_table) do
 			local phase = self:CalcAnimPhaseUsingLongitude(v.longitude * 60)
 			local dist = Min((cur_phase-phase)%self.anim_duration, (phase-cur_phase)%self.anim_duration)
-			self.dialog["idMarker" .. k]:SetVisible(dist <= 2400)
+			local marker_id = self:GetMarkerIDFromSpot(v, k)
+			self.dialog[marker_id]:SetVisible(dist <= 2400)
 		end
 	end
 
@@ -1322,7 +1408,7 @@ function LandingSiteObject:DisplayCoord(pt, lat, long, lat_org, long_org)
 		self.dialog.idtxtCoord:SetVisible(true)
 		local is_orbital = false
 		local poi_id = self.snapped_id and self.marker_id_to_spot_id[self.snapped_id]
-		poi_id = poi_id and string.gsub(poi_id, "%d$", "")
+		poi_id = poi_id and type(poi_id) == string and string.gsub(poi_id, "%d$", "")
 		local preset = POIPresets[poi_id]
 		if preset and preset.is_orbital then
 			is_orbital = true
@@ -1337,7 +1423,7 @@ function LandingSiteObject:DisplayCoord(pt, lat, long, lat_org, long_org)
 		if g_TitleObj then
 			g_TitleObj:RecalcMapChallengeRating()
 		end
-		self:RecalcThreatResourceLevels()
+		self:RecalcThreatAndResourceLevels(self:SelectedAsteroidSpot())
 		ObjModified(self)
 		ObjModified(g_TitleObj)
 	end
@@ -1353,7 +1439,8 @@ end
 
 function LandingSiteObject:SetUIResourceValues()
 	local funding = self.dialog:ResolveId("idFunding")
-	if funding then funding:SetText(T{134782360990, "<funding(Funding)>", Funding = ResourceOverviewObj:GetFunding()}) end
+	local resources_overview = GetCityResourceOverview(UICity)
+	if funding then funding:SetText(T{134782360990, "<funding(Funding)>", Funding = resources_overview:GetFunding()}) end
 	local colonists = self.dialog:ResolveId("idColonists")
 	if colonists then colonists:SetText(T{11539, "<colonist(colonists)>", colonists = #(UICity.labels.Colonist or "")}) end
 	local buildings = self.dialog:ResolveId("idBuildings")
@@ -1361,46 +1448,64 @@ function LandingSiteObject:SetUIResourceValues()
 	local basic = self.dialog:ResolveId("idBasicResources")
 	if basic then
 		basic:SetText(T{11541, "<metals(metals)>  <concrete(concrete)>  <food(food)>  <preciousmetals(preciousmetals)>",
-				metals = ResourceOverviewObj:GetAvailableMetals(),
-				concrete = ResourceOverviewObj:GetAvailableConcrete(),
-				food = ResourceOverviewObj:GetAvailableFood(),
-				preciousmetals = ResourceOverviewObj:GetAvailablePreciousMetals()})
+				metals = resources_overview:GetAvailableMetals(),
+				concrete = resources_overview:GetAvailableConcrete(),
+				food = resources_overview:GetAvailableFood(),
+				preciousmetals = resources_overview:GetAvailablePreciousMetals()})
 	end
 	local advanced = self.dialog:ResolveId("idAdvancedResources")
 	if advanced then
 		advanced:SetText(T{11542, "<polymers(polymers)>  <electronics(electronics)>  <machineparts(machineparts)>  <fuel(fuel)>",
-				polymers = ResourceOverviewObj:GetAvailablePolymers(),
-				electronics = ResourceOverviewObj:GetAvailableElectronics(),
-				machineparts = ResourceOverviewObj:GetAvailableMachineParts(),
-				fuel = ResourceOverviewObj:GetAvailableFuel()})
+				polymers = resources_overview:GetAvailablePolymers(),
+				electronics = resources_overview:GetAvailableElectronics(),
+				machineparts = resources_overview:GetAvailableMachineParts(),
+				fuel = resources_overview:GetAvailableFuel()})
 	end
 	local grid = self.dialog:ResolveId("idGridResources")
 	if grid then
 		grid:SetText(T{11543, "<power(power)>  <air(oxygen)>  <water(water)>", 
-				power = ResourceOverviewObj:GetTotalProducedPower(),
-				oxygen = ResourceOverviewObj:GetTotalProducedAir(),
-				water = ResourceOverviewObj:GetTotalProducedWater()})
+				power = resources_overview:GetTotalProducedPower(),
+				oxygen = resources_overview:GetTotalProducedAir(),
+				water = resources_overview:GetTotalProducedWater()})
 	end
 	local research = self.dialog:ResolveId("idResearch")
 	if research then
-		research:SetText(T{445913619019, "<research(ResearchPoints)>", ResearchPoints = ResourceOverviewObj:GetEstimatedRP()})
+		research:SetText(T{445913619019, "<research(ResearchPoints)>", ResearchPoints = resources_overview:GetEstimatedRP()})
 	end
-	if UICity:IsTechResearched("MartianVegetation") then	
-		local terraformingLabel  = self.dialog:ResolveId("idTerraformingResourceLabel")
-		terraformingLabel:SetText(T(12086, "Other Resources"))
-		local terraforming = self.dialog:ResolveId("idTerraformingResource")
-		terraforming:SetText(T{12087, "<seeds(seeds)> <wasterock(wasterock)>", 
-			seeds = ResourceOverviewObj:GetAvailableSeeds(),
-			wasterock =ResourceOverviewObj:GetAvailableWasteRock()})
+	
+	local other = self.dialog:ResolveId("idOtherResources")
+	if other then
+		local available_resources = T{12757, "<wasterock(wasterock)>  ", wasterock = resources_overview:GetAvailableWasteRock()}
+		if UIColony:IsTechResearched("MartianVegetation") then
+			available_resources = available_resources .. T{12758, "<seeds(seeds)>  ", seeds = resources_overview:GetAvailableSeeds()}
+		end
+		if table.find(GetStockpileResourceList(), "PreciousMinerals") then
+			available_resources = available_resources .. T{12759, "<preciousminerals(preciousminerals)>  ", preciousminerals = resources_overview:GetAvailablePreciousMinerals()}
+		end
+		
+		other:SetText(available_resources)
 	end
 end
 
 function LandingSiteObject:GetAnomalyDescription()
 	local spot = self.selected_spot
-	if spot and (spot.spot_type == "anomaly" or spot.spot_type == "project") then
+	if spot and (spot.spot_type == "anomaly" or spot.spot_type == "project" or spot.spot_type == "asteroid") then
 		return spot.description or ""
 	end
 	return ""
+end
+
+function LandingSiteObject:SelectedRivalSpot()
+	return self:SelectedSpotType("rival")
+end
+
+function LandingSiteObject:SelectedAsteroidSpot()
+	return self:SelectedSpotType("asteroid")
+end
+
+function LandingSiteObject:SelectedSpotType(spot_type)
+	local spot = self.selected_spot
+	return spot and spot:HasMember("spot_type") and spot.spot_type == spot_type and spot
 end
 
 function LandingSiteObject:SetUIAnomalyProgress()
@@ -1525,6 +1630,20 @@ function LandingSiteObject:SetUIProjectProgress()
 		end
 	end
 end
+
+function LandingSiteObject:SetUIAsteroidParams()
+	local spot = self.selected_spot
+	if spot and spot.spot_type == "asteroid" then
+		if not spot.rocket then
+			local travel_time = self.dialog:ResolveId("idTravelTime")
+			if travel_time then travel_time:SetText(T{11604, "<time(time)>", time = spot.expedition_time}) end
+			
+			local remaining_time = self.dialog:ResolveId("idRemainingTime")
+			if remaining_time then remaining_time:SetText(T{11604, "<time(time)>", time = spot.asteroid.end_time - GameTime()}) end
+		end
+	end
+end
+
 function LandingSiteObject:ShowContent()
 	if not self.dialog then return end
 	local content = self.dialog:ResolveId("idContent")
@@ -1585,7 +1704,7 @@ function LandingSiteObject:UpdateChallenge(id)
 end
 
 function LandingSiteObject:GetAvailableRockets()
-	local rockets = UICity and UICity.labels.AllRockets or ""
+	local rockets = MainCity and MainCity.labels.AllRockets or ""
 	local available = 0
 	local total = #rockets
 	for i = 1, total do
@@ -1602,10 +1721,18 @@ local RocketCommandPriorities = {
 	["InOrbit"] = 1,
 }
 
+function LandingSiteObject:IsValidRocketForExpedition(rocket)
+	if self.selected_spot.spot_type ~= "asteroid" then
+		return not IsKindOfClasses(rocket, "TradeRocket", "RefugeeRocket", "ForeignAidRocket", "SupplyPod", "LanderRocketBase")
+	else
+		return IsKindOfClasses(rocket, "LanderRocketBase")
+	end
+end
+
 function LandingSiteObject:GetRocketsForExpedition()
-	local rockets = table.copy(UICity.labels.AllRockets)
+	local rockets = table.copy(MainCity.labels.AllRockets)
 	for i = #rockets, 1, -1 do
-		if rockets[i].command == "OnEarth" or rockets[i] == self.expedition_rocket or IsKindOfClasses(rockets[i], "TradeRocket", "RefugeeRocket", "ForeignAidRocket", "SupplyPod") then
+		if rockets[i].command == "OnEarth" or rockets[i] == self.expedition_rocket or not self:IsValidRocketForExpedition(rockets[i]) then
 			table.remove(rockets, i)
 		end
 	end
@@ -1620,7 +1747,7 @@ function LandingSiteObject:GetRocketsForExpedition()
 			return (a_prio or 0) > (b_prio or 0)
 		end
 	end)
-	if self.expedition_rocket then
+	if self.expedition_rocket and self:IsValidRocketForExpedition(self.expedition_rocket) then
 		table.insert(rockets, 1, self.expedition_rocket)
 	end
 	return rockets
@@ -1646,12 +1773,33 @@ function LandingSiteObjectCreateAndLoad(...)
 	return obj
 end
 
+function LandingSiteObject:HasValidExpeditionRocket()
+	return IsKindOf(self.expedition_rocket, "RocketExpedition")
+end
+
+function LandingSiteObject:IsWithinTimeWindow()
+	local selected_spot = self:SelectedAsteroidSpot()
+	if selected_spot then
+		local remaining_time = selected_spot.asteroid.end_time - selected_spot.asteroid.start_time
+		return selected_spot.expedition_time < remaining_time
+	else
+		return false
+	end
+end
+
+function LandingSiteObject:IsDifferentAsteroidLocation(expedition_rocket)
+	local selected_spot = self:SelectedAsteroidSpot()
+	return expedition_rocket.city.map_id ~= selected_spot.map
+end
+
 function LoadOverlayGrids(grids_table)
 	local props = LandingSiteObject:GetProperties()
 	for k, prop in ipairs(props) do
-		local file =  prop.grid_filename
-		local r, g, b, a, pf, w, h = GridsFromImage(file)
-		grids_table[prop.id] = r
+		local file = prop["grid_filename"]
+		if file then
+			local r, g, b, a, pf, w, h = GridsFromImage(file)
+			grids_table[prop.id] = r
+		end
 	end
 end
 
@@ -1789,12 +1937,12 @@ if Platform.developer then
 	end
 	function DbgPlanetColorsCallbackTopography(params)
 		local map = FillRandomMapProps(false, params)
-		local rating = MapData[map].challenge_rating
+		local rating = MapDataPresets[map].challenge_rating
 		return _InternalTranslate(MapChallengeRatingToDifficulty(rating))
 	end
 	function DbgPlanetColorsCallbackDifficulty(params)
 		local map = FillRandomMapProps(false, params)
-		local rating = MapData[map].challenge_rating
+		local rating = MapDataPresets[map].challenge_rating
 		return CalcChallengeRating(false, false, rating)
 	end
 	function DbgPlanetColorsCallbackAltitude(params)
@@ -1803,7 +1951,7 @@ if Platform.developer then
 	function DbgPlanetColorsCallbackStyle(params)
 		local gen = {}
 		local map = FillRandomMapProps(gen, params)
-		local type_info = MapData[map].type_info
+		local type_info = MapDataPresets[map].type_info
 		local max_pct = 0
 		local max_style
 		for _, entry in ipairs(gen.texture_setup) do

@@ -12,8 +12,6 @@ function OnMsg.ClassesPreprocess()
 	Building.OnUnitLeadOutEnd = empty_func
 	Unit.OnLeadOutEnd = empty_func
 	Unit.lead_in_out_interrupt_command = false
-	SupplyRocket.DroneEnter = function(self, ...) return self:LeadIn(...) end
-	SupplyRocket.DroneExit = function(self, ...) return self:LeadOut(...) end
 	ValidateWorkplace = ValidateBuilding
 	Colonist.ForceDie = function(self, reason)
 		self:SetCommand("Die", reason)
@@ -30,10 +28,10 @@ function Unit:ApproachBuilding(building, entrance_type, spot_name)
 end
 end
 
-function FixResearch(city,lua_revision)
-	local status = city.tech_status
+function FixResearch(research,lua_revision)
+	local status = research.tech_status
 	if not status then
-		city:InitResearch()
+		research:InitResearch()
 		return
 	end
 	--rename '_new' ids
@@ -51,7 +49,7 @@ function FixResearch(city,lua_revision)
 		end
 	end
 	
-	local queue = city.research_queue or ""
+	local queue = research.research_queue or ""
 	for i=#queue,1,-1 do
 		if not TechDef[queue[i]] then
 			if change_id then
@@ -66,7 +64,7 @@ function FixResearch(city,lua_revision)
 			end
 		end
 	end
-	local fileds = city.tech_field
+	local fileds = research.tech_field
 	for filed_id, list in sorted_pairs(fileds) do
 		for i=#list,1,-1 do
 			local tech_id = list[i]
@@ -83,8 +81,8 @@ function FixResearch(city,lua_revision)
 	
 	if lua_revision < 227342 then
 		for tech_id, info in pairs(status) do
-			if city:IsTechRepeatable(tech_id) then
-				local cost = city:TechCost(tech_id)
+			if research:IsTechRepeatable(tech_id) then
+				local cost = research:TechCost(tech_id)
 				if info.points < 0 or cost <= 0 then
 					info.points = 0
 				else
@@ -102,13 +100,13 @@ function FixResearch(city,lua_revision)
 	end
 end
 
-function FixTechLocks(city)
+function FixTechLocks(research)
 	-- crops
 	CropTechLocks = {}
 	
 	for crop, tech_t in sorted_pairs(CropTechRequirements) do
 		for i = 1, #tech_t do
-			if not city:IsTechResearched(tech_t[i]) then
+			if not research:IsTechResearched(tech_t[i]) then
 				CropTechLocks[crop] = CropTechLocks[crop] or {}
 				CropTechLocks[crop][ tech_t[i] ] = true
 			end
@@ -119,7 +117,7 @@ function FixTechLocks(city)
 	
 	for trait, tech_t in sorted_pairs(TraitTechRequirements) do
 		for i = 1, #tech_t do
-			if not city:IsTechResearched(tech_t[i]) then
+			if not research:IsTechResearched(tech_t[i]) then
 				TraitLocks[crop] = TraitLocks[crop] or {}
 				TraitLocks[crop][ tech_t[i] ] = true
 			end
@@ -252,12 +250,12 @@ local function FixRockets(lua_revision)
 end
 	
 function SavegameFixups.pre_fixup(metadata, lua_revision)
-	local city = UICity
+	local research = UIColony
 
-	FixResearch(city,lua_revision)
+	FixResearch(research,lua_revision)
 
 	if not CropTechLocks or not TraitLocks then
-		FixTechLocks(city)
+		FixTechLocks(research)
 	end
 	
 	if not g_MeteorDecals then
@@ -341,7 +339,7 @@ function SavegameFixups.pre_fixup(metadata, lua_revision)
 	end
 	
 	if lua_revision < 226688 then
-		if UICity:IsTechResearched("ConstructionNanites") then
+		if UIColony:IsTechResearched("ConstructionNanites") then
 			OnNanitesResearched()
 		end
 	end
@@ -364,7 +362,7 @@ function SavegameFixups.pre_fixup(metadata, lua_revision)
 			excavator.belt:SetFrameAnimationSpeed(excavator.working and 1000 or 0)
 		end
 		if not excavator.rope then
-			excavator.rope = PlaceObj("ExcavatorRope")
+			excavator.rope = PlaceObjIn("ExcavatorRope", excavator:GetMapID())
 			excavator.tower:Attach(excavator.rope, excavator.tower:GetSpotBeginIndex("Rope2"))
 			excavator.rope:SetAxis(axis_y)
 			excavator:UpdateRopeVisuals()
@@ -372,7 +370,8 @@ function SavegameFixups.pre_fixup(metadata, lua_revision)
 	end)
 	
 	if lua_revision < 227158 then
-		MapForEach("map", "ResourcePile", function(o) o.parent_dome = GetDomeAtPoint(o:GetPos()) end)
+		local object_hex_grid = GetActiveObjectHexGrid()
+		MapForEach("map", "ResourcePile", function(o) o.parent_dome = GetDomeAtPoint(object_hex_grid, o:GetPos()) end)
 	end
 
 	if lua_revision < 227241 then
@@ -706,7 +705,7 @@ function SavegameFixups.FixDomeClones()
 end
 
 function SavegameFixups.FixOutsourcingOrdersCap()
-	UICity.OutsourceResearchOrders = {}
+	UIColony.OutsourceResearchOrders = {}
 end
 
 function SavegameFixups.ClearConstructionMarkers()
@@ -714,12 +713,12 @@ function SavegameFixups.ClearConstructionMarkers()
 end
 
 function SavegameFixups.FixExportFundingHistory()
-	local total = UICity.funding_gain_total or {}
-	UICity.funding_gain_total = total
-	local last = UICity.funding_gain_last or {}
-	UICity.funding_gain_last = last
-	total.Export = UICity:CalcModifiedFunding(UICity:CalcBaseExportFunding(UICity.total_export))
-	last.Export = UICity:CalcModifiedFunding(UICity:CalcBaseExportFunding(UICity.last_export and UICity.last_export.amount))
+	local total = UIColony.funds.funding_gain_total or {}
+	UIColony.funds.funding_gain_total = total
+	local last = UIColony.funds.funding_gain_last or {}
+	UIColony.funds.funding_gain_last = last
+	total.Export = UIColony.funds:CalcModifiedFunding(UIColony.funds:CalcBaseExportFunding(UICity.total_export))
+	last.Export = UIColony.funds:CalcModifiedFunding(UIColony.funds:CalcBaseExportFunding(UICity.last_export and UICity.last_export.amount))
 end
 
 function SavegameFixups.FixDemolsihCooldown()
@@ -740,14 +739,14 @@ function SavegameFixups.DomeOnScreenNotifications()
 	DeleteThread("DomesWithNoWaterNotif")
 	DeleteThread("DomesWithNoPowerNotif")
 	
-	for i=1,#g_DomesWithNoOxygen do	
-		table.insert_unique(g_DomesWithNoLifeSupport, g_DomesWithNoOxygen[i])
+	for _,dome in pairs(g_DomesWithNoOxygen) do	
+		RequestNewObjsNotif(g_DomesWithNoLifeSupport, dome, dome:GetMapID())
 	end	
-	for i=1,#g_DomesWithNoWater do	
-		table.insert_unique(g_DomesWithNoLifeSupport, g_DomesWithNoWater[i])
+	for _,dome in pairs(g_DomesWithNoWater) do	
+		RequestNewObjsNotif(g_DomesWithNoLifeSupport, dome, dome:GetMapID())
 	end	
-	for i=1,#g_DomesWithNoPower do	
-		table.insert_unique(g_DomesWithNoLifeSupport, g_DomesWithNoPower[i])
+	for _,dome in pairs(g_DomesWithNoPower) do	
+		RequestNewObjsNotif(g_DomesWithNoLifeSupport, dome, dome:GetMapID())
 	end	
 	g_DomesWithNoOxygen = {}
 	g_DomesWithNoWater = {}
@@ -760,7 +759,7 @@ function SavegameFixups.NotWorkingBuildingsNotifications()
 end
 
 -- Need to restart the thread to prevent FindNearest(...) function call.
-function SavegameFixups.AutoRemoveObjRestart()
+function SavegameFixups.AutoRemoveObjRestartPicard()
 	RestartGlobalGameTimeThread("AutoRemoveObjs")
 end
 
@@ -873,7 +872,7 @@ function SavegameFixups.SponsorGoalInit()
 	--goals already set up
 	if #SponsorGoalProgress > 0 then return end
 	--on goals on these maps
-	if g_Tutorial or CurrentMap == "Mod" then return end
+	if g_Tutorial or ActiveMapID == "Mod" then return end
 	
 	UICity:SetGoals()
 end
@@ -956,7 +955,7 @@ end
 
 function SavegameFixups.CountingBreakthroughsResearched()
 	g_BreakthroughsResearched = 0
-	for tech, status in pairs(UICity.tech_status) do
+	for tech, status in pairs(UIColony.tech_status) do
 		local def = TechDef[tech]
 		if def and def.group == "Breakthroughs" and status.researched then
 			g_BreakthroughsResearched = g_BreakthroughsResearched + 1

@@ -18,12 +18,18 @@ function ResetGameSession()
 	local empty_map = GetMap() ~= "" 
 	-- send end session telemetry with valid Sessionid
 	if empty_map then
-		if mapdata.GameLogic then
+		if ActiveMapData.GameLogic then
 			TelemetryEndSession("main_menu")
 		end
 	end
 	-- reset game mission params
 	InitNewGameMissionParams()
+	
+	-- reset AccessibleDLC
+	for dlc in pairs(g_AvailableDlc) do
+		g_AccessibleDlc[dlc] = true
+	end
+	
 	-- change the map
 	if empty_map then
 		ChangeMap("")
@@ -42,7 +48,7 @@ end
 end -- Platform.desktop and not Platform.steam and not Platform.galaxy
 
 function CanUnlockAchievement(xplayer, achievement)
-	return CurrentMap ~= "Mod"
+	return ActiveMapID ~= "Mod"
 		and not g_Tutorial
 		and not IsGameRuleActive("FreeConstruction")
 		and not IsGameRuleActive("EasyMaintenance")

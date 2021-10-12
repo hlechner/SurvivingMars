@@ -193,7 +193,7 @@ PlaceObj('XTemplate', {
 						'ActionIcon', "UI/Icons/main_menu_new_game.tga",
 						'ActionToolbar', "mainmenu",
 						'OnAction', function (self, host, source)
-							StartNewGame(host, "Mission")
+							StartNewGame(host, "Mission", "regular", GetDefaultGameRules())
 						end,
 					}),
 					PlaceObj('XTemplateAction', {
@@ -204,16 +204,7 @@ PlaceObj('XTemplate', {
 						'ActionIcon', "UI/Icons/main_menu_creative_mode.tga",
 						'ActionToolbar', "mainmenu",
 						'OnAction', function (self, host, source)
-							StartNewGame(host, "Mission", {
-								EasyResearch = true,
-								FastRockets = true,
-								FastScan = true,
-								FreeConstruction = true,
-								EasyMaintenance = true,
-								IronColonists = true,
-								MoreApplicants = true,
-								RichCoffers = true,
-							})
+							StartNewGame(host, "Mission", "creative", GetDefaultGameRules(true))
 						end,
 					}),
 					PlaceObj('XTemplateAction', {
@@ -223,7 +214,7 @@ PlaceObj('XTemplate', {
 						'ActionIcon', "UI/Icons/main_menu_challenges.tga",
 						'ActionToolbar', "mainmenu",
 						'OnAction', function (self, host, source)
-							StartNewGame(host, "Challenge")
+							StartNewGame(host, "Challenge", "challenge", GetDefaultGameRules())
 						end,
 					}),
 					PlaceObj('XTemplateAction', {
@@ -275,7 +266,7 @@ PlaceObj('XTemplate', {
 						'OnAction', function (self, host, source)
 							OpenDialog("Achievements")
 						end,
-						'__condition', function (parent, context) return not Platform.steam and not Platform.console and not Platform.windows_store end,
+						'__condition', function (parent, context) return IsDevelopmentSandbox() or (not Platform.steam and not Platform.console and not Platform.windows_store) end,
 					}),
 					PlaceObj('XTemplateAction', {
 						'ActionId', "idParadoxAccount",

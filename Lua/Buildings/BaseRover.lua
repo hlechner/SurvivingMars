@@ -1,12 +1,21 @@
 --container for common stuffs between RC Commander and workshop rover.
 DefineClass.BaseRover = {
-	__parents = { "DroneBase", "Demolishable", "TaskRequester", "SkinChangeable", "PinnableObject" },
+	__parents = {
+		"Demolishable",
+		"DroneBase",
+		"PinnableObject",
+		"SkinChangeable",
+		"TaskRequester",
+		"DepositRevealer",
+	},
+	
 	SelectionClass = "BaseRover",
 	display_name_pl = T(12081, "Rovers"),
 
 	move_speed = 1000,
 	scale = 100,
 	follow_camera_vertical_offset = 26 * guim,
+	reveal_range = 180,
 
 	pfclass = 1,
 	radius = 6*guim,
@@ -17,7 +26,6 @@ DefineClass.BaseRover = {
 	malfunction_start_state = false,
 	malfunction_idle_state = false,
 	malfunction_end_state = false,
-
 
 	fx_actor_base_class = "Rover",
 	direction_arrow_scale = 260,
@@ -48,6 +56,11 @@ DefineClass.BaseRover = {
 	unreachable_objects = false,
 	has_auto_mode = false, --so ip knows wether to show btn
 	auto_mode_on = false,
+	
+	environment_fx = {
+		base = "Rover",
+		Asteroid = "RoverFlying",
+	},
 }
 
 function BaseRover:CreateResourceRequests()
@@ -94,19 +107,23 @@ end
 
 function BaseRover:Done()
 	self:RemoveFromLabels()
-	table.remove_entry(g_DestroyedVehicles, self)
+	DiscardNewObjsNotif(g_DestroyedVehicles, self, self:GetMapID())
 end
 
 function BaseRover:AddToLabels()
 	self.city:AddToLabel("Unit", self)
 	self.city:AddToLabel("Rover", self)
 	self.city:AddToLabel(self.class, self)
+	
+	DepositRevealer.AddToLabels(self)
 end
 
 function BaseRover:RemoveFromLabels()
 	self.city:RemoveFromLabel("Unit", self)
 	self.city:RemoveFromLabel("Rover", self)
 	self.city:RemoveFromLabel(self.class, self)
+	
+	DepositRevealer.RemoveFromLabels(self)
 end
 
 function BaseRover:OnDemolish()
@@ -116,7 +133,7 @@ function BaseRover:OnDemolish()
 	
 	for resource, amount in pairs(refund_resources) do
 		if amount > 0 then
-			PlaceResourceStockpile_Delayed(pos, resource, amount, angle, true)
+			PlaceResourceStockpile_Delayed(pos, self:GetMapID(), resource, amount, angle, true)
 		end
 	end
 end
@@ -146,6 +163,14 @@ function BaseRover:AddDust(dust)
 	self:SetDust(normalized_dust, const.DustMaterialExterior)
 end
 
+function BaseRover:CheatAddDustRC()
+	self:AddDust(self.dust_max)
+end
+
+function BaseRover:CheatRemoveDustRC()
+	self:AddDust(-self.dust_max)
+end
+
 function OnMsg.SelectionAdded(obj)
 	if IsKindOf(obj, "BaseRover") then
 		SetSubsurfaceDepositsVisible(true)
@@ -172,6 +197,8 @@ function BaseRover:CancelUnitDirectionMode()
 end
 
 function BaseRover:Malfunction(suppress_repair_request)
+	DroneBase.Malfunction(self)
+	
 	self:StartFX("Breakdown")
 	
 	self:CancelUnitDirectionMode()
@@ -209,16 +236,8 @@ function BaseRover:Malfunction(suppress_repair_request)
 	Halt()
 end
 
-function BaseRover:IsMalfunctioned()
-	return self.command == "Malfunction"
-end
-
 function BaseRover:CheatMalfunction()
 	self.dust = self.dust_max + 10 
-	self:SetCommand("Malfunction")
-end
-
-function BaseRover:SetMalfunction()
 	self:SetCommand("Malfunction")
 end
 
@@ -228,6 +247,8 @@ function BaseRover:CheatRepair()
 end
 
 function BaseRover:Repair()
+	DroneBase.Repair(self)
+	
 	if not self:IsMalfunctioned() or not IsValid(self) then return end
 	
 	self.auto_connect = false
@@ -296,11 +317,11 @@ function BaseRover:Dead()
 	for i, entry in ipairs(RCRoverResources) do
 		local res = entry.resource
 		local amount = self.resource_storage[res]
-		PlaceResourceStockpile_Delayed(self:GetVisualPos(), res, amount, self:GetAngle(), true)
+		PlaceResourceStockpile_Delayed(self:GetVisualPos(), self:GetMapID(), res, amount, self:GetAngle(), true)
 	end
 
 	if not g_Tutorial then
-		table.insert(g_DestroyedVehicles, self)
+		RequestNewObjsNotif(g_DestroyedVehicles, self, self:GetMapID())
 	end
 
 	self:OnDead()
@@ -340,7 +361,7 @@ local charge_range = 2
 function BaseRover:GetCableNearby(rad) --within charge range
 	rad = (rad or charge_range)
 	
-	local lst = MapGet(self, "hex", rad + 1, "ElectricityGridElement", function(o) return o:GetGameFlags(const.gofUnderConstruction) == 0 end  )
+	local lst = GetRealm(self):MapGet(self, "hex", rad + 1, "ElectricityGridElement", function(o) return o:GetGameFlags(const.gofUnderConstruction) == 0 end  )
 	local c = FindNearestObject(lst, self)
 	return c and HexAxialDistance(c, self) <= rad and c or false
 end
@@ -348,6 +369,11 @@ end
 function BaseRover:CanInteractWithObject(obj, interaction_mode)
 	if not IsValid(obj) then return false end
 	if self.command == "Dead" then return false end
+	
+	local can_interact, action = DroneBase.CanInteractWithObject(self, obj, interaction_mode)
+	if can_interact then
+		return can_interact, action
+	end
 	
 	if self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move" then --the 3 move modes..
 		if IsKindOf(obj, "Tunnel") and obj.working then
@@ -362,7 +388,9 @@ function BaseRover:InteractWithObject(obj, interaction_mode)
 	if not IsValid(obj) then return false end
 	if self.command=="Dead" then return false end
 	
-	if self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move" then --the 3 move modes..
+	local interacted = DroneBase.InteractWithObject(self, obj, interaction_mode)
+	
+	if not interacted and (self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move") then --the 3 move modes..
 		if IsKindOf(obj, "Tunnel") and obj.working then
 			GetCommandFunc(self)(self, "UseTunnel", obj)
 			SetUnitControlInteractionMode(self, false) --toggle button
@@ -443,6 +471,7 @@ end
 RoverCommands = {
 	Analyze = T(55, "Analyzing an Anomaly"),
 	AutoTransportRoute = T(56, "On a transport route"),
+	RunSafariRoute = T(12704, "On a Safari"),
 	Construct = T(57, "Constructing"),
 	Dead = T(58, "<red>This unit has been destroyed. Salvage for materials.<red>"),
 	Disembarking = T(59, "Disembarking"),
@@ -478,6 +507,7 @@ RoverCommands = {
 	Reload = T(6726, "Reloading"),
 	GotoAndEmbark =  T(11216, "Boarding Rocket"),
 	Landscaping = T(12424, "Landscaping"),
+	UseElevator = T("Going to an elevator"),
 }
 
 function BaseRover:Getui_command(for_cmd)
@@ -622,7 +652,7 @@ end
 
 local function OnRoverCommandAIResearched()
 	g_RoverAIResearched = true
-	MapForEach("map", "BaseRover", function(r)
+	MapsForEach("map", "BaseRover", function(r)
 		if r.has_auto_mode and (r.command == "Idle" or r.command == "LoadingComplete") then
 			r:SetCommand(r.command)
 			if r == SelectedObj then
@@ -633,21 +663,33 @@ local function OnRoverCommandAIResearched()
 end
 
 GlobalVar("g_RoverAIResearched", false)
-function OnMsg.TechResearched(tech_id, city, first_time)
+function OnMsg.TechResearched(tech_id, research, first_time)
 	if tech_id == "RoverCommandAI" then
 		OnRoverCommandAIResearched()
 	end
 end
 
 function SavegameFixups.BootNewRoverCommandAI()
-	if UICity:IsTechResearched("RoverCommandAI") then
+	if UIColony:IsTechResearched("RoverCommandAI") then
 		OnRoverCommandAIResearched()
+	end
+end
+
+function SavegameFixups.AddRoverChildrenLabels()
+	for _,city in ipairs(Cities) do
+		for _,rover in ipairs(city.labels.RCTransport or empty_table) do
+			city:AddToLabel("RCTransportAndChildren", rover)
+		end
+
+		for _,rover in ipairs(city.labels.RCRover or empty_table) do
+			city:AddToLabel("RCRoverAndChildren", rover)
+		end
 	end
 end
 
 function BaseRover:ToggleAutoMode(broadcast)
 	if broadcast then
-		MapForEach("map", self.class, function(o, val)
+		GetRealm(self):MapForEach("map", self.class, function(o, val)
 			o.auto_mode_on = val
 			o:ToggleAutoMode()
 		end, self.auto_mode_on)
@@ -680,6 +722,7 @@ function BaseRover:GotoAndEmbark(rocket)
 	self.embark_target = rocket
 
 	local pos, angle = rocket:GetSpotLoc(rocket:GetSpotBeginIndex("Roverout"))
+	self:Unsiege()
 	self:Goto(pos)
 	self:SetPos(pos, 250)
 	self:SetAngle(angle, 250)
@@ -712,7 +755,7 @@ end
 
 
 local function InvalidateAllRoverUnreachables()
-	MapForEach("map", "BaseRover", function(r)
+	MapsForEach("map", "BaseRover", function(r)
 		if r.has_auto_mode then
 			r:Notify("UnreachableObjectsInvalidated")
 		end

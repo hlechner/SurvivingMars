@@ -33,18 +33,6 @@ amount
 resource
 : Select the type of resources to be added.
 
-## AddRivalTrade
-
-Opens a trade route with the specified rival colony.
-Import
-: Select an import resource.
-
-Export
-: Select an export resource.
-
-ExportQuantity
-: Set the amount of resource exported.
-
 ## AddTrait
 
 Add a specified trade or specialization to the associated colonist.
@@ -120,114 +108,6 @@ Cause a fracture on the associated dome.
 ChanceLarge
 : Set the chance for a big fracture.
 
-## ChangeTerraformingParam
-
-Change the specified terraforming parameter by a certain amount.
-TerraformingParam
-: Select the terraforming parameter to be changed.
-
-Amount
-: Set the amount to change.
-
-## CovertOps_Sabotage
-
-Send a covert operation to the associated rival colony with the specified parameters, with the goal to damage buildings and disrupt production.
-Standing Change
-: Set the change to the player's standing with the other colony (use negative values to decrease it).
-
-Min Team Size
-: Minimum possible size of the crew (actial size is a random number between min and max).
-
-Max Team Size
-: Maximum possible size of the crew (actial size is a random number between min and max).
-
-Min Buildings Percent
-: Set the minimum for the percentage of buildings to be destroyed (actial percentage is a random number between min and max).
-
-Max Buildings Percent
-: Set the maximum for the percentage of buildings to be destroyed (actial percentage is a random number between min and max).
-
-Min Production Percent
-: Set the minimum for the percentage of production to damage (actial percentage is a random number between min and max).
-
-Max Production Percent
-: Set the maximum for the percentage of production to damage (actial percentage is a random number between min and max).
-
-Fail Chance
-: Set the probability for the officers to be caught and the operation to fail.
-
-Chance to lose Rocket
-: Set the probability for the whole rocket to be seized and the operation to fail.
-
-## CovertOps_StealColonists
-
-Send a covert operation to the associated rival colony with the specified parameters, with the goal to recruit more colonists.
-Standing Change
-: Set the change to the player's standing with the other colony (use negative values to decrease it).
-
-Min Team Size
-: Minimum possible size of the crew (actial size is a random number between min and max).
-
-Max Team Size
-: Maximum possible size of the crew (actial size is a random number between min and max).
-
-Recruit Type
-: Select the type of colonists to be recruited from the rival colony.
-
-Min Recruits
-: Minimum possible number of recruits (actial number is a random number between min and max).
-
-Max Recruits
-: Maximum possible number of recruits (actial number is a random number between min and max).
-
-Fail Chance
-: Set the probability for the officers to be caught and the operation to fail.
-
-Chance to lose Rocket
-: Set the probability for the whole rocket to be seized and the operation to fail.
-
-## CovertOps_StealDrones
-
-Send a covert operation to the associated rival colony with the specified parameters, with the goal to steal drones.
-Standing Change
-: Set the change to the player's standing with the other colony (use negative values to decrease it).
-
-Min Team Size
-: Minimum possible size of the crew (actial size is a random number between min and max).
-
-Max Team Size
-: Maximum possible size of the crew (actial size is a random number between min and max).
-
-Fail Chance
-: Set the probability for the officers to be caught and the operation to fail.
-
-Chance to lose Rocket
-: Set the probability for the whole rocket to be seized and the operation to fail.
-
-Min Drones
-: Minimum possible amount of drones to steal (actial amount is a random number between min and max).
-
-Max Drones
-: Maximum possible amount of drones to steal (actial amount is a random number between min and max).
-
-## CovertOps_StealTech
-
-Send a covert operation to the associated rival colony with the specified parameters, with the goal to steal new technologies or research.
-Standing Change
-: Set the change to the player's standing with the other colony (use negative values to decrease it).
-
-Min Team Size
-: Minimum possible size of the crew (actial size is a random number between min and max).
-
-Max Team Size
-: Maximum possible size of the crew (actial size is a random number between min and max).
-
-Fail Chance
-: Set the probability for the officers to be caught and the operation to fail.
-
-Chance to lose Rocket
-: Set the probability for the whole rocket to be seized and the operation to fail.
-
 ## CreatePlanetaryAnomaly
 
 Creates a planetary anomaly with the specified properties.
@@ -282,9 +162,6 @@ Time
 ## DeleteCargo
 
 Delete the associated rocket's cargo.
-## DeleteRival
-
-Delete the associated rival colony.
 ## DestroyBuilding
 
 Destroy the associated building.
@@ -462,9 +339,6 @@ Freeze the associated building.
 ## FreezeDrone
 
 Freeze the associated drones.
-## GrantRandomRivalTech
-
-Grant a random tech from rival's researched techs.
 ## KillColonist
 
 Kill the associated colonist with the specified reason.
@@ -609,24 +483,6 @@ ModifyId
 Reason
 : For some properties, a list of all applied modifiers are displayed in the UI using this text
 
-## ModifyRivalResource
-
-Modify a specific resource of the associated or all rival colonies by the specified amount or percent.
-Resource
-: Select a resource to modify.
-
-Amount
-: Set an amount to modify the resource by.
-
-Percent
-: Set a percentage to modify the resource by.
-
-ApplyToAll
-: Set to true if you want to apply the modification to all rival colonies.
-
-SetToZero
-: Set the resource to zero.
-
 ## ModifyStatus
 
 Add or remove a status effect from the colonist (status effects are things like Homeless, freezing, etc.)
@@ -678,9 +534,6 @@ Conditions
 ## RemoveAllTraits
 
 Remove all traits from the associated colonist.
-## RemoveRivalTrade
-
-Remove the trade route with the associated rival colony.
 ## RemoveTrait
 
 Remove a trait from the associated colonist.
@@ -822,66 +675,6 @@ Amount
 ## RewardWonder
 
 Grant a wonder.
-## RivalCallHelpRocket
-
-Call a help rocket.
-standing_change
-: Set the standing change
-
-rocket_id
-: Set rocket ID (can be used to reference this particular object later on).
-
-Resource
-: Select the resouce type.
-
-Amount
-: Set the amount of the resource.
-
-display_name
-: Set the name being displayed in infopanel.
-
-description
-: Set the description.
-
-Travel time (to US)
-: Set the rocket travel time to the current colony.
-
-Travel time (to THEM)
-: Set the rocket travel time to the rival colony.
-
-## RivalChangeStending
-
-Change the standing with the associated rival with a certain amount.
-Standing
-: Set the amount to add to the current standing with the rival.
-
-## RivalDistressCallRocket
-
-Spawn a distress call rocket with specified cargo.
-Class1
-: Set the class of the first cargo item.
-
-Amount1
-: Set the amount of the first cargo item.
-
-Class2
-: Set the class of the second cargo item.
-
-Amount2
-: Set the amount for the second cargo item.
-
-## RivalExchangeTechs
-
-Exchange techs with a rival.
-idDirection
-: Set the direction for the tech to flow.
-
-## RivalSetDistressCallResource
-
-Make a distress call to a rival calling for a specified resource.
-idResource
-: Select the resource to call for.
-
 ## SetBuildingBreakdownState
 
 Set the breakdown state of the associated building (maintenance or malfunction).
@@ -1020,9 +813,6 @@ Trait 3 Chance
 Associate with StoryBit
 : Set to true to pass it as an associated object.
 
-## SpawnRival
-
-Spawn a new rival.
 ## SpawnRocketInOrbit
 
 Spawn rocket in orbit.

@@ -8,12 +8,12 @@ g_TutorialScenarios.Tutorial4 = function()
 	GetSector("C1"):Scan("scanned")
 	GetSector("D1"):Scan("scanned")
 	IsDepositObstructed = old	
-	UICity:SetTechResearched("DecommissionProtocol")
+	UIColony:SetTechResearched("DecommissionProtocol")
 	
 	-- 1. Intro Popup
 	
 	WaitTutorialPopup("Tutorial4_Popup1_Intro")
-	ViewObjectMars(UICity.labels.Dome[1])
+	ViewObjectMars(MainCity.labels.Dome[1])
 	Sleep(5000)
 	
 	-- 2. Build Housing
@@ -36,7 +36,7 @@ g_TutorialScenarios.Tutorial4 = function()
 	g_Tutorial.EnableResupply = true
 	g_Tutorial.EnablePassengerRockets = true
 	
-	PlaceBuilding("SupplyRocket", {city = UICity, custom_travel_time_earth = 6*const.HourDuration, custom_travel_time_mars = 6*const.HourDuration})
+	PlaceBuildingIn("SupplyRocket", MainMapID, {custom_travel_time_earth = 6*const.HourDuration, custom_travel_time_mars = 6*const.HourDuration})
 	WaitOneMsGameTime()
 	
 	WaitUIButtonPressed("HUD", "idResupply", function(arrow)
@@ -56,7 +56,7 @@ g_TutorialScenarios.Tutorial4 = function()
 	
 	local filterUI_popped = false
 	local reviewUI_popped = false
-	local rocket = UICity.labels.AllRockets[1]
+	local rocket = MainCity.labels.AllRockets[1]
 	local launch_arrow
 	while rocket.command ~= "FlyToMars" do
 		if Dialogs.Resupply and Dialogs.Resupply.Mode == "passengers" and not filterUI_popped then
@@ -121,7 +121,7 @@ g_TutorialScenarios.Tutorial4 = function()
 			FindTarget = function() 
 				if Dialogs.PinsDlg then 
 					for _, win in ipairs(Dialogs.PinsDlg) do
-						if IsKindOf(win, "XBlinkingButton") and IsKindOf(win.context, "SupplyRocket") and UICity.labels.AllRockets[1].command == "WaitInOrbit" then
+						if IsKindOf(win, "XBlinkingButton") and IsKindOf(win.context, "SupplyRocket") and MainCity.labels.AllRockets[1].command == "WaitInOrbit" then
 							return win
 						end
 					end
@@ -143,7 +143,7 @@ g_TutorialScenarios.Tutorial4 = function()
 	TutorialNextHint("Tutorial_4_ManagingJobs")
 	Sleep(100)
 	
-	local spacebar = UICity.labels["Spacebar"] and UICity.labels["Spacebar"][1]
+	local spacebar = MainCity.labels["Spacebar"] and MainCity.labels["Spacebar"][1]
 	ViewObjectMars(spacebar)
 	ShowTutorialArrow(spacebar, "ArrowTutorialBase")
 	local arrow
@@ -185,7 +185,7 @@ g_TutorialScenarios.Tutorial4 = function()
 	WaitTutorialPopup("Tutorial4_PopUp10_Shifts")
 	TutorialNextHint("Tutorial_4_Shifts")
 	
-	local lab = UICity.labels["ResearchLab"] and UICity.labels["ResearchLab"][1]
+	local lab = MainCity.labels["ResearchLab"] and MainCity.labels["ResearchLab"][1]
 	ViewObjectMars(lab)
 	local obj_arrow = ShowTutorialArrow(lab, "ArrowTutorialBase")
 	
@@ -241,7 +241,7 @@ g_TutorialScenarios.Tutorial4 = function()
 	
 	Sleep(100)
 	
-	while #UICity.research_queue < 3 do
+	while #UIColony.research_queue < 3 do
 		Sleep(50)
 		if not Dialogs.ResearchDlg then
 			WaitUIButtonPressed("HUD", "idResearch")

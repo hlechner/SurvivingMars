@@ -134,5 +134,6 @@ end
 function PlayInitialMovies()
 	SplashImage("UI/ParadoxLogo.tga", 500, 4000):Wait()
 	SplashImage("UI/HaemimontLogo.tga", 500, 4000):Wait()
+	SplashImage("UI/AbstractionLogo.tga", 500, 4000):Wait()
 	--SplashMovie("Movies/Haemimont", point(16,9)):Wait()
 end

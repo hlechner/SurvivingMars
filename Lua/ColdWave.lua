@@ -27,37 +27,43 @@ GlobalVar("g_ColdWaveStartTime", false)
 GlobalVar("g_ColdWaveEndTime", false)
 GlobalVar("g_ColdWaveExtend", false)
 
+function HasColdWave(map_id)
+	return (MainCity.map_id == map_id or map_id == nil) and g_ColdWave
+end
+
 local hour_duration = const.HourDuration
 local day_duration = const.DayDuration
 local day_hours = const.HoursPerDay
 
 local function GetColdWaveDescr()
-	if mapdata.MapSettings_ColdWave == "disabled" then
+	if ActiveMaps[MainMapID].MapSettings_ColdWave == "disabled" then
 		return
 	end
 	
 	local data = DataInstances.MapSettings_ColdWave
-	local cold_wave = data[mapdata.MapSettings_ColdWave] or data["ColdWave_VeryLow"]
+	local cold_wave = data[ActiveMaps[MainMapID].MapSettings_ColdWave] or data["ColdWave_VeryLow"]
 	
 	local orig_data = cold_wave and not cold_wave.forbidden and cold_wave
 	return OverrideDisasterDescriptor(orig_data)
 end
 
 function ExtendColdWave(time)
-	if g_ColdWave and g_ColdWaveStartTime and g_ColdWaveEndTime then
+	if HasColdWave() and g_ColdWaveStartTime and g_ColdWaveEndTime then
+		local map_id = MainCity.map_id
 		g_ColdWaveEndTime = g_ColdWaveEndTime + time
-		AddDisasterNotification("ColdWaveDuration", {start_time = g_ColdWaveStartTime, expiration = g_ColdWaveEndTime - g_ColdWaveStartTime}, "extended")
+		AddDisasterNotification("ColdWaveDuration", {start_time = g_ColdWaveStartTime, expiration = g_ColdWaveEndTime - g_ColdWaveStartTime}, "extended", map_id)
 		g_ColdWaveExtend = true
-		Msg("ColdWaveCancel")
+		Msg("ColdWaveCancel", map_id)
 	end
 end
 
 function StartColdWave(settings, endless)
-	local cold_wave = ColdWaveInstance:new{
+	local map_id = MainCity.map_id
+	local cold_wave = ColdWaveInstance:new({
 		settings = settings,
-		temp_drop = UICity:Random(settings.min_temp_drop, settings.max_temp_drop),
-	}
-	local duration = not endless and UICity:Random(settings.min_duration, settings.max_duration)
+		temp_drop = SessionRandom:Random(settings.min_temp_drop, settings.max_temp_drop),
+	}, map_id)
+	local duration = not endless and SessionRandom:Random(settings.min_duration, settings.max_duration)
 	if not endless then
 		g_ColdWaveStartTime = GameTime()
 		g_ColdWaveEndTime = g_ColdWaveStartTime + duration
@@ -65,15 +71,22 @@ function StartColdWave(settings, endless)
 	if g_ColdWave then
 		g_ColdWave:ApplyHeat(false)
 	else
-		PlayFX("ColdWave", "start")
+		PlayFX({
+			actionFXClass = "ColdWave",
+			actionFXMoment = "start",
+			action_map_id = map_id,
+		})
 	end
 	g_ColdWave = cold_wave
-	Msg("ColdWave")
+	Msg("ColdWave", map_id)
 	RemoveDisasterNotifications()
 	local preset = duration and "ColdWaveDuration" or "ColdWaveEndless"
 	
-	AddDisasterNotification(preset, {start_time = g_ColdWaveStartTime or 0, expiration = duration})
-	ShowDisasterDescription("ColdWave")
+	local id = AddDisasterNotification(preset, {
+		start_time = g_ColdWaveStartTime or 0,
+		expiration = duration
+	}, nil, map_id)
+	ShowDisasterDescription("ColdWave", map_id)
 	for i = #g_DustDevils, 1, -1 do
 		g_DustDevils[i]:delete()
 	end
@@ -91,17 +104,23 @@ function StartColdWave(settings, endless)
 		end
 	end
 	cold_wave:ApplyHeat(false)
-	RemoveOnScreenNotification(preset)
+	RemoveOnScreenNotification(id, map_id)
 	if g_ColdWave == cold_wave then
-		PlayFX("ColdWave", "end")
+		PlayFX({
+			actionFXClass = "ColdWave",
+			actionFXMoment = "end",
+			action_map_id = map_id,
+		})
 		g_ColdWave = false
 		g_ColdWaveStartTime = false
 		g_ColdWaveEndTime = false
-		Msg("ColdWaveEnded")
+		Msg("ColdWaveEnded", map_id)
 	end
 end
 
 GlobalGameTimeThread("ColdWave", function()
+	if IsGameRuleActive("NoDisasters") then return end
+
 	local cold_wave = GetColdWaveDescr()
 	if not cold_wave then
 		return
@@ -110,7 +129,7 @@ GlobalGameTimeThread("ColdWave", function()
 	-- wait a few sols
 	local wait_time = 0
 	if not cold_wave.seasonal then
-		wait_time = cold_wave.birth_hour + UICity:Random(cold_wave.spawntime_random)
+		wait_time = cold_wave.birth_hour + SessionRandom:Random(cold_wave.spawntime_random)
 	end
 	
 	local first = true
@@ -120,13 +139,14 @@ GlobalGameTimeThread("ColdWave", function()
 			wait_time = wait_time + cold_wave.seasonal_sols * day_duration
 		else
 			if not first then
-				wait_time = wait_time + UICity:Random(cold_wave.spawntime, cold_wave.spawntime_random)
+				wait_time = wait_time + SessionRandom:Random(cold_wave.spawntime, cold_wave.spawntime_random)
 			end
 		end
 		
 		-- wait and show the notification
 		local start_time = GameTime()
 		local last_check_time = GameTime()
+		local map_id = MainCity.map_id
 		while ColdWavesDisabled or IsDisasterPredicted() or IsDisasterActive() or (GameTime() - start_time < wait_time) do
 			local dt = GameTime() - last_check_time
 			last_check_time = GameTime()
@@ -135,8 +155,13 @@ GlobalGameTimeThread("ColdWave", function()
 			else
 				local warn_time = GetDisasterWarningTime(cold_wave)
 				if GameTime() - start_time > wait_time - warn_time then
-					AddDisasterNotification("ColdWave2", {start_time = GameTime(), expiration = warn_time, early_warning = GetEarlyWarningText(warn_time) , num_of_sensors = GetTowerCountText() })
-					ShowDisasterDescription("ColdWave")
+					AddDisasterNotification("ColdWave2", {
+						start_time = GameTime(), 
+						expiration = warn_time,
+						early_warning = GetEarlyWarningText(warn_time),
+						num_of_sensors = GetTowerCountText()},
+					nil, map_id)
+					ShowDisasterDescription("ColdWave", map_id)
 					WaitMsg("TriggerColdWave", wait_time - (GameTime() - start_time))
 					while IsDisasterActive() do
 						WaitMsg("TriggerColdWave", 5000)
@@ -168,7 +193,7 @@ end)
 
 DefineClass.ColdWaveInstance =
 {
-	__parents = { "BaseHeater" },
+	__parents = { "BaseHeater", "Object" },
 	settings = false,
 	temp_drop = 0,
 	heat = -2*const.MaxHeat,
@@ -222,7 +247,7 @@ function ColdArea:EditorGetRange()
 	return self.Range
 end
 
-function ColdArea:ApplyForm(grid, heat, center_x, center_y, radius, border, map_border, grid_tile)
+function ColdArea:ApplyForm(grid, heat, center_x, center_y, radius, border, map_width, map_height, map_border, grid_tile)
 	if radius == 0 then
 		return
 	end
@@ -250,7 +275,7 @@ function ColdArea:ApplyForm(grid, heat, center_x, center_y, radius, border, map_
 		return
 	end
 	SetIceStrength(self.IceStrength, self)
-	Heat_AddColdArea(grid, pattern, radius_max, center_x, center_y, radius, heat, map_border, grid_tile)
+	Heat_AddColdArea(grid, pattern, radius_max, center_x, center_y, radius, heat, map_width, map_height, map_border, grid_tile)
 	pattern:free()
 end
 
@@ -270,7 +295,7 @@ function CheatColdWave(setting)
 		Msg("TriggerColdWave")
 	else
 		CreateGameTimeThread(function()
-			setting = setting or mapdata.MapSettings_ColdWave
+			setting = setting or ActiveMaps[MainMapID].MapSettings_ColdWave
 			local data = DataInstances.MapSettings_ColdWave
 			StartColdWave(data[setting] or data["ColdWave_VeryLow"])
 		end)
@@ -287,15 +312,21 @@ function CheatDisasterWarning()
 		return
 	end	
 	local warn_time = GetDisasterWarningTime(cold_wave)
-	AddDisasterNotification(disaster, {start_time = GameTime(), expiration = warn_time, early_warning = GetEarlyWarningText(warn_time), num_of_sensors = GetTowerCountText() })
-	ShowDisasterDescription(disaster)
+	local map_id = MainCity.map_id
+	AddDisasterNotification(disaster, {
+		start_time = GameTime(),
+		expiration = warn_time,
+		early_warning = GetEarlyWarningText(warn_time),
+		num_of_sensors = GetTowerCountText() },
+	nil, map_id)
+	ShowDisasterDescription(disaster, map_id)
 end
 
 function StopColdWave()
-	Msg("ColdWaveCancel")
+	Msg("ColdWaveCancel", MainCity.map_id)
 end
 
 function OnMsg.CheatStopDisaster()
-	if not g_ColdWave then return end
+	if not HasColdWave() then return end
 	StopColdWave()
 end

@@ -6,7 +6,7 @@ PlaceObj('XTemplate', {
 	PlaceObj('XTemplateForEach', {
 		'array', function (parent, context) return nil, 1, 3 end,
 		'map', function (parent, context, array, i) return i end,
-		'condition', function (parent, context, item, i) return UICity:IsUpgradeUnlocked(context:GetUpgradeID(i)) end,
+		'condition', function (parent, context, item, i) return UIColony:IsUpgradeUnlocked(context:GetUpgradeID(i)) end,
 		'item_in_context', "i",
 		'run_after', function (child, context, item, i, n)
 			local obj = ResolvePropObj(context)

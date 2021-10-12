@@ -2,12 +2,14 @@
 
 ## Overview
 
-Building derived [building template](ModItemBuildingTemplate.md.html) class. Handles air and water consumption. An object of this class may consume only water or only air or both. All buildings that consume air or water in whatever fassion are of this class or a derived class.<br>
+Building derived [building template](ModItemBuildingTemplate.md.html) class. Handles air and water consumption. An object of this class may consume only water, only air or both. All buildings that consume air or water in whatever fashion are of this class or a derived class.<br>
 ## Parent classes
 
+* [AirConsumer](LuaFunctionDoc_AirConsumer.md.html) 
 * [AutoAttachObject](LuaFunctionDoc_AutoAttachObject.md.html) 
 * [BaseBuilding](LuaFunctionDoc_BaseBuilding.md.html) 
 * [Building](LuaFunctionDoc_Building.md.html) 
+* BuildingRevealDarkness
 * BuildingVisualDustComponent
 * [CObject](LuaFunctionDoc_CObject.md.html) 
 * CityObject
@@ -30,47 +32,19 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 * [Object](LuaFunctionDoc_Object.md.html) 
 * [PinnableObject](LuaFunctionDoc_PinnableObject.md.html) 
 * PropertyObject
+* Refabable
 * Renamable
 * [RequiresMaintenance](LuaFunctionDoc_RequiresMaintenance.md.html) 
+* SafariSight
 * [Shapeshifter](LuaFunctionDoc_Shapeshifter.md.html) 
+* Shroudable
 * [SkinChangeable](LuaFunctionDoc_SkinChangeable.md.html) 
 * SupplyGridObject
 * SyncObject
 * [TaskRequester](LuaFunctionDoc_TaskRequester.md.html) 
 * [UpgradableBuilding](LuaFunctionDoc_UpgradableBuilding.md.html) 
+* [WaterConsumer](LuaFunctionDoc_WaterConsumer.md.html) 
 * WaypointsObj
-## Class properties
-
-### Modifiable Properties
-
-#### Consumption
-
-
-**water_consumption**
-: Water consumption
-
-**air_consumption**
-: Oxygen consumption
-#### General
-
-
-**disable_air_consumption**
-: So consumption can be turned off with modifiers
-### Template Properties
-
-#### Consumption
-
-
-**water_consumption**
-: Water consumption
-
-**air_consumption**
-: Oxygen consumption
-#### General
-
-
-**disable_air_consumption**
-: So consumption can be turned off with modifiers
 ## Derived properties
 
 ### Modifiable Properties
@@ -96,6 +70,9 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 **construction_cost_PreciousMetals**
 : Rare Metals Cost
 
+**construction_cost_PreciousMinerals**
+: Exotic Minerals Cost
+
 **construction_cost_BlackCube**
 : Black Cubes Cost
 
@@ -104,14 +81,19 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 
 **in_dome_construction_modifier**
 : If constructed inside a dome, this mod will be applied to construction cost.
+#### Consumption
+
+
+**air_consumption**
+: Oxygen consumption
+
+**water_consumption**
+: Water consumption
 #### General
 
 
-**dome_comfort**
-: Dome Comfort
-
-**salvage_modifier**
-: Salvage Modifier
+**disable_water_consumption**
+: So consumption can be turned off with modifiers
 #### Maintenance
 
 
@@ -279,6 +261,9 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 **construction_cost_PreciousMetals**
 : Rare Metals Cost
 
+**construction_cost_PreciousMinerals**
+: Exotic Minerals Cost
+
 **construction_cost_BlackCube**
 : Black Cubes Cost
 
@@ -324,6 +309,9 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 **wonder**
 : Whether the building is considered a Wonder or not.
 
+**build_once**
+: Whether the building can be constructed multiple times
+
 **force_extend_bb_during_placement_checks**
 : During placement, entity bb will be extended this much to catch obstructors in the hex shape way out of the entity bb.
 
@@ -356,6 +344,38 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 
 **refund_on_salvage**
 : Refund on Salvage
+
+**disabled_in_environment1**
+: Map type where building should be disabled
+
+**disabled_in_environment2**
+: Map type where building should be disabled
+
+**disabled_in_environment3**
+: Map type where building should be disabled
+
+**disabled_in_environment4**
+: Map type where building should be disabled
+
+**snap_target_type**
+: Type to snap to when building
+
+**only_build_on_snapped_locations**
+: Only allow building on snap target
+
+**snap_error_text**
+: Snap error text
+
+**snap_error_short**
+: Snap error short
+#### Consumption
+
+
+**air_consumption**
+: Oxygen consumption
+
+**water_consumption**
+: Water consumption
 #### Custom Labels
 
 
@@ -410,62 +430,8 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 #### General
 
 
-**display_name**
-: Display Name
-
-**display_name_pl**
-: Display Name (pl)
-
-**description**
-: Description
-
-**build_category**
-: Build Menu Category
-
-**display_icon**
-: Build Menu Icon
-
-**build_pos**
-: Build Menu Pos
-
-**entity**
-: Entity
-
-**dome_comfort**
-: Dome Comfort
-
-**show_range_all**
-: Show range radii for all buildings of that class when selected
-
-**show_range**
-: Show range radius for this building
-
-**ip_template**
-: Template used for building infopanel
-
-**suspend_on_dust_storm**
-: Suspend on Dust Storm
-
-**color_modifier**
-: Color Modifier
-
-**palette_color1**
-: Palette color 1
-
-**palette_color2**
-: Palette color 2
-
-**palette_color3**
-: Palette color 3
-
-**palette_color4**
-: Palette color 4
-
-**count_as_building**
-: Count as building for achievement / control center purposes
-
-**clear_soil_underneath**
-: If the soil underneath the building should be set to 0.
+**disable_water_consumption**
+: So consumption can be turned off with modifiers
 #### Maintenance
 
 
@@ -518,6 +484,11 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 
 **pin_obvious_blink**
 : Obvious Blink
+#### Refab
+
+
+**can_refab**
+: Specify if the object can be converted to a prefab.
 #### Resource Consumption
 
 
@@ -535,6 +506,25 @@ Building derived [building template](ModItemBuildingTemplate.md.html) class. Han
 
 **consumption_resource_stockpile_spot_name**
 : If there is any consumption, will try to attacha purely visual stockpile at this spot.
+#### Reveal
+
+
+**reveal_range**
+: Reveal Range
+#### Safari
+
+
+**sight_name**
+: sight_name
+
+**sight_category**
+: sight_category
+
+**sight_satisfaction**
+: sight_satisfaction
+
+**sight_visible_size**
+: sight_visible_size
 #### Shortcuts
 
 

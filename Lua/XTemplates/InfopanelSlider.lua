@@ -36,8 +36,8 @@ PlaceObj('XTemplate', {
 						local prop_meta = obj:GetPropertyMetadata(prop)
 						local step = shortcut == "LeftShoulder" and -(prop_meta.step or 1) or prop_meta.step or 1
 						local new_amount = amount + step
-						local min = type(prop_meta.min) == "function" and prop_meta.min(obj) or prop_meta.min
-						local max = type(prop_meta.max) == "function" and prop_meta.max(obj) or prop_meta.max
+						local min = type(prop_meta.min) == "function" and prop_meta.min(obj) or slider.Min
+						local max = type(prop_meta.max) == "function" and prop_meta.max(obj) or slider.Max
 						if min then
 							new_amount = Max(new_amount, min)
 						end

@@ -51,12 +51,6 @@ int radius
 
 ## terrain.GetHeight
 
-Returns the maximum possible height value.<br>
-
-int **terrain.GetHeight**()
-
-## terrain.GetHeight
-
 Returns the terrain height at given position.<br>
 
 int **terrain.GetHeight**(pos)
@@ -160,26 +154,20 @@ Returns the x and y sizes of the heightmap grid.<br>
 
 int, int **terrain.HeightMapSize**()
 
-## terrain.HeightTileSize
+## terrain.InvalidateHeight
 
-Returns the size of the heightmap tile.<br>
+Forces a recalculation of the height values in the specified area or the entire map.<br>
 
-int **terrain.HeightTileSize**()
+void **terrain.InvalidateHeight**(area)
+box area
+: optional, area to recalculate.
+
 
 ## terrain.InvalidateType
 
 Forces a recalculation of the typemap in the specified area or the entire map.<br>
 
 void **terrain.InvalidateType**(area)
-box area
-: optional, area to recalculate.
-
-
-## terrain.InvlidateHeight
-
-Forces a recalculation of the height values in the specified area or the entire map.<br>
-
-void **terrain.InvlidateHeight**(area)
 box area
 : optional, area to recalculate.
 
@@ -327,12 +315,6 @@ int radius
 Returns the x and y sizes of the typemap grid.<br>
 
 int, int **terrain.TypeMapSize**()
-
-## terrain.TypeTileSize
-
-Returns the size of the typemap tile.<br>
-
-int **terrain.TypeTileSize**()
 
 ## terrain.UpdateWaterGridFromObject
 

@@ -37,7 +37,7 @@ PlaceObj('XTemplate', {
 			}),
 		PlaceObj('XTemplateTemplate', {
 			'comment', "make androids",
-			'__condition', function (parent, context) return UICity:IsTechResearched("ThePositronicBrain") end,
+			'__condition', function (parent, context) return UIColony:IsTechResearched("ThePositronicBrain") end,
 			'__template', "InfopanelButton",
 			'RolloverText', T(702517856120, --[[XTemplate customDroneFactory RolloverText]] "Construction of a new Biorobot costs:<newline><resource(ConstructResource)><right><resource(ConstructAndroidCost, ConstructResource)>"),
 			'RolloverTitle', T(6738, --[[XTemplate customDroneFactory RolloverTitle]] "Construct Biorobot"),
@@ -83,7 +83,7 @@ PlaceObj('XTemplate', {
 				'Text', T(8539, --[[XTemplate customDroneFactory Text]] "Scheduled Drone Prefabs<right><drone(drones_in_construction)>"),
 			}),
 			PlaceObj('XTemplateTemplate', {
-				'__condition', function (parent, context) return UICity:IsTechResearched("ThePositronicBrain") end,
+				'__condition', function (parent, context) return UIColony:IsTechResearched("ThePositronicBrain") end,
 				'__template', "InfopanelText",
 				'Text', T(6742, --[[XTemplate customDroneFactory Text]] "Scheduled Biorobots<right><colonist(androids_in_construction)>"),
 			}),

@@ -1444,6 +1444,94 @@ PlaceObj('SoundPreset', {
 
 PlaceObj('SoundPreset', {
 	group = "Building",
+	id = "Building Amphitheater Complete",
+	type = "BuildingPhase",
+	volume = 130,
+})
+
+PlaceObj('SoundPreset', {
+	group = "Building",
+	id = "Building Amphitheater Demolition",
+	mindistance = 1500,
+	type = "BuildingDestruction",
+	volume = 110,
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/_BuildingDestruction/building_destructionSmall4",
+		'frequency', 30,
+	}),
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/_BuildingDestruction/building_destructionSmall3",
+		'frequency', 30,
+	}),
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/_BuildingDestruction/building_destructionSmall2",
+		'frequency', 30,
+	}),
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/_BuildingDestruction/building_destructionSmall1",
+		'frequency', 30,
+	}),
+})
+
+PlaceObj('SoundPreset', {
+	group = "Building",
+	id = "Building Amphitheater Fail",
+	mindistance = 3000,
+	type = "BuildingPhase",
+	volume = 130,
+})
+
+PlaceObj('SoundPreset', {
+	group = "Building",
+	id = "Building Amphitheater Loop",
+	looping = true,
+	mindistance = 2000,
+	type = "BuildingLoop",
+	volume = 125,
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/_BuildingPopulation/building_populationlow1",
+		'frequency', 50,
+	}),
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/_BuildingPopulation/building_populationlow2",
+		'frequency', 50,
+	}),
+})
+
+PlaceObj('SoundPreset', {
+	group = "Building",
+	id = "Building Amphitheater Select",
+	mindistance = 2000,
+	type = "BuildingOperation",
+	volume = 90,
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/HangingGardens/hanginggardens_select1",
+		'frequency', 50,
+	}),
+	PlaceObj('Sample', {
+		'file', "Sounds/Buildings/HangingGardens/hanginggardens_select2",
+		'frequency', 50,
+	}),
+})
+
+PlaceObj('SoundPreset', {
+	group = "Building",
+	id = "Building Amphitheater SelectIncomplete",
+	mindistance = 2000,
+	type = "BuildingOperation",
+	volume = 90,
+	PlaceObj('Sample', {
+		'file', "Sounds/Objects/_ObjectSelection/object_incomplete1",
+		'frequency', 50,
+	}),
+	PlaceObj('Sample', {
+		'file', "Sounds/Objects/_ObjectSelection/object_incomplete2",
+		'frequency', 50,
+	}),
+})
+
+PlaceObj('SoundPreset', {
+	group = "Building",
 	id = "Building Apartments Complete",
 	type = "BuildingPhase",
 	volume = 130,

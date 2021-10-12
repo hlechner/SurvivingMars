@@ -29,6 +29,11 @@ DefineClass.ExplorerRover = {
 	malfunction_idle_state = "malfunctionIdle",
 	
 	has_auto_mode = true,
+	
+	environment_entity = {
+		base = "RoverExplorer",
+		Asteroid = "RoverFlyingExplorer",
+	},
 }
 
 function ExplorerRover:GameInit()
@@ -38,8 +43,8 @@ function ExplorerRover:Idle()
 	self:SetState("idle")
 	if g_RoverAIResearched and self.auto_mode_on then
 		local unreachable_objects = self:GetUnreachableObjectsTable()
-		
-		local anomaly = MapFindNearest(self, "map", "SubsurfaceAnomaly", 
+
+		local anomaly = GetRealm(self):MapFindNearest(self, "map", "SubsurfaceAnomaly", 
 								function(a)
 									if a.auto_rover then
 										local r = a.auto_rover
@@ -47,7 +52,7 @@ function ExplorerRover:Idle()
 											a.auto_rover = false
 										end
 									end
-									return not unreachable_objects[a] and not a.auto_rover
+									return not unreachable_objects[a] and not a.auto_rover and a.revealed
 								end)
 		
 		if anomaly then
@@ -84,7 +89,6 @@ function ExplorerRover:Analyze(anomaly)
 	-- scan left time
 	local progress_time = MulDivRound(anomaly.scanning_progress, self.scan_time, 100 )
 	self.scanning_start = GameTime()- progress_time
-	--local start_stop = self:GetAnimDuration("scanStart") + self:GetAnimDuration("scanEnd")
 	RebuildInfopanel(self)
 	self:PushDestructor(function(self)
 		if IsValid(anomaly) then
@@ -96,18 +100,20 @@ function ExplorerRover:Analyze(anomaly)
 			end
 		end
 		
-		self:StopFX()
-		self.scanning = false
-		self.scanning_start = false
-		--self:PlayState("scanEnd")
+		if IsValid(self) then
+			self:StopFX()
+			self.scanning = false
+			self.scanning_start = false
+			self:PlayState("scanEnd")
+		end
 	end)
 	
 	local time = self.scan_time - progress_time
 	
 	self:StartFX("Scan", anomaly)
-	--self:PlayState("scanStart")
+	self:PlayState("scanStart")
 	self.scanning = true
-	--self:PlayState("scanIdle", - (time - start_stop))
+	self:PlayState("scanIdle")
 	
 	while time > 0 and IsValid(self) and IsValid(anomaly) do
 		Sleep(1000)
@@ -144,11 +150,11 @@ function ExplorerRover:InteractWithObject(obj, interaction_mode)
 end
 
 function ExplorerRover:GetResearchProgress()
-	return self.city:GetResearchProgress()
+	return self.city.colony:GetResearchProgress()
 end
 
 function ExplorerRover:GetEstimatedDailyLoss()
-	local rp, loss = self.city:CalcExplorerResearchPoints(const.DayDuration)
+	local rp, loss = self.city.colony:CalcExplorerResearchPoints(const.DayDuration)
 	return loss
 end
 
@@ -158,11 +164,18 @@ function ExplorerRover:GetEstimatedDailyProduction()
 end
 
 function ExplorerRover:GetUIResearchProject()
-	return self.city:GetUIResearchProject()
+	return self.city.colony:GetUIResearchProject()
 end
 
 function ExplorerRover:LogRP(rp)
 	self.research_points_lifetime = (self.research_points_lifetime or 0) + rp
+end
+
+function ExplorerRover:TransferToMap(map_id)
+	if self.command ~= "WaitToAppear" then
+		self:SetCommand("Idle")
+	end
+	BaseRover.TransferToMap(self, map_id)
 end
 
 function ExplorerRover:ToggleAutoMode_Update(button)

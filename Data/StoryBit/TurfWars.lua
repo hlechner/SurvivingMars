@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/13_renegades.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -29,6 +30,10 @@ PlaceObj('StoryBit', {
 			'Condition', ">=",
 			'Amount', 1,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(624001901036, --[[StoryBit TurfWars Text]] "We have info that a major move is planned by one of the bigger gangs against their rivals.\n\nLately, a lot of homemade weapons have started circulating the Domes and we fear this will be a bloody showdown. "),
@@ -44,6 +49,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1551086031,
 				user = "Radomir",
+			},
+			{
+				action = "Modified",
+				time = 1625147926,
 			},
 		},
 	}),

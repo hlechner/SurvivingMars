@@ -1,3 +1,21 @@
+function GetSequenceListIndex(sequence, sequence_list)
+	local list = DataInstances.Scenario[sequence_list]
+	if not list then
+		printf("Subsurface anomaly sequence start failed - probably missing sequence list %s?", sequence_list)
+		assert(list)
+		return false
+	end
+	
+	local sequence_index = table.find(list, "name", sequence)
+	local found_sequence = sequence_index and sequence_index > 0
+	if not found_sequence then
+		assert(found_sequence, "Subsurface anomaly sequence cannot find " .. sequence .. " in " .. sequence_list)
+		return false
+	end
+
+	return sequence_index
+end
+
 local anomaly_tech_actions = {
 	{ text = T(1, "Unlock Breakthrough"), value = "breakthrough" },
 	{ text = T(2, "Unlock Tech"), value = "unlock" },
@@ -6,19 +24,30 @@ local anomaly_tech_actions = {
 }
 
 DefineClass.SubsurfaceAnomalyMarker = {
-	__parents = { "DepositMarker" },
+	__parents = { "DepositMarker", "SafariSight" },
 	properties = {
 		{ category = "Anomaly", name = T(4, "Tech Action"),             id = "tech_action",              editor = "dropdownlist", default = false, items = anomaly_tech_actions },
 		{ category = "Anomaly", name = T(5, "Sequence"),                id = "sequence",                 editor = "dropdownlist", default = "",    items = function() return table.map(DataInstances.Scenario.Anomalies, "name") end, help = "Sequence to start when the anomaly is scanned" },
-		{ category = "Anomaly", name = T(3775, "Sequence List"), 		id = "sequence_list", default = "Anomalies",    editor = "dropdownlist", items = function() return table.map(DataInstances.Scenario, "name") end, },
+		{ category = "Anomaly", name = T(3775, "Sequence List"),        id = "sequence_list",            editor = "dropdownlist", default = "Anomalies",     items = function() return table.map(DataInstances.Scenario, "name") end, },
 		{ category = "Anomaly", name = T(6, "Depth Layer"),             id = "depth_layer",              editor = "number",       default = 1,     min = 1, max = const.DepositDeepestLayer}, --depth layer
 		{ category = "Anomaly", name = T(7, "Is Revealed"),             id = "revealed",                 editor = "bool",         default = false },
-		{ category = "Anomaly", name = T(8, "Breakthrough Tech"),       id = "breakthrough_tech",        editor = "text",       default = "" },
-		{ category = "Anomaly", name = T(8694, "Granted Resource"), 				id = "granted_resource",			 editor = "dropdownlist", default = "", items = ResourcesDropDownListItems, },
-		{ category = "Anomaly", name = T(8695, "Granted Amount"),				id = "granted_amount",				 editor = "number", 		 default = 0, min = 0, scale = const.ResourceScale, },
+		{ category = "Anomaly", name = T(8, "Breakthrough Tech"),       id = "breakthrough_tech",        editor = "text",         default = "" },
+		{ category = "Anomaly", name = T(8694, "Granted Resource"),     id = "granted_resource",         editor = "dropdownlist", default = "", items = ResourcesDropDownListItems, },
+		{ category = "Anomaly", name = T(8695, "Granted Amount"),       id = "granted_amount",           editor = "number",       default = 0, min = 0, scale = const.ResourceScale, },
 	},
 	new_pos_if_obstruct = true,
+
+	sight_name = T(12701, "Anomaly"),
+	sight_category = "Environmental Hotspot",
+	sight_satisfaction = 5,
 }
+
+function SubsurfaceAnomalyMarker:Init()
+	if self.sequence ~= "" and self.sequence_list ~= "" then
+		assert(GetSequenceListIndex(self.sequence, self.sequence_list))
+	end
+end
+
 function SubsurfaceAnomalyMarker:EditorGetText()
 	return "Anomaly " .. (self.tech_action or self.sequence)
 end
@@ -27,22 +56,63 @@ function SubsurfaceAnomalyMarker:GetDepthClass()
 	return self.depth_layer <= 1 and "subsurface" or "deep"
 end
 
-function PlaceAnomaly(params)
-	local classdef = params.tech_action and rawget(g_Classes, "SubsurfaceAnomaly_" .. params.tech_action) or SubsurfaceAnomaly
-	return classdef:new(params)
+function SubsurfaceAnomalyMarker:IsActive()
+	return IsValid(self.placed_obj)
 end
 
-function SubsurfaceAnomalyMarker:SpawnDeposit()
-	return PlaceAnomaly{
+function PlaceAnomaly(params, map_id)
+	local classdef = params.tech_action and rawget(g_Classes, "SubsurfaceAnomaly_" .. params.tech_action) or SubsurfaceAnomaly
+	return classdef:new(params, map_id)
+end
+
+function SubsurfaceAnomalyMarker:PlaceAnomaly(sequence)
+	return PlaceAnomaly({
 		depth_layer = self.depth_layer,
 		revealed = self.revealed,
 		tech_action = self.tech_action,
 		granted_resource = self.granted_resource,
 		granted_amount = self.granted_amount,
-		sequence = self.sequence,
+		sequence = sequence,
 		sequence_list = self.sequence_list,
 		breakthrough_tech = self.breakthrough_tech, --randomly assigned in City:InitBreakThroughAnomalies
-	}
+	}, self:GetMapID())
+end
+
+function SubsurfaceAnomalyMarker:SpawnDeposit()
+	local sequence = self.sequence
+	
+	if not self.tech_action then
+		if self.sequence == "" and self.sequence_list ~= "" then
+			sequence = table.rand(DataInstances.Scenario[self.sequence_list]).name
+		end
+	
+		if self.sequence_list ~= "" then
+			assert(GetSequenceListIndex(sequence, self.sequence_list))
+		end
+	end
+
+	return self:PlaceAnomaly(sequence)
+end
+
+DefineClass.SubsurfaceSpecialAnomalyMarker = {
+	__parents = { "SubsurfaceAnomalyMarker" },
+	properties = {
+		{ category = "Anomaly", name = T(1000067, "Display Name"), id = "display_name", editor = "text", default = "", translate = true},
+		{ category = "Anomaly", name = T(1000017, "Description"), id = "description", editor = "text", default = "", translate = true},
+	},
+}
+
+function SubsurfaceSpecialAnomalyMarker:PlaceAnomaly(sequence)
+	return PlaceAnomaly({
+		display_name = self.display_name ~= "" and self.display_name or nil,
+		description = self.description ~= "" and self.description or nil,
+		tech_action = self.tech_action,
+		granted_resource = self.granted_resource,
+		granted_amount = self.granted_amount,
+		sequence = sequence,
+		sequence_list = self.sequence_list,
+		breakthrough_tech = self.breakthrough_tech,
+	}, self:GetMapID())
 end
 
 DefineClass.SubsurfaceAnomaly = {
@@ -145,30 +215,31 @@ function SubsurfaceAnomaly:Done()
 end
 
 function SubsurfaceAnomaly:StartSequence(sequence, scanner, pos)
-	if sequence ~= ""  then
-		local list = DataInstances.Scenario[self.sequence_list]
-		if not list then
-			printf("Subsurface anomaly sequence start failed - probably missing sequence list %s?", self.sequence_list)
-			return 
-		end
-		
-		local player = CreateSequenceListPlayer(list)
-		local state = player:StartSequence(sequence)
-		if not state then
-			printf("Subsurface anomaly sequence start failed - probably missing sequence %s?", sequence)
-			return
-		end
-		local registers = player.seq_states[sequence].registers
-		registers.anomaly_pos = pos
-		if scanner then
-			assert(IsKindOf(scanner, "ExplorerRover"))
-			registers.rover = scanner
-		end
+	assert(sequence ~= "")
+	local sequence_index = GetSequenceListIndex(self.sequence, self.sequence_list)
+	local list = DataInstances.Scenario[self.sequence_list]
+	
+	local expect_instance = list.singleton and sequence_index > 1
+	local player, created = CreateSequenceListPlayer(list, self:GetMapID())
+	assert(expect_instance ~= created, "Expected an existing singleton instance. Created a new player instead for \"" .. sequence .. "\" in \"" .. self.sequence_list .. "\"")
+
+	local state = player:StartSequence(sequence)
+	if not state then
+		printf("Subsurface anomaly sequence start failed - probably missing sequence %s in list %s?", sequence, self.sequence_list)
+		assert(state)
+		return
+	end
+
+	local registers = player.seq_states[sequence].registers
+	registers.anomaly_pos = pos
+	if scanner then
+		assert(IsKindOf(scanner, "ExplorerRover"))
+		registers.rover = scanner
 	end
 end
 
 function SubsurfaceAnomaly:UnlockTechs(scanner)
-	local city = scanner and scanner.city or UICity
+	local research = scanner and scanner.city.colony or UIColony
 	local new_unlocked = {}
 	local fields = {}
 	for field_id, field in pairs(TechFields) do
@@ -177,13 +248,13 @@ function SubsurfaceAnomaly:UnlockTechs(scanner)
 		end
 	end
 	table.sort(fields)
-	if city:Random(100) < 75 then
+	if SessionRandom:Random(100) < 75 then
 		while table.count(new_unlocked) < 2 do
-			local field, idx = city:TableRand(fields)
+			local field, idx = SessionRandom:TableRand(fields)
 			if not field then
 				break
 			end
-			local tech_id = city:DiscoverTechInField(field)
+			local tech_id = research:DiscoverTechInField(field)
 			if tech_id then
 				new_unlocked[tech_id] = true
 			else
@@ -192,7 +263,7 @@ function SubsurfaceAnomaly:UnlockTechs(scanner)
 		end
 	else
 		for i=1,#fields do
-			local tech_id = city:DiscoverTechInField(fields[i])
+			local tech_id = research:DiscoverTechInField(fields[i])
 			if tech_id then
 				new_unlocked[tech_id] = true
 			end
@@ -201,10 +272,14 @@ function SubsurfaceAnomaly:UnlockTechs(scanner)
 	return table.keys(new_unlocked, true)
 end
 
+function GetAnomalyResearchPoints(map_id)
+	return SessionRandom:TableRand{1000, 1250, 1500}
+end
+
 function SubsurfaceAnomaly:GrantRP(scanner)
-	local city = scanner and scanner.city or UICity
-	local points = city:TableRand{1000, 1250, 1500}
-	city:AddResearchPoints(points)
+	local research = scanner and scanner.city.colony or UIColony
+	local points = GetAnomalyResearchPoints(self:GetMapID())
+	research:AddResearchPoints(points)
 	return points
 end
 
@@ -230,14 +305,15 @@ end
 
 GlobalVar("g_ScannedAnomaly", 0)
 function SubsurfaceAnomaly:ScanCompleted(scanner)
-	local city = scanner and scanner.city or UICity
+	local research = scanner and scanner.city and scanner.city.colony or UIColony
 	local tech_action = self.tech_action
+	local map_id = self:GetMapID()
 	if tech_action == "breakthrough" then
 		local def = TechDef[self.breakthrough_tech]
 		if not def then
 			assert(false, "No such breakthrough tech: " .. self.breakthrough_tech)
-		elseif city:SetTechDiscovered(self.breakthrough_tech) then
-			AddOnScreenNotification("BreakthroughDiscovered", OpenResearchDialog, {name = def.display_name, context = def, rollover_title = def.display_name, rollover_text = def.description})
+		elseif research:SetTechDiscovered(self.breakthrough_tech) then
+			AddOnScreenNotification("BreakthroughDiscovered", OpenResearchDialog, {name = def.display_name, context = def, rollover_title = def.display_name, rollover_text = def.description}, nil, map_id)
 		else
 			-- already discovered
 			tech_action = "unlock"
@@ -257,9 +333,9 @@ function SubsurfaceAnomaly:ScanCompleted(scanner)
 					if res == 1 then
 						OpenResearchDialog()
 					end
-					RemoveOnScreenNotification("TechUnlockAnomalyAnalyzed")
+					RemoveOnScreenNotification("TechUnlockAnomalyAnalyzed", map_id)
 				end)
-			end)
+			end, nil, nil, map_id)
 		else
 			tech_action = "complete"
 		end
@@ -267,25 +343,30 @@ function SubsurfaceAnomaly:ScanCompleted(scanner)
 	if tech_action == "complete" then
 		local points = self:GrantRP(scanner)
 		if points then
-			AddOnScreenNotification("GrantRP", nil, {points = points, resource = "Research"})
+			AddOnScreenNotification("GrantRP", nil, {points = points, resource = "Research"}, nil, map_id)
 		end
 	elseif tech_action == "resources" then
 		if self.granted_resource ~= "" and self.granted_amount > 0 then
-			PlaceResourceStockpile_Delayed(self:GetPos(), self.granted_resource, self.granted_amount, self:GetAngle(), true)
+			PlaceResourceStockpile_Delayed(self:GetPos(), self:GetMapID(), self.granted_resource, self.granted_amount, self:GetAngle(), true)
 		end
-		AddOnScreenNotification("GrantRP", nil, {points = self.granted_amount, resource = self.granted_resource})
+		AddOnScreenNotification("GrantRP", nil, {points = self.granted_amount, resource = self.granted_resource}, nil, map_id)
 	elseif tech_action == "aliens" then
-		AddOnScreenNotification("AlienArtifactsAnomalyAnalyzed", nil, {})
+		AddOnScreenNotification("AlienArtifactsAnomalyAnalyzed", nil, {}, nil, map_id)
 	end
 	HintDisable("HintAnomaly")
 	--@@@msg AnomalyAnalyzed,anomaly- fired when a new anomaly has been completely analized.
-	g_ScannedAnomaly = g_ScannedAnomaly + 1
+	if self:GetMapID() == MainMapID then
+		g_ScannedAnomaly = g_ScannedAnomaly + 1
+	end
 	Msg("AnomalyAnalyzed", self)
-	self:StartSequence(self.sequence, scanner, self:GetVisualPos())
+	
+	if self.sequence ~= "" then
+		self:StartSequence(self.sequence, scanner, self:GetVisualPos())
+	end
 end
 
 function SubsurfaceAnomaly:OnReveal()
-	table.insert_unique(g_RecentlyRevAnomalies, self)
+	RequestNewObjsNotif(g_RecentlyRevAnomalies, self, self:GetMapID())
 	--@@@msg AnomalyRevealed,anomaly- fired when an anomaly has been releaved.
 	Msg("AnomalyRevealed", self)
 	--[[
@@ -347,7 +428,8 @@ function SA_SpawnDepositAtAnomaly:Exec(sequence_player, ip, seq, registers)
 		return false
 	end
 	if registers.anomaly_pos then
-		local marker = SubsurfaceDepositMarker:new()
+		local map_id = sequence_player.map_id
+		local marker = PlaceObjectIn("SubsurfaceDepositMarker", map_id)
 		marker.resource = self.resource
 		marker:SetPos(registers.anomaly_pos)
 
@@ -389,7 +471,8 @@ function SA_SpawnEffectDepositAtAnomaly:Exec(sequence_player, ip, seq, registers
 		return false
 	end
 	if registers.anomaly_pos then
-		local deposit = PlaceEffectDeposit(self.effect_type)
+		local map_id = sequence_player.map_id
+		local deposit = PlaceEffectDeposit(self.effect_type, {}, map_id)
 		if deposit then
 			deposit:SetRevealed(true)
 		end
@@ -425,7 +508,8 @@ function SA_SpawnDustDevilAtAnomaly:ShortDescription()
 end
 
 function SA_SpawnDustDevilAtAnomaly:Exec(sequence_player, ip, seq, registers)
-	local marker = PrefabFeatureMarker:new { FeatureType = "Dust Devils" }
+	local map_id = sequence_player.map_id
+	local marker = PlaceObjectIn("PrefabFeatureMarker", map_id, { FeatureType = "Dust Devils" })
 	
 	marker:SetVisible(false)
 	marker:SetPos( registers.anomaly_pos )
@@ -457,7 +541,15 @@ function SavegameFixups.FixBreakthroughOrderIds()
 	end
 end
 
-function City:GetUnregisteredBreakthroughs()
+function SavegameFixups.FixDuplicateAnomalies()
+	for _, anomaly in pairs(MainCity.labels.Anomaly or empty_table) do
+		if anomaly.tech_action then
+			anomaly.sequence = ""
+		end
+	end
+end
+
+function Colony:GetUnregisteredBreakthroughs()
 	local ids = {}
 	for _, tech in ipairs(Presets.TechPreset.Breakthroughs) do
 		local id = tech.id
@@ -469,16 +561,16 @@ function City:GetUnregisteredBreakthroughs()
 end
 
 function City:InitBreakThroughAnomalies()
-	local markers = MapGet("map", "SubsurfaceAnomalyMarker", function(a) return a.tech_action == "breakthrough" end )
+	local markers = GetRealm(self):MapGet("map", "SubsurfaceAnomalyMarker", function(a) return a.tech_action == "breakthrough" end )
 	local available_breakthroughs = table.ifilter(Presets.TechPreset.Breakthroughs, function(_, tech)
-		return	self:TechAvailableCondition(tech)
+		return	UIColony:TechAvailableCondition(tech)
 	end, self)
 	
 	BreakthroughOrder = table.imap(available_breakthroughs, "id")
 	
 	-- remove discovered
 	for i = #BreakthroughOrder, 1, -1 do
-		if self:IsTechDiscovered(BreakthroughOrder[i]) then
+		if UIColony:IsTechDiscovered(BreakthroughOrder[i]) then
 			table.remove(BreakthroughOrder, i)
 		end
 	end
@@ -519,4 +611,17 @@ function City:InitBreakThroughAnomalies()
 			DoneObject(markers[i])
 		end
 	end
+end
+
+function ScanAllAnomalies(breakthrough_only)
+	local function reveal(anomaly)
+		if not anomaly then return end
+		if breakthrough_only and anomaly.tech_action ~= "breakthrough" then return end
+		if not anomaly:IsRevealed() then return end
+		anomaly:ScanCompleted(false)
+		anomaly:delete()
+	end
+
+	local realm = GetActiveRealm()
+	realm:MapForEach(true, "SubsurfaceAnomaly", reveal)
 end

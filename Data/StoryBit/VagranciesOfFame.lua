@@ -6,11 +6,16 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/02_video_call_2.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('HasTrait', {
 			'Trait', "Celebrity",
 		}),
 		PlaceObj('SupplyMissionsEnabled', nil),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(551271623148, --[[StoryBit VagranciesOfFame Text]] 'Obviously, the Celebrity had too much of public attention focused on personal matters that other people are privileged not to share. Now, <DisplayName> is running naked in the dome, screaming:\n\n"Is that what you wanted? Here, have it all!"\n\nThis could have a disastrous effect on the reputation of anyone in these days, especially when someone uploads the video online. Which is about to happen when we make our next data transmission to Earth.'),
@@ -21,6 +26,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(954587907189, --[[voice:narrator]] "A well-known Celebrity has lost it and is now making a shameful display around the Dome. The Colonists are in shock and don’t know how to react!"),
 	group = "Sanity Breakdown",
 	id = "VagranciesOfFame",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625148202,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(827433522948, --[[StoryBit VagranciesOfFame Text]] "Ban the upload."),
 	}),

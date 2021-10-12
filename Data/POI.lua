@@ -72,7 +72,7 @@ end,
 return T{11086, "<funding(amount)>", amount = self:CalcOutcome(object, city, idx)}
 end,
 	OnCompletion = function (self, object, city, idx)
-city:ChangeFunding(self:CalcOutcome(object, city, idx), self.id)
+UIColony.funds:ChangeFunding(self:CalcOutcome(object, city, idx), self.id)
 end,
 	PrerequisiteToCreate = function (self, city, idx)
 return true
@@ -110,7 +110,7 @@ end,
 return T{11086, "<funding(amount)>", amount = self:CalcOutcome(object, city, idx)}
 end,
 	OnCompletion = function (self, object, city, idx)
-city:ChangeFunding(self:CalcOutcome(object, city, idx), self.id)
+UIColony.funds:ChangeFunding(self:CalcOutcome(object, city, idx), self.id)
 end,
 	PrerequisiteToCreate = function (self, city, idx)
 return true

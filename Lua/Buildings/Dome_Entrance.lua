@@ -7,7 +7,7 @@ DefineClass.Dome_Entrance = {
 function Dome_Entrance:AddDirectionTunnel(direction, start_spot, end_spot)
 	local leadin_chain, start_pos = self:GetEntrance(nil, nil, start_spot)
 	local leadout_chain, end_pos = self:GetEntrance(nil, nil, end_spot)
-	local weight = start_pos:Dist2D(end_pos)* pathfind[1].terrain / terrain.RoadTileSize()
+	local weight = start_pos:Dist2D(end_pos)* pathfind[1].terrain / const.TerrainRoadTileSize
 	pf.AddTunnel(self, start_pos, end_pos, weight * 6, 2, direction) -- usable by people only, high weight so they're avoided as much as possible
 	pf.AddTunnel(self, start_pos, end_pos, weight, 1, direction) -- usable by drones only
 	self.leadin_chain = self.leadin_chain or {}
@@ -35,6 +35,7 @@ function Dome_Entrance:TraverseTunnel(unit, start_point, end_point, direction)
 	if not dome or not IsValid(dome) then return end
 	assert(IsKindOf(dome, "Dome"))
 
+	assert(direction)
 	local leadin_chain = self.leadin_chain[direction]
 	local leadout_chain = self.leadout_chain[direction]
 	assert(leadin_chain and leadout_chain)

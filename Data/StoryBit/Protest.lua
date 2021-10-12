@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/10_protest.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -23,6 +24,10 @@ PlaceObj('StoryBit', {
 			'Condition', ">",
 			'Amount', 2,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(347399580817, --[[StoryBit Protest Text]] "They have closed off several Infirmaries by threatening the personnel inside. All this to make their point, we can guess."),
@@ -32,6 +37,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(531026986547, --[[voice:narrator]] "Renegade colonists are protesting against the allegedly bad health conditions in the colony."),
 	group = "Renegades",
 	id = "Protest",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625147783,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(562817921444, --[[StoryBit Protest Text]] "Another day in life... on Mars."),
 		'OutcomeText', "custom",

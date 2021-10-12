@@ -33,6 +33,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(842725828714, --[[voice:narrator]] "Vandals have sprayed obscene signs and drawings on several factories this night."),
 	group = "Renegades",
 	id = "Vandals",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625147987,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "morale_penalty",
 		'Value', -15,

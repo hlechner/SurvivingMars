@@ -9,7 +9,7 @@ PlaceObj('Scenario', {
 		'autostart', true,
 	}, {
 		PlaceObj('SA_WaitExpression', {
-			'expression', "UICity.labels.Colonist and #UICity.labels.Colonist >= 100",
+			'expression', "MainCity.labels.Colonist and #MainCity.labels.Colonist >= 100",
 			'duration', 1000,
 		}),
 		PlaceObj('SA_WaitMarsTime', {
@@ -96,7 +96,7 @@ PlaceObj('Scenario', {
 			'rand_duration', 1200000,
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#UICity.labels.AlienDiggers < 1",
+			'expression', "#MainCity.labels.AlienDiggers < 1",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 2",
@@ -165,7 +165,7 @@ PlaceObj('Scenario', {
 			'wait', true,
 		}),
 		PlaceObj('SA_WaitExpression', {
-			'expression', "#UICity.labels.AlienDiggers <= 0",
+			'expression', "#MainCity.labels.AlienDiggers <= 0",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 2",
@@ -193,7 +193,7 @@ PlaceObj('Scenario', {
 			'Form', "if-then-else",
 			'end_block', 6,
 			'else_block', 5,
-			'expression', "UICity.mystery.is_big_digger_destroyed",
+			'expression', "UIColony.mystery.is_big_digger_destroyed",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 2",
@@ -459,7 +459,7 @@ PlaceObj('Scenario', {
 			'parent', 24,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "sectorName = GetMapSector(markerPos).display_name",
+			'expression', "sectorName = GetMapSector(MainCity, markerPos).display_name",
 		}),
 		PlaceObj('SA_CustomNotification', {
 			'id', "Mystery2DiggerDetected",
@@ -602,7 +602,7 @@ PlaceObj('Scenario', {
 			'expiration', 3600000,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "_destroyed_diggers_prior_invasion = UICity.mystery.destroyed_diggers",
+			'expression', "_destroyed_diggers_prior_invasion = UIColony.mystery.destroyed_diggers",
 		}),
 		PlaceObj('SA_Exec', {
 			'expression', "diggersToSpawn = 50",
@@ -851,7 +851,7 @@ PlaceObj('Scenario', {
 			'store_obj', "markerObj",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "sectorName = GetMapSector(markerPos).display_name",
+			'expression', "sectorName = GetMapSector(MainCity, markerPos).display_name",
 		}),
 		PlaceObj('SA_CustomNotification', {
 			'id', "Mystery2DiggerDetected",
@@ -969,7 +969,7 @@ PlaceObj('Scenario', {
 			'funding', "funding",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'rover:SetCommand("Malfunction")',
+			'expression', 'if rover then rover:SetCommand("Malfunction") end',
 		}),
 		PlaceObj('SA_Block', {
 			'sa_id', 7,
@@ -1365,7 +1365,7 @@ PlaceObj('Scenario', {
 			'sequence', "Research 2: Effects",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "destroyed_diggers = UICity.mystery.destroyed_diggers",
+			'expression', "destroyed_diggers = UIColony.mystery.destroyed_diggers",
 		}),
 		PlaceObj('SA_Repeat', {
 			'sa_id', 1,
@@ -1374,14 +1374,14 @@ PlaceObj('Scenario', {
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 5,
 			'end_block', 6,
-			'expression', "UICity.mystery.destroyed_diggers > destroyed_diggers",
+			'expression', "UIColony.mystery.destroyed_diggers > destroyed_diggers",
 		}),
 		PlaceObj('SA_RunSequence', {
 			'sequence_list', "Mystery 2",
 			'sequence', "PseudoAnomaly 3: Second Tech Boosting",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "destroyed_diggers = UICity.mystery.destroyed_diggers",
+			'expression', "destroyed_diggers = UIColony.mystery.destroyed_diggers",
 		}),
 		PlaceObj('SA_Block', {
 			'sa_id', 6,
@@ -1596,7 +1596,7 @@ PlaceObj('Scenario', {
 		'name', "Message 15: Invasion Summary",
 	}, {
 		PlaceObj('SA_Exec', {
-			'expression', "destroyed_dredgers = UICity.mystery.destroyed_diggers - _destroyed_diggers_prior_invasion",
+			'expression', "destroyed_dredgers = UIColony.mystery.destroyed_diggers - _destroyed_diggers_prior_invasion",
 		}),
 		PlaceObj('SA_CheckExpression', {
 			'sa_id', 1,
@@ -1805,7 +1805,7 @@ PlaceObj('Scenario', {
 			'parent', 3,
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', "UICity.mystery.can_destroy_diggers = true",
+			'expression', "UIColony.mystery.can_destroy_diggers = true",
 		}),
 		}),
 	PlaceObj('ScenarioSequence', {

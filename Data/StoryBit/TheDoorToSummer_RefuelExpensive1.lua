@@ -13,7 +13,7 @@ PlaceObj('StoryBit', {
 			'amount1', 20000,
 			'resource2', "MachineParts",
 			'amount2', 25000,
-			'funding_on_mars_launch', 450000000,
+			'funding_on_mars_launch', 850000000,
 		}),
 	},
 	Delay = 14400000,
@@ -33,9 +33,17 @@ PlaceObj('StoryBit', {
 	Trigger = "RocketLaunchedEvent",
 	group = "Earth",
 	id = "TheDoorToSummer_RefuelExpensive1",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1626360857,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamFunding', {
 		'Name', "eternal_summer_reward_oligarch",
-		'Value', 450000000,
+		'Value', 850000000,
 	}),
 })
 

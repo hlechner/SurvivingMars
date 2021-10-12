@@ -27,6 +27,42 @@ PlaceObj('XTemplate', {
 			'Translate', true,
 		}),
 		PlaceObj('XTemplateWindow', {
+			'__class', "XPopup",
+			'Id', "idSightsStatus",
+			'BorderWidth', 0,
+			'Padding', box(30, 80, 24, 6),
+			'Visible', false,
+			'FoldWhenHidden', true,
+			'Background', RGBA(240, 240, 240, 0),
+		}, {
+			PlaceObj('XTemplateWindow', {
+				'__class', "XFrame",
+				'Id', "idBackground",
+				'Dock', "box",
+				'Visible', false,
+				'Image', "UI/CommonNew/rollover.tga",
+				'FrameBox', box(35, 45, 35, 33),
+			}),
+			PlaceObj('XTemplateTemplate', {
+				'__template', "RolloverTitle",
+				'Id', "idTitle",
+				'Margins', box(10, 10, 10, 0),
+				'Clip', false,
+				'Visible', false,
+				'Text', T(430408802588, --[[XTemplate HUD Text]] "Visible sights"),
+				'UseClipBox', false,
+			}),
+			PlaceObj('XTemplateTemplate', {
+				'__template', "RolloverText",
+				'Id', "idContent",
+				'Margins', box(10, 10, 10, 10),
+				'Padding', box(6, 6, 6, 6),
+				'Clip', false,
+				'Visible', false,
+				'UseClipBox', false,
+			}),
+			}),
+		PlaceObj('XTemplateWindow', {
 			'comment', "determine vertical size",
 			'__context', function (parent, context) return parent end,
 			'Id', "idBottom",
@@ -67,14 +103,7 @@ PlaceObj('XTemplate', {
 							'FXMouseIn', "SpeedControlMouseOver",
 							'Rows', 2,
 							'OnPress', function (self, gamepad)
-								if GetTimeFactor() == 0 then
-									UICity:SetGameSpeed(false)
-									UISpeedState = rawget(self, "PrevUISpeedState") or "play"
-								else
-									UICity:SetGameSpeed(0)
-									rawset(self, "PrevUISpeedState", UISpeedState)
-									UISpeedState = "pause"
-								end
+								ToggleGamePausedState()
 							end,
 							'ImageScale', 900,
 						}),
@@ -89,8 +118,7 @@ PlaceObj('XTemplate', {
 							'FXMouseIn', "SpeedControlMouseOver",
 							'Rows', 2,
 							'OnPress', function (self, gamepad)
-								UICity:SetGameSpeed(1)
-								UISpeedState = "play"
+								SetGameSpeedState("play")
 							end,
 							'ImageScale', 900,
 						}),
@@ -105,8 +133,7 @@ PlaceObj('XTemplate', {
 							'FXMouseIn', "SpeedControlMouseOver",
 							'Rows', 2,
 							'OnPress', function (self, gamepad)
-								UICity:SetGameSpeed(const.mediumGameSpeed)
-								UISpeedState = "medium"
+								SetGameSpeedState("medium")
 							end,
 							'ImageScale', 900,
 						}),
@@ -121,15 +148,14 @@ PlaceObj('XTemplate', {
 							'FXMouseIn', "SpeedControlMouseOver",
 							'Rows', 2,
 							'OnPress', function (self, gamepad)
-								UICity:SetGameSpeed(const.fastGameSpeed)
-								UISpeedState = "fast"
+								SetGameSpeedState("fast")
 							end,
 							'ImageScale', 900,
 						}),
 						}),
 					PlaceObj('XTemplateWindow', {
 						'comment', "align displays",
-						'__context', function (parent, context) return UICity end,
+						'__context', function (parent, context) return UIColony end,
 						'Id', "idSolDisplay",
 						'Margins', box(25, 0, 0, 0),
 						'HAlign', "left",
@@ -208,6 +234,7 @@ PlaceObj('XTemplate', {
 					PlaceObj('XTemplateTemplate', {
 						'__template', "HUDButtonTemplate",
 						'RolloverText', T(4012, --[[XTemplate HUD RolloverText]] "Switch between normal camera mode and Map Overview."),
+						'RolloverDisabledText', T(397338699529, --[[XTemplate HUD RolloverDisabledText]] "Map overview mode not available for this map"),
 						'RolloverTitle', T(786525376837, --[[XTemplate HUD RolloverTitle]] "Map Overview"),
 						'RolloverHint', T(11865, --[[XTemplate HUD RolloverHint]] "<em><ShortcutName('actionMapOverview', 'keyboard')></em> Toggle Overview Mode"),
 						'RolloverHintGamepad', T(4013, --[[XTemplate HUD RolloverHintGamepad]] "<em><ShortcutName('actionMapOverview')></em> Toggle Overview Mode"),
@@ -218,6 +245,10 @@ PlaceObj('XTemplate', {
 						'Rows', 2,
 						'OnPress', function (self, gamepad)
 							HUD.idOverviewOnPress()
+						end,
+						'OnContextUpdate', function (self, context, ...)
+							self:SetEnabled(IsHUDMapOverviewEnabled())
+							HUD.UpdateDesatModifier(self)
 						end,
 					}),
 					PlaceObj('XTemplateTemplate', {
@@ -371,6 +402,11 @@ PlaceObj('XTemplate', {
 					}),
 				}),
 			}),
+		PlaceObj('XTemplateTemplate', {
+			'__dlc', "picard",
+			'__context', function (parent, context) return parent end,
+			'__template', "MapSwitch",
+		}),
 		}),
 })
 

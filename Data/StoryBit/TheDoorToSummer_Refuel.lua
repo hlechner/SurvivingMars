@@ -13,7 +13,7 @@ PlaceObj('StoryBit', {
 			'amount1', 20000,
 			'resource2', "MachineParts",
 			'amount2', 25000,
-			'funding_on_mars_launch', 150000000,
+			'funding_on_mars_launch', 500000000,
 		}),
 	},
 	Effects = {},
@@ -27,9 +27,17 @@ PlaceObj('StoryBit', {
 	TextsDone = true,
 	group = "Earth",
 	id = "TheDoorToSummer_Refuel",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1626360764,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamFunding', {
 		'Name', "eternal_summer_reward",
-		'Value', 150000000,
+		'Value', 500000000,
 	}),
 })
 

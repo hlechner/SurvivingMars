@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/25_medical_check.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckTechStatus', {
 			'Field', "Breakthroughs",
@@ -21,6 +22,10 @@ PlaceObj('StoryBit', {
 			'Condition', ">",
 			'Amount', 0,
 		}),
+		PlaceObj('IsMapEnvironment', {
+			'Negate', true,
+			'SelectedMapEnvironment', "Asteroid",
+		}),
 	},
 	ScriptDone = true,
 	Text = T(560013891955, --[[StoryBit NewHorizons Text]] "They claim that their attempts to create new genetically-imprinted talents were all for the better of humankind. The case is controversial, as you could have guessed."),
@@ -30,6 +35,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(367617246158, --[[voice:narrator]] "We have caught a group of Biorobotics Workshop enthusiasts who experimented on themselves without permission!"),
 	group = "Breakthroughs",
 	id = "NewHorizons",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1625143338,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(514891317386, --[[StoryBit NewHorizons Text]] "Let’s see how they fare."),
 	}),
