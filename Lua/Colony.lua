@@ -351,6 +351,11 @@ function SetupMissionGoals()
 	end
 end
 
+GlobalVar("g_InitialRocketCargo", false)
+GlobalVar("g_InitialCargoCost", 0)
+GlobalVar("g_InitialCargoWeight", 0)
+GlobalVar("g_InitialSessionSeed", false)
+
 function Colony:GameStart(city)
 	if g_RocketCargo then
 		g_InitialRocketCargo = table.copy(g_RocketCargo, "deep")
@@ -534,6 +539,10 @@ function Colony:SetGameSpeed(factor)
 	HintDisable("HintGameSpeed")
 end
 
-function Colony:GetFormattedEnvironmentString(map_id)
+function Colony:GetMapDisplayName(map_id)
 	return T(1233, "Mars")
+end
+
+function GetMapDisplayName(map_id)
+	return UIColony:GetMapDisplayName(map_id)
 end

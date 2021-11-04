@@ -84,7 +84,7 @@ PlaceObj('Scenario', {
 			'expression', "#MainCity.labels.MirrorSpheres > 2",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery3Counter")',
+			'expression', 'RemoveOnScreenNotification("Mystery3Counter", MainMapID)',
 		}),
 		PlaceObj('SA_StartDisaster', {
 			'disaster', "Cold Wave",

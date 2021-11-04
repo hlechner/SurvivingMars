@@ -391,7 +391,7 @@ function GetConstructionDescription(class, cost1, dont_modify) --class is a buil
 				if not resource_name then
 					local resource_id = template_class[production_props[i][3]]
 					if resource_id and resource_id ~= "" and resource_id ~= "WasteRock" then
-						resource_name = Resources[resource_id].name
+						resource_name = GetResourceInfo(resource_id).id
 					end
 				end
 				if resource_name then

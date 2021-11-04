@@ -35,9 +35,11 @@ end
 
 function Community:GameInit()
 	self.city:AddToLabel("Community", self)
+	g_DomeVersion = g_DomeVersion + 1
 end
 
 function Community:Done()
+	g_DomeVersion = g_DomeVersion + 1
 	self.city:RemoveFromLabel("Community", self)
 end
 

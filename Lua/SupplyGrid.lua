@@ -337,6 +337,7 @@ function SupplyGridFragment:Init()
 	self.update_thread = CreateGameTimeThread(function(self)
 		while true do
 			procall(SupplyGridFragment.UpdateGrid, self, "immediate", self.update_consumer_state)
+			procall(SupplyGridFragment.UpdateOtherSideGrids, self, "immediate", self.update_consumer_state)
 			self.update_consumer_state = false
 			WaitWakeup()
 		end
@@ -465,7 +466,8 @@ function SupplyGridFragment:UpdateGrid(update, update_consumer_state)
 		table.sortby_field_descending(self.consumers, "sort_index")
 	end
 	local production = self.production
-	local change = production - self.consumption
+	local transfer_consumption = self:TransferConsumption(supply_resource)
+	local change = production - self.consumption - transfer_consumption
 	local storage_change = Clamp(change, - self.discharge, self.charge)
 	local current_consumption
 	local consumption_for_overview = self.consumption
@@ -492,7 +494,7 @@ function SupplyGridFragment:UpdateGrid(update, update_consumer_state)
 		end
 		storage_change = Clamp(storage_change, - self.discharge, self.charge)
 		current_consumption = production - storage_change - supply
-		change = storage_change + supply
+		change = storage_change + supply - transfer_consumption
 		storage_change = Min(change, self.charge)
 		self.current_throttled_production = Min(change - storage_change, self.throttled_production)
 		self.all_consumers_supplied = current_consumption == self.consumption
@@ -518,6 +520,34 @@ function SupplyGridFragment:UpdateGrid(update, update_consumer_state)
 		local building = storage.building
 		building:UpdateAttachedSigns()
 	end
+end
+
+function SupplyGridFragment:UpdateOtherSideGrids(update, update_consumer_state)
+	for _, producer in ipairs(self.producers) do
+		local building = producer.building
+		if IsKindOf(building, "GridTransfer") and building.other then
+			for _, resource in pairs(building.other.grids) do
+				resource.grid:UpdateGrid(update, update_consumer_state)
+			end
+		end
+	end
+end
+
+function SupplyGridFragment:TransferConsumption(supply_resource)
+	local consumption = 0
+	local transfer_grid = false
+	for _, producer in ipairs(self.producers) do
+		local building = producer.building
+		if IsKindOf(building, "GridTransfer") and building.other then
+			local resource = building.other.grids[supply_resource]
+			if resource.grid ~= transfer_grid then
+				local current_shortage = building.other:GetCurrentGridResource(supply_resource)
+				consumption = consumption + current_shortage
+			end
+			transfer_grid = resource.grid
+		end
+	end 
+	return consumption
 end
 
 local hour_duration = const.HourDuration
@@ -1566,6 +1596,30 @@ function SavegameFixups.FixObjectsBeingInImproperGrids()
 				if IsKindOf(we.building, "Tunnel") then
 					ExecLaterPushObject(we.building, re_merge_tunnel_grids, 0, 5)
 				end
+			end
+		end
+	end)
+end
+
+function SavegameFixups.AddOtherSideGridsCheck()
+	MapsForEach("map", "SupplyGridObject", function(o)
+		local supply_resources = {}
+		supply_resources.water = o:HasMember("water") and o.water
+		supply_resources.air = o:HasMember("air") and o.air
+		for _, resource in pairs(supply_resources) do
+			local grid = resource and resource.grid
+			if grid and grid:IsKindOf("SupplyGridFragment") then
+				if IsValidThread(grid.update_thread) then
+					DeleteThread(grid.update_thread)
+					grid.update_thread = CreateGameTimeThread(function(grid)
+						while true do
+							procall(SupplyGridFragment.UpdateGrid, grid, "immediate", grid.update_consumer_state)
+							procall(SupplyGridFragment.UpdateOtherSideGrids, grid, "immediate", grid.update_consumer_state)
+							grid.update_consumer_state = false
+							WaitWakeup()
+						end
+					end, grid)
+				end	
 			end
 		end
 	end)

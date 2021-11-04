@@ -4,27 +4,35 @@ const.ColonistSpecialization =
 {
 	["none"] = {
 		display_name = T(3848, "No specialization"), display_name_plural = T(3848, "No specialization"), display_icon = "UI/Icons/Colonists/Malenone.tga",
-		description = T(3849, "A brave citizen of Mars, ready to tame the final frontier."), },
+		description = T(3849, "A brave citizen of Mars, ready to tame the final frontier."),
+		sort_key = 1000, },
 	["scientist"]= {
 		display_name = T(3850, "Scientist"), display_name_plural = T(3851, "Scientists"), display_icon = "UI/Icons/Colonists/Femalescientist.tga",
-		description = T(3852, "A trained scientist, eager to discover the mysteries of the Cosmos."), },
+		description = T(3852, "A trained scientist, eager to discover the mysteries of the Cosmos."),
+		sort_key = 2000, },
 	["engineer"] = {
 		display_name = T(3853, "Engineer"),  display_name_plural = T(3854, "Engineers"), display_icon = "UI/Icons/Colonists/Femaleengineer.tga",
-		description = T(3855, "A trained engineer, building a better future for humanity."), },
+		description = T(3855, "A trained engineer, building a better future for humanity."),
+		sort_key = 3000, },
 	["security"] = {
 		display_name = T(3856, "Officer"),  display_name_plural = T(3857, "Officers"), display_icon = "UI/Icons/Colonists/Femalesecurity.tga",
-		description = T(3858, "A trained security officer, protecting our Utopia."), },
+		description = T(3858, "A trained security officer, protecting our Utopia."),
+		sort_key = 4000, },
 	["geologist"] = {
 		display_name = T(3859, "Geologist"),  display_name_plural = T(3860, "Geologists"), display_icon = "UI/Icons/Colonists/Malegeologist.tga",
-		description = T(3861, "A trained geologist, securing vital resources for the Colony."), },
+		description = T(3861, "A trained geologist, securing vital resources for the Colony."),
+		sort_key = 5000, },
 	["medic"] = {
 		display_name = T(3862, "Medic"), display_name_plural = T(3863, "Medics"), display_icon = "UI/Icons/Colonists/Femalemedic.tga",
-		description = T(3864, "A trained medic, facing new challenges on the red planet."), },
+		description = T(3864, "A trained medic, facing new challenges on the red planet."),
+		sort_key = 6000, },
 	["botanist"] = {
 		display_name = T(3865, "Botanist"), display_name_plural = T(3866, "Botanists"), display_icon = "UI/Icons/Colonists/Malebotanist.tga",
-		description = T(3867, "A trained botanist, dreaming of a green Mars."), },
+		description = T(3867, "A trained botanist, dreaming of a green Mars."),
+		sort_key = 7000, },
 	["Tourist"] = {
-		display_name = T(12754, "Tourist"), display_name_plural = T(10404, "Tourists"), display_icon = "UI/Icons/Colonists/Malenone.tga", },
+		display_name = T(12754, "Tourist"), display_name_plural = T(10404, "Tourists"), display_icon = "UI/Icons/Colonists/Malenone.tga",
+		sort_key = 9000, },
 }
 
 ColonistSpecializationList = table.keys2(const.ColonistSpecialization, true)

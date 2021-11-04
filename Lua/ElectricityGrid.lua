@@ -215,7 +215,7 @@ function ElectricityGridObject:OnDestroyed()
 	self:DeleteElectricity()
 end
 
--- override this function to create electiricy element - it is called before ancestors' GameInit
+-- override this function to create electricity element - it is called before ancestors' GameInit
 function ElectricityGridObject:CreateElectricityElement()
 end
 

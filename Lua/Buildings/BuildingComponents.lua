@@ -482,7 +482,7 @@ function ResourceProducer:AddProducer(i) --expects relevant props to be filled
 	assert(i <= max_resources_produced, "To many producer objects for ResourceProducer")
 	local resource_type = self["resource_produced"..i]
 	if resource_type and resource_type ~= "" then
-		if Resources[resource_type] then
+		if GetResourceInfo(resource_type) then
 			local Produce_method_name = string.format("Produce_%s", resource_type)
 			local OnProduce_method_name = string.format("OnProduce_%s", resource_type)
 			local OnCalcProduction_method_name = string.format("OnCalcProduction_%s", resource_type)
@@ -520,7 +520,7 @@ function ResourceProducer:AddProducer(i) --expects relevant props to be filled
 			producer_obj:OnSetWorking(self.working)
 			return true
 		else
-			printf("<red>Creating resource producer for non-existing resource '%s'</color>", resource_type)
+			printf("<red>Creating resource producer for non-existing resource '%s'</red>", resource_type)
 		end
 	end
 	return false
@@ -663,11 +663,12 @@ function ResourceProducer:GetResourceProduced(idx)
 	return producer and producer:GetResourceProduced()
 end
 
+local metals_icon = "UI/Icons/Sections/" .. Resources["Metals"].name .. "_2.tga"
 function ResourceProducer:GetResourceProducedIcon(idx)
 	local producer = self.producers[idx or 1]
 	return producer
 		and producer:GetResourceProducedIcon()
-		or ("UI/Icons/Sections/" .. Resources["Metals"].name .. "_2.tga")
+		or metals_icon
 end
 
 function ResourceProducer:GetProducerObj(resource)
@@ -791,9 +792,9 @@ function ResourceProducer:GetUISectionResourceProducerRollover()
 	local deposit_grade = self:HasMember("GetDepositGrade") and self:GetDepositGrade() or "Average"
 	local t = {}
 	for i,producer in ipairs(self.producers) do
-		local resource = Resources[producer:GetResourceProduced()].name
+		local resource = GetResourceInfo(producer:GetResourceProduced()).id
 		if self.consumption_resource_type and self.consumption_resource_type ~= "no_consumption" then
-			local consumed_resource = Resources[self.consumption_resource_type].name
+			local consumed_resource = GetResourceInfo(self.consumption_resource_type).id
 			if self.wasterock_producer then
 				local wasterock_prod = DepositGradeToWasteRockMultipliers[resource][deposit_grade]
 				t[#t + 1] = T{10366, "<em>Produces <resource(1000,resource)> and <resource(wasterock_prod, waste_rock)> from <resource(number,consumed_resource)></em>",
@@ -811,14 +812,14 @@ function ResourceProducer:GetUISectionResourceProducerRollover()
 	
 	t[#t + 1] = T(469, "<newline><center><em>Storage</em>")
 	for i,producer in ipairs(self.producers) do
-		local resource = Resources[producer:GetResourceProduced()].name
+		local resource = GetResourceInfo(producer:GetResourceProduced()).id
 		t[#t + 1] = T{7620, "<resource(resource)><right><resource(GetAmountStored,max_storage,resource)>",
 			resource = resource, GetAmountStored = producer:GetAmountStored(), max_storage = producer.max_storage, producer}
 	end
 	
 	if self.wasterock_producer then
 		local producer = self.wasterock_producer
-		local resource = Resources[producer:GetResourceProduced()].name
+		local resource = GetResourceInfo(producer:GetResourceProduced()).id
 		t[#t + 1] = T{7621, "<resource(resource)><right><resource(GetAmountStored,max_storage,resource)>",
 			resource = resource, GetAmountStored = producer:GetAmountStored(), max_storage = producer.max_storage, producer}
 	end
@@ -959,7 +960,8 @@ function SingleResourceProducer:GetResourceProduced()
 end
 
 function SingleResourceProducer:GetResourceProducedIcon()
-	return "UI/Icons/Sections/" .. Resources[self.resource_produced or "Metals"].name .. "_2.tga"
+	local info = GetResourceInfo(self.resource_produced or "Metals")
+	return "UI/Icons/Sections/" .. info.id .. "_2.tga"
 end
 
 function SingleResourceProducer:BuildingDailyUpdate(day)

@@ -89,7 +89,7 @@ function GetResupplyClassesCombo()
 	items[#items+1] = {value = "OrbitalProbe", text = g_Classes.OrbitalProbe.display_name}
 	items[#items+1] = {value = "AdvancedOrbitalProbe", text = g_Classes.AdvancedOrbitalProbe.display_name}
 	for _,res in ipairs(AllResourcesList) do
-		items[#items+1] = {value = res, text = Resources[res].display_name}
+		items[#items+1] = {value = res, text = GetResourceInfo(res).display_name}
 	end
 
 	local buildings = BuildingsCombo()

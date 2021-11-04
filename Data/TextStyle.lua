@@ -418,6 +418,13 @@ PlaceObj('TextStyle', {
 })
 
 PlaceObj('TextStyle', {
+	TextColor = -9323809,
+	TextFont = T(13924, --[[TextStyle MediumHeaderSub TextFont]] "LibelSuitRg, 28, aa"),
+	group = "Game",
+	id = "MediumHeaderSub",
+})
+
+PlaceObj('TextStyle', {
 	DisabledTextColor = -3881788,
 	RolloverTextColor = -1,
 	TextColor = -70278,

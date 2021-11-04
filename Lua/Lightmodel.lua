@@ -162,7 +162,7 @@ function SetNormalLightmodelList(list_name, map_id)
 end
 
 function SetDisasterLightmodelList(list_name, fade_time, map_id)
-	local list_name = list_name 
+	if not LightmodelListNames[map_id] then return end
 	if LightmodelListNames[map_id]["disaster"] and list_name == LightmodelListNames[map_id].disaster then return end
 	LightmodelListNames[map_id].disaster = list_name
 	

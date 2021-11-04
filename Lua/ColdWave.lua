@@ -104,7 +104,7 @@ function StartColdWave(settings, endless)
 		end
 	end
 	cold_wave:ApplyHeat(false)
-	RemoveOnScreenNotification(id, map_id)
+	RemoveOnScreenNotification(preset, map_id)
 	if g_ColdWave == cold_wave then
 		PlayFX({
 			actionFXClass = "ColdWave",

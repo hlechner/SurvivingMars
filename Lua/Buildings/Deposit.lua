@@ -61,7 +61,7 @@ function Deposit:GetDescription()
 end
 
 function Deposit:GetResourceName()
-	return self.resource and Resources[self.resource] and Resources[self.resource].display_name or ""
+	return self.resource and GetResourceInfo(self.resource) and GetResourceInfo(self.resource).display_name or ""
 end
 
 function Deposit:GetDepositMarker()
@@ -145,13 +145,15 @@ function SetResourceIconsVisible(visible)
 	local action = visible and "SetEnumFlags" or "ClearEnumFlags"
 	
 	local realm = GetActiveRealm()
-	local deposits = realm:MapGet("map", "TerrainDeposit", "SubsurfaceDeposit")
-	deposits = table.ifilter(deposits, function(index, obj) return obj.revealed end)
-	for _,deposit in ipairs(deposits) do
-		if visible then
-			deposit:SetEnumFlags(const.efVisible)
-		else
-			deposit:ClearEnumFlags(const.efVisible)
+	if realm then
+		local deposits = realm:MapGet("map", "TerrainDeposit", "SubsurfaceDeposit")
+		deposits = table.ifilter(deposits, function(index, obj) return obj.revealed end)
+		for _,deposit in ipairs(deposits) do
+			if visible then
+				deposit:SetEnumFlags(const.efVisible)
+			else
+				deposit:ClearEnumFlags(const.efVisible)
+			end
 		end
 	end
 	g_ResourceIconsVisible = visible

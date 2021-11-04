@@ -849,7 +849,7 @@ function ConstructionController:Activate(template, params, alternative_entity_t)
 	self.template = template
 	self.template_obj = template_obj
 	self.template_obj_points = template_obj:GetBuildShape()
-	local rover_palette = false
+	local template_palette = false
 	
 	if IsKindOf(template_obj, "Dome") then
 		local def_skin = GetMissionSponsor().default_skin
@@ -867,17 +867,18 @@ function ConstructionController:Activate(template, params, alternative_entity_t)
 		end
 	elseif IsKindOf(template_obj, "BaseRoverBuilding") then
 		local class = g_Classes[self.template_obj.rover_class]
-		rover_palette = class and class.palette
+		template_palette = class and class.palette
 	end
 	
 	if params.stockpiles_obstruct == nil and IsKindOf(self.template_obj, "RocketLandingSite") then
 		--constructable rocket
 		self.stockpiles_obstruct = true
 		self.is_constructable_rocket = true
-		rover_palette = GetConstructableRocketPalette()
+		local rocket_class = self.template_obj.construction_rocket_class
+		template_palette = GetConstructableRocketPalette(rocket_class)
 	end
 
-	self.cursor_obj = self:CreateCursorObj(alternative_entity_t, nil, rover_palette or params.override_palette)
+	self.cursor_obj = self:CreateCursorObj(alternative_entity_t, nil, template_palette or params.override_palette)
 	
 	if HintsEnabled then
 		local is_dome = IsKindOf(self.cursor_obj.template, "Dome")
@@ -2136,7 +2137,7 @@ function ConstructionController:GetConstructionCost()
 	if costs and next(costs) then
 		local lines = { }
 		for resource, amount in pairs(costs) do
-			lines[#lines + 1] = T{901, "<resource_name><right><resource(number,resource)>", resource_name = Resources[resource].display_name, number = amount, resource = resource }
+			lines[#lines + 1] = T{901, "<resource_name><right><resource(number,resource)>", resource_name = GetResourceInfo(resource).display_name, number = amount, resource = resource }
 		end
 		return table.concat(lines, "<newline><left>")
 	else

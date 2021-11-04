@@ -1,6 +1,11 @@
 ---transport rover
 DefineClass.RCTransport = {
-	__parents = {  "BaseRover", "ComponentAttach", "SharedStorageBaseVisualOnly", },
+	__parents = {
+		"AutoMode",
+		"BaseRover",
+		"ComponentAttach",
+		"SharedStorageBaseVisualOnly",
+	},
 	SelectionClass = "RCTransport",
 	flags = { gofPermanent = true },
 
@@ -8,6 +13,8 @@ DefineClass.RCTransport = {
 		{ template = true, name = T(765, "Pin Rollover"), id = "pin_rollover", category = "Pin",  editor = "text", translate = true, dont_save = true},
 		{ id = "max_shared_storage", default = 30 * const.ResourceScale, scale = const.ResourceScale, name = T(4460, "Max RC Transport resource capacity"), modifiable = true, editor = "number" , no_edit = true},
 	},
+	
+	auto_mode_on = false,
 
 	gamepad_auto_deselect = false,
 
@@ -66,8 +73,6 @@ DefineClass.RCTransport = {
 	amount_transfered_last_ct = 0,
 	
 	Select = BaseRover.Select,
-	
-	has_auto_mode = true,
 	
 	environment_entity = {
 		base = "RoverTransport",
@@ -905,7 +910,7 @@ function RCTransport:Automation_Unload()
 	local depot = realm:MapFindNearest(self, "map", "UniversalStorageDepot", "MechanizedDepot", "WasteRockDumpSite",
 											function(d)
 												if d.auto_rovers < max_auto_rovers_per_depot and
-														not IsKindOf(d, "SupplyRocket") and
+														not IsKindOf(d, "RocketBase") and
 														not unreachable_objects[d] then
 													nearest_reachable = nearest_reachable or d
 													return CanUnloadAt(self, d)
@@ -945,9 +950,10 @@ end
 
 function RCTransport:LoadingComplete()
 	self:SetState("idle")
-	if g_RoverAIResearched and self.auto_mode_on then
+	if g_RoverAIResearched and self:IsAutoModeEnabled() then
 		self:ProcAutomation()
 	else
+		self:SetCommand("Idle")
 		Halt()
 	end
 end
@@ -955,7 +961,7 @@ end
 function RCTransport:Idle()
 	self:Gossip("Idle")
 	self:SetState("idle")
-	if g_RoverAIResearched and self.auto_mode_on then
+	if g_RoverAIResearched and self:IsAutoModeEnabled() then
 		self:ProcAutomation()
 	else
 		self:PushDestructor(function(self)
@@ -980,7 +986,6 @@ function RCTransport:Idle()
 	end
 end
 
-
 function RCTransport:DroneLoadResource(drone, request, resource, amount)
 	--presentation, must go first!
 	drone:Face(self:GetPos(), 100)
@@ -1002,6 +1007,7 @@ end
 function RCTransport:ReturnStockpiledResources()
 	for resource_flag, value in pairs(self.stockpiled_amount or empty_table) do
 		PlaceResourceStockpile_Delayed(self:GetVisualPos(), self:GetMapID(),  resource_flag, value, self:GetAngle(), true)
+		self:SetStoredAmount(resource_flag, 0)
 	end
 end
 
@@ -1077,7 +1083,7 @@ function RCTransport:PickupResource(request, pile, goto_loading_complete, force_
 		end
 		
 		local resource = request:GetResource()
-		local rinfo = Resources[resource]
+		local rinfo = GetResourceInfo(resource)
 		assert(rinfo, "No such resource")
 		local space_available = self:GetEmptyStorage(resource)
 		self:Gossip("PickupResource", building:GossipName(), building.handle, resource)
@@ -1122,8 +1128,8 @@ function RCTransport:PickupResource(request, pile, goto_loading_complete, force_
 end
 
 function RCTransport:TransferResources(storage_depot, interaction_type, resource, amount_to_transfer, allow_set_command)
-	if not IsValid(storage_depot) then return end
-	local rinfo = Resources[resource]
+	if not IsValid(storage_depot) then return "storage_depot not valid" end
+	local rinfo = GetResourceInfo(resource)
 	assert(rinfo, "No such resource")
 	
 	local uses_storable_tbl = storage_depot:HasMember("storable_resources") and type(storage_depot.storable_resources) == "table"
@@ -1173,7 +1179,7 @@ function RCTransport:TransferResources(storage_depot, interaction_type, resource
 		amount = amount * -1
 	end
 	
-	if not arg_req1 then return end --can not do continuoustask with no req, yet..
+	if not arg_req1 then return "no arg req" end --can not do continuoustask with no req, yet..
 	
 	if interaction_type == "load" then
 		HintDisable("HintTransport")
@@ -1453,7 +1459,7 @@ function RCTransport:GetSelectorItems(dataset)
 				if (not dataset.target or (dataset.target:HasMember("DoesHaveSupplyRequestForResource") and dataset.target:DoesHaveSupplyRequestForResource(res_id)
 										and (transport_mode == "route" or 
 											dataset.target:GetStoredAmount(res_id) > 0 ))) then
-					local res = Resources[res_id]
+					local res = GetResourceInfo(res_id)
 					if res then
 						all_resources[#all_resources +1] = res_id
 						if construction_resources_lookup[res_id] then
@@ -1537,7 +1543,7 @@ function RCTransport:GetSelectorItems(dataset)
 		for i=1, #self.storable_resources do
 			local res_id = self.storable_resources[i]
 			if IsDlcAccessibleForResource(res_id) and (not dataset.target or dataset.target:DoesAcceptResource(res_id)) and self.resource_storage[res_id] and self.resource_storage[res_id]>0 then
-				local res = Resources[res_id]
+				local res = GetResourceInfo(res_id)
 				if res then
 					all_resources[#all_resources+1] = res_id
 					table.insert(items, {
@@ -1665,10 +1671,13 @@ function OnMsg.SelectionRemoved(obj)
 end
 	
 function RCTransport:ToggleAutoMode_Update(button)
+	AutoMode.ToggleAutoMode_Update(self, button)
 	button:SetRolloverText(T{10987, "If Automated Mode is activated the RC Transport will gather resources automatically.<newline><newline>Current Status: <em><on_off(auto_mode_on)></em>", self})
-	if not self.auto_mode_on then
-		button:SetIcon("UI/Icons/IPButtons/automated_mode_off.tga")
-	else
-		button:SetIcon("UI/Icons/IPButtons/automated_mode_on.tga")
+end
+
+function RCTransport:SetAutoMode(value)
+	AutoMode.SetAutoMode(self, value)
+	if self.command == "Idle" then --reset idle
+		self:SetCommand("Idle")
 	end
 end

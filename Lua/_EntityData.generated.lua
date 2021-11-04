@@ -9506,6 +9506,30 @@ EntityData["StorageDepot"] = {
 		material_type = "Metal",
 	},
 }
+EntityData["StorageDepotBB"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["StorageDepotAIO"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
+EntityData["StorageDepotGP"] = {
+	category_Buildings = true,
+	entity = {
+		class_parent = "BuildingEntityClass",
+		fade_category = "Never",
+		material_type = "Metal",
+	},
+}
 EntityData["StorageDepotSmall_01"] = {
 	category_Buildings = true,
 	entity = {

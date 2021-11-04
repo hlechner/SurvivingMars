@@ -73,7 +73,7 @@ function SurfaceDepositMarker:Setentity_variant(entity_variant)
 	self.entity_variant = entity_variant
 	if self.entity_variant == "random" then
 		self:ChangeEntity("Hex1_Placeholder")
-		self:SetColorModifier(Resources[self.resource].color)
+		self:SetColorModifier(GetResourceInfo(self.resource).color)
 	else
 		self:ChangeEntity(self.entity_variant)
 		self:SetColorModifier(const.clrNoModifier)

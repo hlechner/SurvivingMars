@@ -83,6 +83,7 @@ local ForcedIntegerResources = {
 	["Work"] = true,
 	["Unemployed"] = true,
 	["Drone"] = true,
+	["Rover"] = true,
 	["Research"] = true,
 	["Tourist"] = true,
 	["Prefab"] = true,
@@ -206,8 +207,8 @@ end
 
 function FormatResourceName(resource)
 	local invalid_resource = T(4855, "<red>INVALID RESOURCE</red>")
-	if resource and Resources[resource] then
-		return Resources[resource].display_name or invalid_resource
+	if resource and GetResourceInfo(resource) then
+		return GetResourceInfo(resource).display_name or invalid_resource
 	end	
 	return invalid_resource
 end
@@ -230,6 +231,7 @@ FormatResourceFn("polymers", "Polymers")
 FormatResourceFn("food", "Food")
 FormatResourceFn("research", "Research")
 FormatResourceFn("drone", "Drone")
+FormatResourceFn("rover", "Rover")
 FormatResourceFn("colonist", "Colonist")
 FormatResourceFn("tourist", "Tourist")
 FormatResourceFn("home", "Home")

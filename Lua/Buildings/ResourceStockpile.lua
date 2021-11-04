@@ -28,7 +28,7 @@ end
 
 function SetPileResource(obj, resource, is_group)
 	obj.resource = resource
-	local res_info = Resources[resource]
+	local res_info = GetResourceInfo(resource)
 	local e = is_group and res_info.group_entity or res_info.entity
 	local c = res_info.color
 	
@@ -47,8 +47,57 @@ function ResourceStockpileBox:SetResource(resource)
 	SetPileResource(self, resource, self.is_group)
 end
 
+DefineClass.ResourceStockKeeping = {
+	__parents = {
+		"BaseBuilding",
+		"CityObject",
+	},
+	properties = {
+		{ id = "stockpiled_amount", editor = "number", default = 0, no_edit = true },
+	},
+	
+	count_in_resource_overview = true, --the city label "ResourceStockpile" contains all the stockpiles that will get counted
+}
+
+function ResourceStockKeeping:AddToCityLabels()
+	if self.count_in_resource_overview and self.city then
+		self.city:AddToLabel("ResourceStockpile", self) 
+	end
+end
+
+function ResourceStockKeeping:RemoveFromCityLabels()
+	if self.count_in_resource_overview and self.city then
+		self.city:RemoveFromLabel("ResourceStockpile", self)
+	end
+end
+
+function ResourceStockKeeping:AddResource(amount, resource, notify_parents)
+	if type(self.stockpiled_amount) == "number" then
+		self.stockpiled_amount = (self.stockpiled_amount or 0) + amount
+	else
+		self.stockpiled_amount[resource] = (self.stockpiled_amount[resource] or 0) + amount
+	end
+end
+
+function ResourceStockKeeping:RemoveResource(amount, resource)
+	if type(self.stockpiled_amount) == "number" then
+		self.stockpiled_amount = Max(self.stockpiled_amount - amount, 0)
+	else
+		assert(self.stockpiled_amount[resource] and self.stockpiled_amount[resource] >= amount)
+		self.stockpiled_amount[resource] = Max(self.stockpiled_amount[resource] - amount, 0)
+	end
+end
+
 DefineClass.ResourceStockpileBase = {
-	__parents = { "TaskRequester", "Constructable", "Object", "InfopanelObj", "DomeOutskirtBld" }, --constructable so it can be placed with constr dialog
+	__parents = {
+		"Constructable", --constructable so it can be placed with constr dialog
+		"DomeOutskirtBld",
+		"InfopanelObj",
+		"Object",
+		"ResourceStockKeeping",
+		"TaskRequester",
+	},
+	
 	flags = { cfConstructible = false, gofPermanent = true },
 	entity = "ResourcePlatform",
 	properties = {
@@ -56,7 +105,6 @@ DefineClass.ResourceStockpileBase = {
 		{ id = "resource", editor = "number", no_edit = true },
 		{ id = "has_demand_request", editor = "bool", default = false, no_edit = true },
 		{ id = "has_supply_request", editor = "bool", default = true, no_edit = true },
-		{ id = "stockpiled_amount", editor = "number", default = 0, no_edit = true },
 		{ id = "additional_supply_flags", editor = "number", default = 0, no_edit = true },
 		{ id = "additional_demand_flags", editor = "number", default = 0, no_edit = true },
 		{ id = "destroy_when_empty", editor = "bool", default = false, no_edit = true },
@@ -104,7 +152,6 @@ DefineClass.ResourceStockpileBase = {
 	
 	parent_construction = false,
 	
-	count_in_resource_overview = true, --the city label "ResourceStockpile" contains all the stockpiles that will get counted
 	cube_attach_spot_idx = false,
 	
 	interest1 = false,
@@ -280,18 +327,6 @@ function ResourceStockpileBase:Done()
 	end
 end
 
-function ResourceStockpileBase:AddToCityLabels()
-	if self.count_in_resource_overview and self.city then
-		self.city:AddToLabel("ResourceStockpile", self) 
-	end
-end
-
-function ResourceStockpileBase:RemoveFromCityLabels()
-	if self.count_in_resource_overview and self.city then
-		self.city:RemoveFromLabel("ResourceStockpile", self)
-	end
-end
-
 function ResourceStockpileBase:CreateResourceRequests()
 	if self.has_supply_request then
 		self.supply_request = self:AddSupplyRequest(self.resource, self.stockpiled_amount, bor(
@@ -430,7 +465,7 @@ function ResourceStockpileBase:AddResourceAmount(amount_to_add, notify_parents)
 		self.demand_request:AddAmount(-amount_to_add)
 	end
 	
-	self.stockpiled_amount = Max(self.stockpiled_amount + amount_to_add, 0)
+	ResourceStockKeeping.AddResource(self, amount_to_add, self.resource, notify_parents)
 	
 	--update placed boxes.
 	if self.has_supply_request or self.has_demand_request then
@@ -510,7 +545,7 @@ end
 
 function ResourceStockpileBase:SetCountInternal(new_count, count, resource, placed_cubes, placement_offset, group_angle, single_angle)
 	local cube_class = self.cube_class
-	local group_entity = Resources[resource].group_entity
+	local group_entity = GetResourceInfo(resource).group_entity
 	local fill_group_idx = self.fill_group_idx
 	local map_id = self:GetMapID()
 	if new_count > count then
@@ -1019,7 +1054,7 @@ for i = 1, #AllResourcesList do
 	local r_n = AllResourcesList[i]
 	local prop_id = "ui_" .. r_n .. "WithButton"
 	
-	local the_prop = { template = true, name = Resources[r_n].display_name, id = prop_id, editor = "dropdownlist", items = ResourceStatesUI, default = ResourceStatesUI[1].value, dont_save = true }
+	local the_prop = { template = true, name = GetResourceInfo(r_n).display_name, id = prop_id, editor = "dropdownlist", items = ResourceStatesUI, default = ResourceStatesUI[1].value, dont_save = true }
 	table.insert(AutoTransportStateUIProps.properties, the_prop)
 	AutoTransportStateUIProps["Get" .. prop_id] = function(self)
 		return AutoTransportStateUIProps.UIPropAutoTransportStateGetter(self, prop_id)
@@ -1486,7 +1521,7 @@ function StockpileController:UpdateStockpileAmounts(amount_stored)
 	
 	local amount_to_stock = amount_stored - total_stockpiled
 	
-	local step_amount = Resources[self.stockpiled_resource].unit_amount
+	local step_amount = GetResourceInfo(self.stockpiled_resource).unit_amount
 	local cs = self.current_stockpile_idx_stockpiled_amount
 	
 	--refresh idx so we don't go below zero

@@ -99,7 +99,8 @@ function SelectionArrowAdd(obj)
 			SelectionArrowsOwners[obj] = false
 		end	
 	end
-	local arrow = PlaceObject(arrow_class)
+	local map_id = obj:GetMapID()
+	local arrow = PlaceObjectIn(arrow_class, map_id)
 	local attach_to = obj
 	local err = attach_to:Attach(arrow)
 	if attach_to:IsKindOf("Unit") then

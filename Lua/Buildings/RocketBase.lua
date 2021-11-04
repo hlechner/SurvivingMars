@@ -701,7 +701,7 @@ function RocketBase:Countdown(destination)
 	self:CloseDoor()
 	local export_amount = Min(self:GetStoredExportResourceAmount(), self.max_export_storage)
 	self.city:MarkPreciousMetalsExport(export_amount)
-	self.exported_amount = export_amount	
+	self.exported_amount = export_amount
 	self:SetCommand("Takeoff", destination)
 end
 
@@ -758,7 +758,6 @@ function RocketBase:Takeoff(destination)
 	--@@@msg RocketLaunched,rocket - fired when a rocket takes off from Mars
 	Msg("RocketLaunched", self)
 	
-	
 	local pt = self:GetPos()
 	local dest = pt + point(0, 0, self.orbital_altitude)
 	
@@ -781,6 +780,7 @@ function RocketBase:Takeoff(destination)
 	self:SetPos(dest, t)
 
 	Sleep(t)
+	
 	if IsValid(self.landing_site) and not self.auto_export then
 		DoneObject(self.landing_site)
 		self.landing_site = nil
@@ -863,7 +863,7 @@ function RocketBase:IsRefueling()
 end
 
 function RocketBase:IsDeparting()
-	return table.find({"Countdown", "Takeoff", "FlyToSpot"}, self.command)
+	return table.find({"Countdown", "Takeoff", "FlyToSpot", "FlyToMars"}, self.command)
 end
 
 function RocketBase:UpdateRefuelRequests(old_val, new_val)
@@ -916,7 +916,7 @@ function RocketBase:OnModifiableValueChanged(prop, old_val, new_val)
 	end
 end
 
-function RocketBase:BuildingUpdate(dt, day, hour)	
+function RocketBase:BuildingUpdate(dt, day, hour)
 	if GetMissionSponsor().id == "IMM" and (self.command == "Refuel" or self.command == "ExpeditionRefuelAndLoad") then
 		self.accumulated_fuel = self.accumulated_fuel + MulDivRound(dt, self:GetLaunchFuel()/10, const.DayDuration)
 		local amount = self.accumulated_fuel - self.accumulated_fuel % const.ResourceScale
@@ -1468,7 +1468,7 @@ function RocketBase:CanHaveMoreDrones()
 end
 
 function RocketBase:GetEntrancePoints(entrance_type, spot_name)
-	return WaypointsObj.GetEntrancePoints(entrance_type or "rocket_entrance", spot_name)
+	return WaypointsObj.GetEntrancePoints(self, entrance_type or "rocket_entrance", spot_name)
 end
 
 function RocketBase:GetEntrance(target, entrance_type, spot_name)
@@ -1778,7 +1778,7 @@ function RocketBase:FillTransports() --needs to happen after rover's game init (
 	local resources_cargo = {}
 	for i = 1, #self.cargo do
 		local item = self.cargo[i]
-		if Resources[item.class] then
+		if GetResourceInfo(item.class) then
 			resources_cargo[item.class] = item
 		end
 	end
@@ -2154,7 +2154,7 @@ function FormatCargoManifest(cargo)
 		if item.amount and item.amount > 0 then
 			if item.class == "Passengers" then
 				texts[#texts + 1] = T{721, "<number> Passengers", number = item.amount}
-			elseif Resources[item.class] then
+			elseif GetResourceInfo(item.class) then
 				resources[#resources + 1] = T{722, "<resource(amount,res)>", amount = item.amount*const.ResourceScale, res = item.class}
 			elseif BuildingTemplates[item.class] then
 				local def = BuildingTemplates[item.class]

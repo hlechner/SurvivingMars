@@ -656,7 +656,7 @@ PlaceObj('Scenario', {
 			'msg', "MysteryDreamEnded",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery4Mirage")',
+			'expression', 'RemoveOnScreenNotification("Mystery4Mirage", MainMapID)',
 		}),
 		}),
 	PlaceObj('ScenarioSequence', {

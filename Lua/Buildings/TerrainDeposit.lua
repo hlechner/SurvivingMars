@@ -88,7 +88,7 @@ function TerrainDepositMarker:GetEstimatedAmount()
 end
 
 function TerrainDepositMarker:PostLoad()
-	local rinfo = Resources[self.resource]
+	local rinfo = GetResourceInfo(self.resource)
 	self:SetColorModifier(rinfo and rinfo.color or const.clrNoModifier)
 end
 

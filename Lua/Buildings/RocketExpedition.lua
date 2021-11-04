@@ -487,8 +487,29 @@ function RocketExpedition:ExpeditionRefuelAndLoad() -- handle fuel and resources
 	self:SetCommand(self.expedition.route_id and "Takeoff" or "ExpeditionPrepare")
 end
 
+function RocketExpedition:GatherAvailableColonists(amount, label, quick_load, transfer_available)
+	local crew = CargoTransporter.GatherAvailableColonists(self, amount, label, quick_load, transfer_available)
+	self.colonist_summon_fail = #crew < amount
+	ObjModified(self)
+	return crew
+end
+
+function RocketExpedition:GatherAvailableDrones(amount, quick_load)
+	local drones = CargoTransporter.GatherAvailableDrones(self, amount, quick_load)
+	self.drone_summon_fail = #drones < amount
+	ObjModified(self)
+	return drones
+end
+
+function RocketExpedition:GatherAvailableRovers(class, amount, quick_load, transfer_available)
+	local rovers = CargoTransporter.GatherAvailableRovers(self, class, amount, quick_load, transfer_available)
+	self.rover_summon_fail = #rovers < amount
+	ObjModified(self)
+	return rovers
+end
+
 local function CreateManifestForExpedition(expedition)
-	local manifest = CargoTransporter.CreateEmptyManifest()
+	local manifest = CreateEmptyManifest()
 	
 	if expedition.rover_type then
 		manifest.rovers[expedition.rover_type] = 1

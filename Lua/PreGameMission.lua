@@ -319,7 +319,7 @@ end
 -------------------------------------------
 
 function ResolveDisplayName(id)
-	local res = Resources[id]
+	local res = GetResourceInfo(id)
 	if res then
 		return res.display_name, res.description
 	end

@@ -1,10 +1,155 @@
+if FirstLoad then
+	local cargo_types = {
+		Resource = "Resource",
+		Drone = "Drone",
+		Rover = "Rover",
+		Colonist = "Colonist",
+		Prefab = "Prefab",
+		Unknown = "Unknown",
+	}
+	CargoType = setmetatable(cargo_types, immutable_meta)
+end
+
+function GetCargoType(class)
+	if GetResourceInfo(class) then
+		return CargoType.Resource
+	elseif BuildingTemplates[class] then
+		return CargoType.Prefab
+	elseif table.find(GetSortedColonistSpecializationTable(), class) then
+		return CargoType.Colonist
+	else
+		local def = g_Classes[class]
+		if def then
+			return class == "Drone" and CargoType.Drone or CargoType.Rover
+		end
+	end
+	assert(false, "cannot determine cargo type")
+	return CargoType.Unknown
+end
+
+function GetObjectCargoType(object)
+	if IsKindOf(object, "Colonist") then
+		return CargoType.Colonist
+	elseif IsKindOf(object, "BaseRover") then
+		return CargoType.Rover
+	elseif IsKindOf(object, "Drone") then
+		return CargoType.Drone
+	else
+		assert(false, "cannot determine object cargo type")
+		return CargoType.Unknown
+	end
+end
+
+function GetObjectCargoIDs(object)
+	if IsKindOf(object, "Colonist") then
+		local colonist = object
+		local specializations = {}
+		for _,specialization in ipairs(GetSortedColonistSpecializationTable()) do
+			if colonist.traits[specialization] then
+				table.insert(specializations, specialization)
+			end
+		end
+		return #specializations > 0 and specializations or { "none" }
+	else
+		return { object.class }
+	end
+end
+
+function GetTotalCargoPending(city, class)
+	local remaining_func = CargoTransporter.GetCargoRemaining
+	local total = 0
+	for _,transporter in ipairs(city.labels.LanderRocketBase or empty_table) do
+		local pending = remaining_func(transporter, class)
+		total = total + pending
+	end
+
+	for _,transporter in ipairs(city.labels.Elevator or empty_table) do
+		local pending = remaining_func(transporter, class)
+		total = total + pending
+	end
+	return total
+end
+
+function GetTotalCargoAvailable(city, cargo_type, class)
+	if cargo_type == CargoType.Resource then
+		local resources = GetCityResourceOverview(city)
+		return resources:GetAvailable(class) / const.ResourceScale
+	elseif cargo_type == CargoType.Prefab then
+		return city:GetPrefabs(class)
+	elseif cargo_type == CargoType.Colonist then
+		if class == "Tourist" then
+			local tourists = 0
+			local colonists = city.labels.Colonist or empty_table
+			for _,colonist in pairs(colonists) do
+				if colonist.traits.Tourist then
+					tourists = tourists + 1
+				end
+			end
+			return tourists
+		else
+			return #(city.labels[class] or empty_table)
+		end
+	else
+		return #(city.labels[class] or empty_table)
+	end
+end
+
+function GetTotalAvailableInColony(class) -- Deprecated
+	local available = 0
+	local cities_to_check = Cities
+	local cargo_type = GetCargoType(class)
+	for _,city in ipairs(cities_to_check) do
+		available = available + GetTotalCargoAvailable(city, cargo_type, class)
+	end
+	return available
+end
+
+AvailabilityStatus = {
+	None = 0,
+	Restricted = 1,
+	NotEnough = 2,
+	Limited = 3,
+	Ready = 4,
+	Loaded = 5,
+}
+
+local AvailabilityStatusDescription = {
+	T(13941, "<red>Below minimum</red>"),
+	T(13775, "<red>Not enough</red>"),
+	T(13776, "<yellow>Limited</yellow>"),
+	T(13777, "<green>Ready</green>"),
+	T(13805, "<green>Loaded</green>"),
+}
+
+local function GetHighestAvailabilityStatus(status, other_status)
+	return Min(status, other_status)
+end
+
+function GetAvailabilityStatus(remaining, total_pending, available, restricted)
+	local result = AvailabilityStatus.None
+	if remaining == 0 then
+		result = AvailabilityStatus.Loaded
+	elseif (restricted and available > restricted) and remaining > restricted then
+		result = AvailabilityStatus.Restricted
+	elseif remaining > available then
+		result = AvailabilityStatus.NotEnough
+	elseif total_pending > available then
+		result = AvailabilityStatus.Limited
+	else
+		result = AvailabilityStatus.Ready
+	end
+	return result
+end
+
 DefineClass.CargoTransporter = {
-	__parents = { "Object" },
+	__parents = { "Object", "TaskRequester" },
 	
 	properties = {
 		{ category = "CargoTransporter", id = "name", name = T(1000037, "Name"), editor = "text", default = ""},
 		{ template = true, category = "CargoTransporter", name = T(757, "Cargo Capacity (kg)"), id = "cargo_capacity", editor = "number", default = 10000, min = 0, max = 1000000, modifiable = true, help = "The amount of available cargo capacity." },
 	},
+
+	keep_cargo_in_labels = false,
 	
 	cargo = false,
 	demand = false,
@@ -17,11 +162,11 @@ function CargoTransporter:GameInit()
 	self.drones_exiting = {}
 end
 
-function CargoTransporter:CreateEmptyManifest()
+function CreateEmptyManifest()
 	local manifest = {}
 	
-	manifest.rovers = {}
 	manifest.drones = 0
+	manifest.rovers = {}
 	manifest.passengers = {}
 	manifest.prefabs = {}
 	
@@ -29,82 +174,132 @@ function CargoTransporter:CreateEmptyManifest()
 end
 
 function CreateManifest(cargo)
-	local manifest = CargoTransporter.CreateEmptyManifest()
+	local manifest = CreateEmptyManifest()
 	
 	local transportable_rovers = table.filter(cargo, function(k, v) return IsKindOf(g_Classes[k], "BaseRover") end)
 	for _,entry in pairs(transportable_rovers) do
-		manifest.rovers[entry.class] = entry.requested or 0
+		local count = entry.requested or 0
+		manifest.rovers[entry.class] = count > 0 and count or nil
 	end
 	
-	manifest.drones = cargo["Drone"] and cargo["Drone"].requested or 0
+	manifest.drones = cargo["Drone"] and cargo["Drone"].requested or nil
 	
 	for _,specialization in ipairs(GetSortedColonistSpecializationTable()) do
-		manifest.passengers[specialization] = cargo[specialization] and cargo[specialization].requested or 0
+		local count = cargo[specialization] and cargo[specialization].requested or 0
+		manifest.passengers[specialization] = count > 0 and count or nil
 	end
 	
 	local prefabs = table.filter(cargo, function(k, v) return BuildingTemplates[k] end)
 	for _,entry in pairs(prefabs) do
-		manifest.prefabs[entry.class] = entry.requested
+		local count = entry.requested or 0
+		manifest.prefabs[entry.class] = count > 0 and count or nil
 	end
+	
 	return manifest
 end
 
-function CargoTransporter:Load(manifest, quick_load)
+function CargoTransporter:SetCargoAmount(class_id, amount)
+	if not self.cargo[class_id] then
+		self.cargo[class_id] = { 
+			class = class_id,
+			requested = 0,
+			amount = 0,
+		}
+	end
+	self.cargo[class_id].amount = amount
+end
+
+function CargoTransporter:GetCargoAmount(class_id)
+	return self.cargo[class_id] and self.cargo[class_id].amount or 0
+end
+
+function CargoTransporter:GetCargoRequested(class_id)
+	return self.cargo[class_id] and self.cargo[class_id].requested or 0
+end
+
+function CargoTransporter:GetCargoRemaining(class_id)
+	local cargo = self.cargo[class_id]
+	if cargo then
+		return cargo.requested - cargo.amount
+	else
+		return 0
+	end
+end
+
+function CargoTransporter:GetCargoItemStatus(item)
+	local remaining = (item.requested or 0) - item.amount
+	local cargo_type = GetCargoType(item.class)
+	local total_pending = GetTotalCargoPending(self.city, item.class)
+	local available = GetTotalCargoAvailable(self.city, cargo_type, item.class)
+	return GetAvailabilityStatus(remaining, total_pending, available)
+end
+
+function CargoTransporter:GetCargoStatus(class_id)
+	local cargo = self.cargo[class_id]
+	if cargo then
+		return self:GetCargoItemStatus(cargo)
+	else
+		return AvailabilityStatus.None
+	end
+end
+
+function CargoTransporter:AddCargoAmount(class_id, amount)
+	self:SetCargoAmount(class_id, self:GetCargoAmount(class_id) + amount)
+end
+
+function CargoTransporter:UnitDropCargoOnLoad()
+	return false
+end
+
+function CargoTransporter:Load(manifest, quick_load, transfer_available)
 	assert(manifest)
 	self.boarding = {}
 	self.departures = {}
 	self.cargo = self.cargo or {}
 	
-	local function SetCargoAmount(cargo, class_id, amount)
-		if not cargo[class_id] then
-			cargo[class_id] = { 
-				class = class_id,
-				requested = 0,
-				amount = 0,
-			}
+	local succeed, rovers, drones, crew, prefabs = self:GatherAvailableCargo(manifest, quick_load, transfer_available)
+	if not transfer_available then
+		while not succeed do
+			Sleep(1000)
+			succeed, rovers, drones, crew, prefabs = self:GatherAvailableCargo(manifest, quick_load, transfer_available)
 		end
-		cargo[class_id].amount = cargo[class_id].amount + amount
-	end
-	
-	-- Find all available cargo
-	local succeed, rovers, drones, crew, prefabs = self:Find(manifest, quick_load)
-	while not succeed do
-		Sleep(1000)
-		succeed, rovers, drones, crew, prefabs = self:Find(manifest, quick_load)
 	end
 	
 	-- Finaly, load found cargo
 	for _,rover in pairs(rovers) do
+		if self:UnitDropCargoOnLoad() and IsKindOf(rover, "RCTransport") then
+			rover:ReturnStockpiledResources()
+		end
 		self:ExpeditionLoadRover(rover)
-		SetCargoAmount(self.cargo, rover.class, 1)
+		self:AddCargoAmount(rover.class, 1)
 	end
 	
-	self:ExpeditionLoadDrones(drones, quick_load)
-	SetCargoAmount(self.cargo, "Drone", #drones)
+	self:ExpeditionLoadDrones(drones)
+	self:AddCargoAmount("Drone", #drones)
 	
 	self:ExpeditionLoadCrew(crew)
 	for _,member in pairs(crew) do
 		if member.traits.Tourist then
-			SetCargoAmount(self.cargo, "Tourist", 1)
+			self:AddCargoAmount("Tourist", 1)
 		else
-			SetCargoAmount(self.cargo, member.specialist, 1)
+			self:AddCargoAmount(member.specialist, 1)
 		end
 	end
 	
 	for _,prefab in pairs(prefabs) do
-		SetCargoAmount(self.cargo, prefab.class, prefab.amount)
+		self:AddCargoAmount(prefab.class, prefab.amount)
 		self.city:AddPrefabs(prefab.class, -prefab.amount, false)
 	end
 	
 	return rovers, drones, crew, prefabs
 end
 
-function CargoTransporter:Find(manifest, quick_load)
+function CargoTransporter:GatherAvailableCargo(manifest, quick_load, transfer_available)
 	-- find vehicles
 	local rovers = {}
 	for rover_type, count in pairs(manifest.rovers) do
-		local new_rovers = self:ExpeditionFindRovers(rover_type, quick_load, count) or empty_table
-		if not quick_load and #new_rovers < count then 
+		local new_rovers = self:GatherAvailableRovers(rover_type, count, quick_load, transfer_available) or empty_table
+		if not quick_load and not transfer_available and #new_rovers < count then 
 			return false
 		end
 		
@@ -113,9 +308,9 @@ function CargoTransporter:Find(manifest, quick_load)
 	
 	-- pick the required number of drones uniformly from hubs in range
 	local drones = {}
-	if manifest.drones > 0 then
-		drones = self:ExpeditionFindDrones(manifest.drones, quick_load)
-		if not quick_load and #drones < manifest.drones then
+	if manifest.drones and manifest.drones > 0 then
+		drones = self:GatherAvailableDrones(manifest.drones, quick_load)
+		if not quick_load and not transfer_available and #drones < manifest.drones then
 			return false
 		end
 	end
@@ -123,8 +318,8 @@ function CargoTransporter:Find(manifest, quick_load)
 	-- wait to have enough potential crew, set command, wait them to board
 	local crew = {}
 	for specialization, count in pairs(manifest.passengers) do
-		local new_crew = self:ExpeditionGatherCrew(count, specialization, quick_load) or empty_table
-		if not quick_load and #new_crew < count then
+		local new_crew = self:GatherAvailableColonists(count, specialization, quick_load, transfer_available) or empty_table
+		if not quick_load and not transfer_available and #new_crew < count then
 			return false
 		end
 		
@@ -135,47 +330,46 @@ function CargoTransporter:Find(manifest, quick_load)
 	local prefabs = {}
 	local manifest_prefabs = table.filter(manifest.prefabs, function(k, v) return v > 0 end)
 	for prefab,count in pairs(manifest_prefabs) do
-		local available_count = self:ExpeditionGatherPrefabs(count, prefab)
-		if not quick_load and available_count  < count then
+		local available_count = self:GatherAvailablePrefabs(count, prefab)
+		if not quick_load and not transfer_available and available_count  < count then
 			return false
 		end
 		
-		table.insert(prefabs, {class = prefab, amount = count})
+		table.insert(prefabs, {class = prefab, amount = available_count})
 	end
 	
 	return true, rovers, drones, crew, prefabs
 end
 
-local function FilterColonists(colonists, label, num_crew)
-	local all_filter = function(i, col) return (label == "Colonist" or col.traits[label]) end
-	local adult_filter = function(i, col) return not col.traits.Child and all_filter(i, col) end
+local function FilterColonists(colonists, label, amount)
+	local all_filter = function(i, col)
+		return (label == "Colonist" or col.traits[label])
+	end
+	local adult_filter = function(i, col)
+		return not col.traits.Child and all_filter(i, col)
+	end
 	
 	local list = table.ifilter(colonists or empty_table, adult_filter) 
-	if #list < num_crew then
+	if #list < amount then
 		list = table.ifilter(colonists or empty_table, all_filter) 
 	end
 	return list
 end
 
-function CargoTransporter:ExpeditionGatherCrew(num_crew, label, quick_load)
+function CargoTransporter:GatherAvailableColonists(amount, label, quick_load, transfer_available)
 	label = label or "Colonist"
-	while true do
-		local list = FilterColonists(self.city.labels.Colonist or empty_table, label, num_crew)
-		
-		self.colonist_summon_fail = #list < num_crew
-		ObjModified(self)
-		
-		if #list >= num_crew or quick_load then
-			local crew = {}
-			while #list > 0 and #crew < num_crew do
-				local unit = table.rand(list, InteractionRand("PickCrew"))
-				table.remove_value(list, unit)
-				table.insert(crew, unit)
-			end
-			return crew
-		else
-			return {}
+	local list = FilterColonists(self.city.labels.Colonist or empty_table, label, amount)
+	
+	if #list >= amount or quick_load or transfer_available then
+		local crew = {}
+		while #list > 0 and #crew < amount do
+			local unit = table.rand(list, InteractionRand("PickCrew"))
+			table.remove_value(list, unit)
+			table.insert(crew, unit)
 		end
+		return crew
+	else
+		return {}
 	end
 end
 
@@ -190,15 +384,15 @@ function CargoTransporter:ExpeditionLoadCrew(crew)
 			unit:SetPos(self:GetPos())
 		end
 		unit:SetHolder(self)
-		unit:SetCommand("Disappear", "keep in holder")
+		unit:SetCommand("Disappear", "keep in holder", self.keep_cargo_in_labels and "keep_in_labels")
 	end
 end
 
-function CargoTransporter:ExpeditionGatherPrefabs(num_prefabs, prefab)
+function CargoTransporter:GatherAvailablePrefabs(amount, prefab)
 	local city = self.city or MainCity
 	local available_prefabs = city:GetPrefabs(prefab)
-	if available_prefabs >= num_prefabs then
-		return num_prefabs
+	if available_prefabs >= amount then
+		return amount
 	else
 		return available_prefabs
 	end
@@ -215,12 +409,12 @@ function CargoTransporter:WaitToFinishDisembarking(crew)
 	end
 end
 
-function ExpeditionPickDroneFrom(controller, picked, filter)
+function GetBestAvailableDroneFrom(controller, picked, filter)
 	local drone = nil
 	for _, d in ipairs(controller.drones or empty_table) do
 		if d:CanBeControlled() and not table.find(picked, d) then
 			if (not filter or filter(d)) then
-				if not drone or drone.command ~= "Idle" and d.command == "Idle" then -- prefer idling drones
+				if not drone or (drone.command ~= "Idle" and d.command == "Idle") then -- prefer idling drones
 					drone = d
 				end
 			end
@@ -229,11 +423,11 @@ function ExpeditionPickDroneFrom(controller, picked, filter)
 	return drone
 end
 
-function ExpeditionPickDrones(drones, num_drones, city, filter)
+function GatherBestAvailableDrones(drones, amount, city, filter)
 	local list = table.copy(city.labels.DroneControl or empty_table)
 	local idx = 1
-	while #drones < num_drones and #list > 0 do
-		local drone = ExpeditionPickDroneFrom(list[idx], drones, filter)
+	while #drones < amount and #list > 0 do
+		local drone = GetBestAvailableDroneFrom(list[idx], drones, filter)
 		if drone then
 			table.insert(drones, drone)
 			idx = idx + 1
@@ -246,10 +440,10 @@ function ExpeditionPickDrones(drones, num_drones, city, filter)
 	end
 end
 
-local function ExpeditionFindDronesWithFilter(drones, num_drones, obj, filter)
+local function GatherAvailableDronesWithFilter(drones, amount, obj, filter)
 	-- prefer own drones first
-	while #drones < num_drones and #(obj:HasMember("drones") and obj.drones or empty_table) > 0 do
-		local drone = ExpeditionPickDroneFrom(obj, drones, filter)
+	while #drones < amount and #(obj:HasMember("drones") and obj.drones or empty_table) > 0 do
+		local drone = GetBestAvailableDroneFrom(obj, drones, filter)
 		if not drone then
 			break
 		end
@@ -257,7 +451,7 @@ local function ExpeditionFindDronesWithFilter(drones, num_drones, obj, filter)
 	end
 	
 	-- pick from other drone controllers
-	ExpeditionPickDrones(drones, num_drones, obj.city, filter)
+	GatherBestAvailableDrones(drones, amount, obj.city, filter)
 end
 
 local function DroneApproachingRocket(drone)
@@ -276,25 +470,20 @@ local function GetAvailableDronesFilter(drone)
 	return available
 end
 
-function CargoTransporter:ExpeditionFindDrones(num_drones, quick_load)
+function CargoTransporter:GatherAvailableDrones(amount, quick_load)
 	local found_drones = {}
-	-- wait to have enough drones
-	ExpeditionFindDronesWithFilter(found_drones, num_drones, self, GetAvailableDronesFilter)
+	GatherAvailableDronesWithFilter(found_drones, amount, self, GetAvailableDronesFilter)
 	
 	-- Check if it's an availability issue
-	if #found_drones < num_drones then
+	if #found_drones < amount then
 		-- Try finding all drones available drones
 		local available_drones = table.copy(found_drones)
-		ExpeditionFindDronesWithFilter(available_drones, num_drones, self, nil)
-		self.drone_summon_fail = #available_drones < num_drones
+		GatherAvailableDronesWithFilter(available_drones, amount, self, nil)
 		if quick_load then
 			found_drones = table.copy(available_drones)
 		end
-	else
-		self.drone_summon_fail = false
 	end
-	
-	ObjModified(self)
+
 	return found_drones
 end
 
@@ -304,16 +493,15 @@ function CargoTransporter:ExpeditionLoadDrones(found_drones)
 			-- Filter failed, but we have to load the drones
 			-- Check if drone needs to be removed from approaching rocket
 			if DroneApproachingRocket(d) then
-				local rocket = drone.s_request:GetBuilding()
+				local rocket = d.s_request:GetBuilding()
 				table.remove_entry(rocket.drones_entering, d)
 			end
 			
 			-- Kill current drone and respawn it so it can be loaded safely
-			local controller = d.command_center
 			d:DespawnNow()
-			d = controller.city:CreateDrone()
+			d = self.city:CreateDrone()
 			d.init_with_command = false
-			d:SetCommandCenter(controller)
+			d:SetCommandCenter(self)
 			found_drones[idx] = d
 		end
 	end
@@ -324,23 +512,19 @@ function CargoTransporter:ExpeditionLoadDrones(found_drones)
 		end
 		drone:SetCommandCenter(false, "do not orphan!")
 		drone:SetHolder(self)
-		drone:SetCommand("Disappear", "keep in holder")
+		drone:SetCommand("Disappear", "keep in holder", self.keep_cargo_in_labels and "keep_in_labels")
 	end
 end
 
-function CargoTransporter:ExpeditionFindRovers(class, quick_load, amount)
-	local filter = function(unit) return unit.class == class and unit:CanBeControlled() and (quick_load or unit.command == "Idle") end
+function CargoTransporter:GatherAvailableRovers(class, amount, quick_load, transfer_available)
+	local filter = function(unit) return unit.class == class and unit:CanBeControlled() and not unit.holder and (quick_load or unit.command == "Idle") end
 	local realm = GetRealm(self)
 	local list = realm:MapGet("map", class, filter) or empty_table
 	
 	if #list < amount then
-		self.rover_summon_fail = true
-		ObjModified(self)
-		return nil
+		return (quick_load or transfer_available) and list or nil
 	end
-	self.rover_summon_fail = nil
-	ObjModified(self)
-	
+
 	local candidates = {}
 	for _, unit in ipairs(list) do
 		local d = self:GetDist2D(unit)
@@ -368,7 +552,7 @@ function CargoTransporter:ExpeditionLoadRover(rover)
 			rover.sieged_state = false
 		end
 		rover:SetHolder(self)
-		rover:SetCommand("Disappear", "keep in holder")
+		rover:SetCommand("Disappear", "keep in holder", self.keep_cargo_in_labels and "keep_in_labels")
 	end
 end
 
@@ -396,6 +580,10 @@ function CargoTransporter:SpawnRovers()
 				local rover = PlaceObjectIn(item.class, map_id, {city = self.city, override_ui_status = "Disembarking"})
 				rovers[#rovers + 1] = rover
 				item.amount = item.amount - 1
+				
+				if IsKindOf(rover, "RCRover") then
+					rover.sieged_state = false
+				end
 			end
 		end
 	end
@@ -741,24 +929,26 @@ end
 function CargoTransporter:UnloadCargoObjects(cargo, out)
 	local refreshBM = false
 	local map_id = self:GetMapID()
+	local specializations = GetSortedColonistSpecializationTable()
 	for _,item in pairs(cargo) do
-		local classdef = g_Classes[item.class]
-		if Resources[item.class] then
-			if item.amount > 0 then
+		local amount = item.amount or 0
+		if amount > 0 then
+			local classdef = g_Classes[item.class]
+			if GetResourceInfo(item.class) then
 				self:AddResource(item.amount*const.ResourceScale, item.class)
+			elseif item.class == "Passengers" then
+				self:GenerateArrivals(item.amount, item.applicants_data)
+			elseif IsKindOf(classdef, "Vehicle") then
+				for j = 1, item.amount do
+					local obj = PlaceObjectIn(item.class, map_id, {city = self.city})
+					self:PlaceAdjacent(obj, out, true)
+				end
+			elseif BuildingTemplates[item.class] then
+				refreshBM  = true
+				self.city:AddPrefabs(item.class, item.amount, false)
+			elseif not table.find(specializations, item.class) then
+				print("unexpected cargo type", item.class, "ignored")
 			end
-		elseif item.class == "Passengers" then
-			self:GenerateArrivals(item.amount, item.applicants_data)
-		elseif IsKindOf(classdef, "Vehicle") then
-			for j = 1, item.amount do
-				local obj = PlaceObjectIn(item.class, map_id, {city = self.city})
-				self:PlaceAdjacent(obj, out, true)
-			end
-		elseif BuildingTemplates[item.class] then
-			refreshBM  = true
-			self.city:AddPrefabs(item.class, item.amount, false)
-		else
-			print("unexpected cargo type", item.class, "ignored")
 		end
 	end
 	if refreshBM then
@@ -785,7 +975,7 @@ function NormalizeCargo(cargo)
 	end
 end
 
-function CargoTransporter:FixPayloadToCargoObject(payload_request)
+function FixPayloadToCargoObject(payload_request)
 	local flying_idx = table.find(payload_request, "class", "FlyingDrone")
 	if flying_idx then
 		local drone_idx = table.find(payload_request, "class", "Drone")
@@ -794,7 +984,7 @@ function CargoTransporter:FixPayloadToCargoObject(payload_request)
 	end
 end
 
-function CargoTransporter:FixCargoToPayloadObject(payload_request)
+function FixCargoToPayloadObject(payload_request)
 	if GetMissionSponsor().id == "Japan" then
 		local flying_amount = RocketPayload_GetAmount("FlyingDrone")
 		local drone_amount = RocketPayload_GetAmount("Drone")
@@ -816,11 +1006,15 @@ local function AddPayloadToCargo(payload_request, cargo)
 	
 	for _,class in ipairs(classes) do
 		local entry = cargo[class]
-		new_cargo[class] = { 
-			class = class,
-			amount = entry and entry.amount or 0,
-			requested = payload_request[class] and payload_request[class].amount or 0
-		}
+		local amount = entry and Max(0, entry.amount) or 0
+		local requested = payload_request[class] and Max(0, payload_request[class].amount) or 0
+		if entry or requested > 0 then
+			new_cargo[class] = {
+				class = class,
+				amount = amount,
+				requested = requested
+			}
+		end
 	end
 	
 	return new_cargo
@@ -840,12 +1034,28 @@ local function AddPassengerManifestToCargo(passenger_manifest, cargo)
 	return cargo
 end
 
+function CreateCargoListFromPayload(payload_object, passenger_manifest, old_cargo)
+	FixPayloadToCargoObject(payload_object)
+	local cargo = AddPayloadToCargo(payload_object, old_cargo or empty_table)
+	cargo = AddPassengerManifestToCargo(passenger_manifest, cargo)
+	return cargo
+end
+
+function CargoTransporter:HasCargoRequestsOutstanding()
+	for key,_ in pairs(self.cargo) do
+		if self.cargo[key].requested > 0 then
+			return true
+		end
+	end
+	return false
+end
+
 function CargoTransporter:GetRequestUnitCount(max_storage)
 	return 3 + (max_storage / (const.ResourceScale * 5)) -- 1 per 5 + 3
 end
 
 function CargoTransporter:GetCargoLoadingStatus()
-	local resources = table.filter(self.cargo, function(k, v) return Resources[k] end)
+	local resources = table.filter(self.cargo, function(k, v) return GetResourceInfo(k) end)
 	for _,entry in pairs(resources) do
 		if entry.amount > entry.requested then
 			return "unloading"
@@ -882,25 +1092,67 @@ function CargoTransporter:GetRollover(id)
 	}
 end
 
-function CargoTransporter:UpdateResourceRequests(resources)
+function CargoTransporter:AddCargoDemandRequest(resource, amount, flags, max_units, desired_amount)
+	assert(not self.demand[resource])
+	local demand = self:AddDemandRequest(resource, amount, flags, max_units, desired_amount)
+	self.demand[resource] = demand
+	return demand
+end
+
+function CargoTransporter:GetCargoDemandRequest(resource)
+	return self.demand[resource]
+end
+
+function CargoTransporter:RemoveCargoDemandRequest(resource)
+	local demand = self.demand[resource]
+	assert(demand)
+	if demand then
+		demand:SetAmount(0)
+		table.remove_entry(self.task_requests, demand)
+		self.demand[resource] = nil
+	end
+end
+
+function CargoTransporter:AddCargoSupplyRequest(resource, amount, flags, max_units, desired_amount)
+	assert(not self.supply[resource])
+	local supply = self:AddSupplyRequest(resource, amount, flags, max_units, desired_amount)
+	self.supply[resource] = supply
+	return supply
+end
+
+function CargoTransporter:GetCargoSupplyRequest(resource)
+	return self.supply[resource]
+end
+
+function CargoTransporter:RemoveCargoSupplyRequest(resource)
+	local supply = self.supply[resource]
+	assert(supply)
+	if supply then
+		supply:SetAmount(0)
+		table.remove_entry(self.task_requests, supply)
+		self.supply[resource] = nil
+	end
+end
+
+function CargoTransporter:UpdateCargoResourceRequests(resources)
 	self:DisconnectFromCommandCenters()
 	for _,entry in pairs(resources) do
 		if not self.demand[entry.class] then
 			local unit_count = self:GetRequestUnitCount(entry.requested)
-			self.demand[entry.class] = self:AddDemandRequest(entry.class, 0, self.demand_r_flags, unit_count)
-			self.supply[entry.class] = self:AddSupplyRequest(entry.class, 0, self.supply_r_flags, unit_count)
+			self:AddCargoDemandRequest(entry.class, 0, self.demand_r_flags, unit_count)
+			self:AddCargoSupplyRequest(entry.class, 0, self.supply_r_flags, unit_count)
 		end
 
 		if entry.amount <= entry.requested then
 			local amount_to_request = (entry.requested - entry.amount) * const.ResourceScale
-			self.supply[entry.class]:SetAmount(0)
-			self.demand[entry.class]:SetAmount(amount_to_request)
+			self:GetCargoSupplyRequest(entry.class):SetAmount(0)
+			self:GetCargoDemandRequest(entry.class):SetAmount(amount_to_request)
 		end
 		
 		if entry.amount > entry.requested then
 			local amount_to_supply = (entry.amount - entry.requested) * const.ResourceScale
-			self.supply[entry.class]:SetAmount(amount_to_supply)
-			self.demand[entry.class]:SetAmount(0)
+			self:GetCargoSupplyRequest(entry.class):SetAmount(amount_to_supply)
+			self:GetCargoDemandRequest(entry.class):SetAmount(0)
 		end
 	end
 	self:ConnectToCommandCenters()
@@ -920,115 +1172,73 @@ function CargoTransporter:HasActiveDemandRequests()
 end
 
 function CargoTransporter:SetCargoRequest(payload_object, passenger_manifest)
-	self:FixPayloadToCargoObject(payload_object)
-	self.cargo = AddPayloadToCargo(payload_object, self.cargo)
-	self.cargo = AddPassengerManifestToCargo(passenger_manifest, self.cargo)
-	
-	local resources = table.filter(self.cargo, function(k, v) return Resources[k] end)
-	self:UpdateResourceRequests(resources)
+	self.cargo = CreateCargoListFromPayload(payload_object, passenger_manifest, self.cargo)
+
+	local resources = table.filter(self.cargo, function(k, v) return GetResourceInfo(k) end)
+	self:UpdateCargoResourceRequests(resources)
 end
 
 function CargoTransporter:DroneLoadResource(drone, request, resource, amount)
-	if table.has_value(self.supply, request) then
+	if self.supply[resource] == request then
 		local unscaled_amount = amount / const.ResourceScale
+		assert(self.cargo[resource].amount >= 0)
 		self.cargo[resource].amount = self.cargo[resource].amount - unscaled_amount
 	end
 end
 
 function CargoTransporter:DroneUnloadResource(drone, request, resource, amount)
-	if table.has_value(self.demand, request) then
+	if self.demand[resource] == request then
 		local unscaled_amount = amount / const.ResourceScale
 		self.cargo[resource].amount = self.cargo[resource].amount + unscaled_amount
 	end
 end
 
-local function GetTotalPending(city, class)
-	local total = 0
-	for _,transporter in ipairs(city.labels.LanderRocketBase or empty_table) do
-		local requested = transporter.cargo[class] and transporter.cargo[class].requested or 0
-		local loaded = transporter.cargo[class] and transporter.cargo[class].amount or 0
-		local pending = requested - loaded
-		total = total + pending
-	end
-	return total
-end
+function CargoTransporter:BuildCargoInfo(cargo, skip_completed)
+	local cargo_info = {}
 
-function GetTotalAvailable(city, class)
-	local available = 0
-	local cities_to_check = city ~= "Colony" and {city} or Cities
-	for _,city in ipairs(cities_to_check) do
-		local resources = GetCityResourceOverview(city)
-		available = available + resources:GetAvailable(class) + city:GetPrefabs(class) + (not BuildingTemplates[class] and #(city.labels[class] or empty_table) or 0)
-	end
-	return available
-end
-
-function CargoTransporter:BuildCargoInfo(supply_table)
-	local array = {}
-
-	local table_copy = table.copy(supply_table)
+	local table_copy = table.copy(cargo)
 	table_copy["rocket_name"] = nil
 	
 	for _,entry in pairs(table_copy) do
-		table.insert(array, {
-			class = entry.class,
-			amount = entry.amount,
-			requested = entry.requested,
-			total_pending = GetTotalPending(self.city, entry.class),
-			available = GetTotalAvailable(self.city, entry.class),
-		})
+		if not skip_completed or entry.requested > entry.amount then
+			table.insert(cargo_info, {
+				class = entry.class,
+				amount = entry.amount,
+				requested = entry.requested,
+				status = self:GetCargoItemStatus(entry),
+			})
+		end
 	end
-	return array
+	return cargo_info
 end
 
-local AvailabilityStatus = {
-	NotEnough = T(13775, "<red>Not enough</red>"),
-	Limited = T(13776, "<yellow>Limited</yellow>"),
-	Ready = T(13777, "<green>Ready</green>"),
-	Loaded = T(13805, "<green>Loaded</green>"),
+local function FormatCargoManifestLine(name, amount, requested, status, type, status_level, show_remaining_only)
+	local show_status = status_level and status <= status_level
+	local status_description = show_status and AvailabilityStatusDescription[status] or T("")
+	local resource_format =  T{13942, "<resource(amount,max_amount,type)>", amount = amount, max_amount = requested, type = type }
+	if show_remaining_only then
+		local remaining = requested - amount
+		resource_format = T{13943, "<resource(amount,type)>", amount = remaining, type = type}
+	end
+	return T{13780, "<left><name><right><status> <amount_str>", name = name, status = status_description, amount_str = resource_format}
+end
+
+ShowAllCargoStatusLevels = {
+	Resource = AvailabilityStatus.Loaded,
+	Drone = AvailabilityStatus.Loaded,
+	Rover = AvailabilityStatus.Loaded,
+	Colonist = AvailabilityStatus.Loaded,
+	Prefab = AvailabilityStatus.Loaded,
 }
 
-local function GetHighestAvailabilityStatus(status, other_status)
-	if status == AvailabilityStatus.NotEnough or other_status == AvailabilityStatus.NotEnough then
-		return AvailabilityStatus.NotEnough
-	end
-	
-	if status == AvailabilityStatus.Limited or other_status == AvailabilityStatus.Limited then
-		return AvailabilityStatus.Limited
-	end
-	
-	if status == AvailabilityStatus.Ready or other_status == AvailabilityStatus.Ready then
-		return AvailabilityStatus.Ready
-	end
-	
-	return AvailabilityStatus.Loaded
-end
-
-local function GetAvailabilityStatus(amount, requested, total_pending, available)
-	local result = nil
-	if amount == requested then
-		result = AvailabilityStatus.Loaded
-	elseif (requested - amount) > available then
-		result = AvailabilityStatus.NotEnough
-	elseif total_pending > available then
-		result = AvailabilityStatus.Limited
-	else
-		result = AvailabilityStatus.Ready
-	end
-	return result
-end
-
-local function FormatCargotManifestLine(name, amount, requested, status, icon, show_status)
-	status = show_status and status or T{""}
-	local amount_str = show_status and T{13778, "<requested>", requested = requested} or T{13779, "<number>/<requested>", number = amount, requested = requested}
-	return T{13780, "<left><name><right><status> <amount_str><icon>", name = name, status = status, amount_str = amount_str, icon = icon}
-end
-
-function FormatRequestedCargoManifest(cargo, show_status, collapse_groups, only_collapsed)
+function FormatRequestedCargoManifest(cargo, status_levels, collapse_groups, only_collapsed, show_remaining_only)
+	show_remaining_only = show_remaining_only or false
 	if not cargo or #cargo == 0 then
 		return T(720, "Nothing")
 	end
-	
+
+	status_levels = status_levels or ShowAllCargoStatusLevels
+
 	local prefabs = {loaded = 0, requested = 0, status = AvailabilityStatus.Ready, texts = {}, }
 	local passengers = {loaded = 0, requested = 0, status = AvailabilityStatus.Ready, texts = {}, }
 	local other_texts = {}
@@ -1038,37 +1248,45 @@ function FormatRequestedCargoManifest(cargo, show_status, collapse_groups, only_
 		local item = cargo[i]
 		if item.requested and item.requested > 0 then
 			if item.class == "Passengers" then
-				other_texts[#other_texts + 1] = T{13592, "<left>Passengers<right><amount>/<requested>", number = item.amount}
-			elseif Resources[item.class] then
-				resource_texts[#resource_texts + 1] = T{13593, "<left><name><right><resource(amount, requested, res)>", amount = item.amount*const.ResourceScale, requested = item.requested*const.ResourceScale, res = item.class, name = GetResourceTranslation(item.class)}
+				local resource_format = T{13592, "<left>Passengers<right><amount>/<requested>", number = item.amount, requested = item.requested}
+				if show_remaining_only then
+					resource_format = T{13880, "<left>Passengers<right><amount>", number = item.requested-item.amount}
+				end
+				other_texts[#other_texts + 1] = resource_format
+			elseif GetResourceInfo(item.class) then
+				local requested = item.requested * const.ResourceScale
+				local amount = item.amount * const.ResourceScale
+				table.insert(resource_texts, FormatCargoManifestLine(GetResourceTranslation(item.class), amount, requested, item.status, item.class, status_levels.Resource, show_remaining_only))
 			elseif BuildingTemplates[item.class] then
 				prefabs.loaded = prefabs.loaded + item.amount
 				prefabs.requested = prefabs.requested + item.requested
 				
-				local status = GetAvailabilityStatus(item.amount, item.requested, item.total_pending, item.available)
+				local status = item.status
 				prefabs.status = GetHighestAvailabilityStatus(prefabs.status, status)
 				
 				if not collapse_groups then
 					local def = BuildingTemplates[item.class]
 					local name = item.amount > 1 and def.display_name_pl or def.display_name
-					table.insert(prefabs.texts, FormatCargotManifestLine(name, item.amount, item.requested, status, T(13781, "<icon_Prefab_orig>"), show_status))
+					table.insert(prefabs.texts, FormatCargoManifestLine(name, item.amount, item.requested, status, "Prefab", status_levels.Prefab, show_remaining_only))
 				end
 			elseif table.find(GetSortedColonistSpecializationTable(), item.class) then
 				passengers.loaded = passengers.loaded + item.amount
 				passengers.requested = passengers.requested + item.requested
 				
-				local status = GetAvailabilityStatus(item.amount, item.requested, item.total_pending, item.available)
+				local status = item.status
 				passengers.status = GetHighestAvailabilityStatus(passengers.status, status)
 					
 				if not collapse_groups then
 					local name = const.ColonistSpecialization[item.class].display_name
-					table.insert(passengers.texts, FormatCargotManifestLine(name, item.amount, item.requested, status, T(13782, "<icon_Colonist_orig>"), show_status))
+					table.insert(passengers.texts, FormatCargoManifestLine(name, item.amount, item.requested, status, "Colonist", status_levels.Colonist, show_remaining_only))
 				end
 			else
 				local def = g_Classes[item.class]
 				if def then
-					local status = GetAvailabilityStatus(item.amount, item.requested, item.total_pending, item.available)
-					table.insert(other_texts, FormatCargotManifestLine(def.display_name, item.amount, item.requested, status, T(13783, "<icon_Drone_orig>"), show_status))
+					local status = item.status
+					local type = item.class == "Drone" and "Drone" or "Rover"
+					local status_level = status_levels[type]
+					table.insert(other_texts, FormatCargoManifestLine(def.display_name, item.amount, item.requested, status, type, status_level, show_remaining_only))
 				else
 					assert(false, "invalid class (" .. tostring(item.class) .. ") in rocket cargo")
 				end
@@ -1079,7 +1297,7 @@ function FormatRequestedCargoManifest(cargo, show_status, collapse_groups, only_
 	local texts = {}
 	if prefabs.requested > 0 then
 		if collapse_groups then
-			table.insert(texts, FormatCargotManifestLine(T(13784, "Prefabs"), prefabs.loaded, prefabs.requested, prefabs.status, T(13781, "<icon_Prefab_orig>"), show_status))
+			table.insert(texts, FormatCargoManifestLine(T(13784, "Prefabs"), prefabs.loaded, prefabs.requested, prefabs.status, "Prefab", status_levels.Prefab, show_remaining_only))
 		else
 			table.insert(texts, T(13785, "<left><em>Prefabs</em>"))
 			table.iappend(texts, prefabs.texts)
@@ -1088,7 +1306,7 @@ function FormatRequestedCargoManifest(cargo, show_status, collapse_groups, only_
 	end
 	if passengers.requested > 0 then
 		if collapse_groups then
-			table.insert(texts, FormatCargotManifestLine(T(547, "Colonists"), passengers.loaded, passengers.requested, passengers.status, T(13782, "<icon_Colonist_orig>"), show_status))
+			table.insert(texts, FormatCargoManifestLine(T(547, "Colonists"), passengers.loaded, passengers.requested, passengers.status, "Colonist", status_levels.Colonist, show_remaining_only))
 		else
 			table.insert(texts, T(13786, "<left><em>Colonists</em>"))
 			table.iappend(texts, passengers.texts)
@@ -1115,19 +1333,99 @@ function FormatRequestedCargoManifest(cargo, show_status, collapse_groups, only_
 	return table.concat(texts, "<newline>")
 end
 
-local function GetAdditionalResources(supply_table)
+function FormatInlineCargoManifest(cargo)
+	if not cargo or #cargo == 0 then
+		return T(720, "Nothing")
+	end
+	
+	local texts, resources = {}, {}
+	
+	local num_prefabs = 0
+	local num_rovers = 0
+	local num_drones = 0
+	local num_colonists = 0
+	
+	for i = 1, #cargo do
+		local item = cargo[i]
+		if item.amount and item.amount > 0 then
+			if BuildingTemplates[item.class] then
+				num_prefabs = num_prefabs + item.amount
+			elseif item.class == "Drone" or item.class == "FlyingDrone" then
+				num_drones = num_drones + item.amount
+			elseif GetResourceInfo(item.class) then
+				resources[#resources + 1] = T{722, "<resource(amount,res)>", amount = item.amount*const.ResourceScale, res = item.class}
+			elseif table.find(GetSortedColonistSpecializationTable(), item.class) then
+				num_colonists = num_colonists + item.amount
+			else
+				local def = g_Classes[item.class]
+				if def then
+					num_rovers = num_rovers + item.amount
+				else
+					assert(false, "invalid class (" .. tostring(item.class) .. ") in cargo")
+				end
+			end
+		end
+	end
+	
+	if num_prefabs > 0 then
+		resources[#resources + 1] = T{13944, "<prefab(amount)>", amount = num_prefabs}
+	end
+	
+	if num_drones > 0 then
+		resources[#resources + 1] = T{13945, "<drone(amount)>", amount = num_drones}
+	end
+	
+	if num_rovers > 0 then
+		resources[#resources + 1] = T{13946, "<rover(amount)>", amount = num_rovers}
+	end
+	
+	if num_colonists > 0 then
+		resources[#resources + 1] = T{13947, "<colonist(amount)>", amount = num_colonists}
+	end
+	
+	if #resources > 0 then
+		texts[#texts + 1] = table.concat(resources, " ")
+	end
+	
+	if #texts == 0 then
+		return T(10887, "No Cargo")
+	end
+	
+	return table.concat(texts, "<newline>")
+end
+
+function GetAdditionalResources(cargo)
 	local array = {}
 	
-	local table_copy = table.copy(supply_table)
+	local table_copy = table.copy(cargo)
 	table_copy["rocket_name"] = nil
 	
 	for _,entry in pairs(table_copy) do
-		local requested = (entry.requested or 0)
+		local requested = entry.requested or 0
 		local extra = entry.amount - requested
 		if extra > 0 then
 			table.insert(array, {
 				class = entry.class,
 				amount = extra,
+			})
+		end
+	end
+	return array
+end
+
+function GetRemainingResources(cargo)
+	local array = {}
+	
+	local table_copy = table.copy(cargo)
+	table_copy["rocket_name"] = nil
+	
+	for _,entry in pairs(table_copy) do
+		local requested = entry.requested or 0
+		local remaining = Max(0, requested - entry.amount)
+		if remaining > 0 then
+			table.insert(array, {
+				class = entry.class,
+				amount = remaining,
 			})
 		end
 	end
@@ -1152,11 +1450,11 @@ function CargoTransporter:GetUnloadingCargoManifest()
 end
 
 function CargoTransporter:GetCargoManifest()
-	return FormatRequestedCargoManifest(self:BuildCargoInfo(self.cargo), false, true, false) or T(10887, "No Cargo")
+	return FormatRequestedCargoManifest(self:BuildCargoInfo(self.cargo), empty_table, true, false) or T(10887, "No Cargo")
 end
 
-function CargoTransporter:GetPayloadRolloverText()
-	return FormatRequestedCargoManifest(self:BuildCargoInfo(self.cargo), false, false, true) or T("")
+function CargoTransporter:GetCargoRolloverText()
+	return FormatRequestedCargoManifest(self:BuildCargoInfo(self.cargo), empty_table, false, true) or T("")
 end
 
 function CargoTransporter:CanRequestPayload()
@@ -1164,7 +1462,7 @@ function CargoTransporter:CanRequestPayload()
 end
 
 function CargoTransporter:OpenPayloadDialog(name, object, context)
-	if IsKindOf(SelectedObj, "MultiSelectionWrapper") and table.find(SelectedObj.objects, object) then
+	if IsObjectSelected(object) then
 		context.object = SelectedObj
 	else
 		context.object = object
@@ -1204,7 +1502,7 @@ function CargoTransporter:UICanTransport(payload, item)
 		not IsKindOf(g_Classes[item.id], "OrbitalProbe")
 end
 
-function CargoTransporter:SetPayload(payload)
+function CargoTransporter:RestorePayloadRequest(payload)
 	local specializations = GetSortedColonistSpecializationTable()
 	for _,entry in pairs(self.cargo) do
 		if table.find(specializations, entry.class) then
@@ -1217,15 +1515,49 @@ function CargoTransporter:SetPayload(payload)
 			end
 		end
 	end
-	self:FixCargoToPayloadObject(payload)
+	FixCargoToPayloadObject(payload)
 end
 
 function CargoTransporter:SetDefaultPayload(payload)
-
 end
 
 function CargoTransporter:GetCapacity()
 	return self.cargo_capacity
+end
+
+function CargoTransporter:GetPayloadWarning()
+	local colonists_missing = false
+	local drones_missing = false
+	local rovers_missing = false
+	local prefabs_missing = false
+	for _,item in pairs(self.cargo) do
+		if item.requested and item.requested > 0 then
+			local status = self:GetCargoItemStatus(item)
+			if status ~= AvailabilityStatus.Ready then
+				if not colonists_missing and table.find(GetSortedColonistSpecializationTable(), item.class) then
+					colonists_missing = true
+				elseif not drones_missing and IsKindOf(g_Classes[item.class], "Drone") then
+					drones_missing = true
+				elseif not rovers_missing and IsKindOf(g_Classes[item.class], "BaseRover") then
+					rovers_missing = true
+				elseif not prefabs_missing then
+					local is_resource =  Resources[item.class] or false
+					if not is_resource then
+						prefabs_missing = true
+					end
+				end
+			end
+		end
+	end
+	
+	if colonists_missing then return T(11473, "Not enough Colonists") end
+	if drones_missing then return T(11472, "Not enough Drones") end
+	if rovers_missing then return T(13882, "Not enough Rovers") end
+	if prefabs_missing then return T(13883, "Not enough Prefabs") end
+end
+
+function CargoTransporter:GetCargoEnvironments()
+	return empty_table
 end
 
 function CargoTransporter:UIGetTransportableVehicles(excluded)
@@ -1241,8 +1573,12 @@ function CargoTransporter:UIGetTransportableVehicles(excluded)
 	return vehicles
 end
 
-function CargoTransporter:UIGetTransportablePrefabs(environments)
-	local prefabs = GetAccessiblePrefabs(self:GetMapID(), environments)
+function CargoTransporter:GetTransportablePrefabs(environments)
+	return GetAccessiblePrefabs({ self.city }, self:GetCargoEnvironments())
+end
+
+function CargoTransporter:UIGetTransportablePrefabs()
+	local prefabs = self:GetTransportablePrefabs()
 	table.sort(prefabs, PresetSortLessCb)
 	return prefabs
 end

@@ -490,7 +490,7 @@ function GetLayoutConstructionBuildingCost(template_obj)
 
 	local items = {}
 	for resource, amount in pairs(costs) do
-		items[#items+1]  = T{901, "<resource_name><right><resource(number,resource)>", resource_name = Resources[resource].display_name, number = amount, resource = resource }
+		items[#items+1]  = T{901, "<resource_name><right><resource(number,resource)>", resource_name = GetResourceInfo(resource).display_name, number = amount, resource = resource }
 	end
 	if #items > 0 then
 		return table.concat(items, "<newline><left>"), costs

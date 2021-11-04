@@ -560,7 +560,7 @@ function OverviewModeDialog:GenerateSectorRolloverContext(sector, forced)
 		
 		for i = 1, #sector.exp_resources do
 			local res = sector.exp_resources[i]
-			local desc = Resources[res]
+			local desc = GetResourceInfo(res)
 			local name = desc and desc.display_name
 			
 			if name then

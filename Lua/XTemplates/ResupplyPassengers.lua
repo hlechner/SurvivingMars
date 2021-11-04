@@ -347,7 +347,7 @@ PlaceObj('XTemplate', {
 								end,
 							}, {
 								PlaceObj('XTemplateTemplate', {
-									'__template', "PropTrait",
+									'__template', "PropFilter",
 									'RolloverTemplate', "Rollover",
 								}, {
 									PlaceObj('XTemplateWindow', {
@@ -486,7 +486,7 @@ PlaceObj('XTemplate', {
 								end,
 							}, {
 								PlaceObj('XTemplateTemplate', {
-									'__template', "PropTrait",
+									'__template', "PropFilter",
 									'RolloverTemplate', "Rollover",
 								}, {
 									PlaceObj('XTemplateWindow', {

@@ -248,7 +248,7 @@ function Farm:SwitchProducerType(resource_type)
 	producer.resource_produced = resource_type
 	producer.stockpiled_resource = resource_type
 	self.ui_current_crop_resource_type = resource_type
-	self.ui_current_crop_resource_type_display_name = Resources[resource_type].display_name
+	self.ui_current_crop_resource_type_display_name = GetResourceInfo(resource_type).display_name
 	producer.next_stockpile_idx = 1
 	
 	--create new stocks

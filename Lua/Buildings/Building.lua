@@ -80,8 +80,17 @@ function IsCargoLocked(def)
 	return locked
 end
 
-function GetAccessiblePrefabs(map_id, environments)
-	local city = Cities[map_id] or MainCity
+local function CitiesHavePrefab(cities, prefab)
+	for _, city in ipairs(cities) do
+		if city:GetPrefabs(prefab) > 0 then
+			return true
+		end
+	end
+	return false
+end
+
+function GetAccessiblePrefabs(cities, environments)
+	local cities = cities or { MainCity }
 	local prefabs = {}
 	for _,def in ipairs(ResupplyItemDefinitions) do
 		local template = BuildingTemplates[def.id]
@@ -90,7 +99,7 @@ function GetAccessiblePrefabs(map_id, environments)
 			if building_allowed then
 				local building_researched = IsBuildingTechResearched(template.template_class)
 				local building_unlocked = not def.locked or not IsCargoLocked(def) -- Remove function once Cargo is configured properly
-				local building_available = (building_unlocked and building_researched) or city:GetPrefabs(template.id) > 0
+				local building_available = (building_unlocked and building_researched) or CitiesHavePrefab(cities, template.id)
 				if building_available then
 					table.insert(prefabs, def)
 				end
@@ -1651,6 +1660,10 @@ function Building:CheatUpgrade3()
 	self:ApplyUpgrade(3, true)
 end
 
+function Building:CheatAddPrefab()
+	self.city:AddPrefabs(self.template_name, 1)
+end
+
 local function CheatSpawnRunPrg(bld, id, prg, can_spawn_children, visit_duration)
 	visit_duration = visit_duration or const.HourDuration
 	local target = RotateRadius(100*guim, AsyncRand(360*60), bld:GetPos())
@@ -2573,8 +2586,8 @@ function Building:GetUIConsumptionTexts(short)
 		for _,cons_obj in ipairs(self.upgrade_consumption_objects) do
 			if self.upgrade_on_off_state[cons_obj.upgrade_id] then
 				local res_type = cons_obj.consumption_resource_type
-				texts[#texts+1] = short and T{9702, "<resource(consumed_amount,res_type)>",resource_name = Resources[res_type].display_name,  res_type = res_type, consumed_amount = cons_obj.consumption_amount }
-					or T{7767, "<resource_name><right><resource(consumed_amount,res_type)>",resource_name = Resources[res_type].display_name,  res_type = res_type, consumed_amount = cons_obj.consumption_amount }
+				texts[#texts+1] = short and T{9702, "<resource(consumed_amount,res_type)>",resource_name = GetResourceInfo(res_type).display_name,  res_type = res_type, consumed_amount = cons_obj.consumption_amount }
+					or T{7767, "<resource_name><right><resource(consumed_amount,res_type)>",resource_name = GetResourceInfo(res_type).display_name,  res_type = res_type, consumed_amount = cons_obj.consumption_amount }
 			end
 		end
 		res.upgrade = table.concat(texts, short and " " or "<newline>")
@@ -2623,7 +2636,7 @@ function Building:GetUISectionConsumptionRollover()
 		for _, cons_obj in ipairs(self.upgrade_consumption_objects) do
 			if self.upgrade_on_off_state[cons_obj.upgrade_id] then
 				local res_type = cons_obj.consumption_resource_type
-				items[#items+1] = T{7768, "Stored <resource_name><right><resource(stored,max_stored,res_type)>",resource_name = Resources[res_type].display_name,  res_type = res_type, stored = cons_obj.consumption_stored_resources, max_stored =  cons_obj.consumption_max_storage }
+				items[#items+1] = T{7768, "Stored <resource_name><right><resource(stored,max_stored,res_type)>",resource_name = GetResourceInfo(res_type).display_name,  res_type = res_type, stored = cons_obj.consumption_stored_resources, max_stored =  cons_obj.consumption_max_storage }
 			end
 		end	
 		items[#items+1] = T(316, "<newline>")

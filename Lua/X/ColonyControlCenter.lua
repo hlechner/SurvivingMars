@@ -465,6 +465,7 @@ function GetCommandCenterLifeSupportGrids(context)
 end
 
 local function IsBuildingOther(building)
+	if IsKindOf(building, "GridTransfer") then return true end
 	return building.build_category ~= "Decorations" and
 		GetTopLevelBuildMenuCategory(building.build_category) ~= "Terraforming" and
 		not IsKindOfClasses(building, "ResourceStockpileBase", "WaterStorage", "AirStorage", "ElectricityStorage", "ElectricityProducer", "ResourceProducer", "WaterProducer", "AirProducer", "Service", "Residence", "Workshop", "DroneFactory")
@@ -507,8 +508,8 @@ function GetCommandCenterBuildings(context)
 			context.outside_buildings == false and context.inside_buildings ~= false and not building.parent_dome or
 			any_filter and not context.decorations and building.build_category == "Decorations" or
 			any_filter and not context.storages and IsKindOfClasses(building, "ResourceStockpileBase", "WaterStorage", "AirStorage", "ElectricityStorage") or
-			any_filter and context.power_producers == false and IsKindOf(building, "ElectricityProducer") or
-			any_filter and context.production_buildings == false and IsKindOfClasses(building, "ResourceProducer", "WaterProducer", "AirProducer", "DroneFactory") or
+			any_filter and context.power_producers == false and IsKindOf(building, "ElectricityProducer") and not IsKindOf(building, "GridTransfer") or
+			any_filter and context.production_buildings == false and IsKindOfClasses(building, "ResourceProducer", "WaterProducer", "AirProducer", "DroneFactory") and not IsKindOf(building, "GridTransfer") or
 			any_filter and context.services == false and (IsKindOf(building, "Service") or IsKindOf(building, "Workshop")) and (building.build_category ~= "Decorations" or not context.decorations) or
 			any_filter and not context.residential and IsKindOf(building, "Residence") or
 			any_filter and not context.terraforming and IsDlcAvailable("armstrong") and GetTopLevelBuildMenuCategory(building.build_category) == "Terraforming" or
@@ -547,6 +548,9 @@ end
 
 function Building:GetUIProductionTexts(items, short)
 	items = items or {}
+	if self:IsKindOf("GridTransfer") then
+		return items
+	end
 	if self:IsKindOf("AirProducer") or self:IsKindOf("WaterProducer") or IsKindOf(self, "ElectricityProducer") or IsKindOf(self, "Mine") or self:IsKindOf("ResourceProducer") and self:GetResourceProduced() and not self:IsKindOf("Farm") then
 		if not short then items[#items + 1] = T(9649, "<center><em>Production</em>") end
 		if self:IsKindOf("AirProducer") then
@@ -569,7 +573,7 @@ function Building:GetUIProductionTexts(items, short)
 		elseif self:IsKindOf("ResourceProducer") then
 			for _, producer in ipairs(self.producers) do
 				local resource_produced = producer:GetResourceProduced()
-				local resource_name = Resources[resource_produced].name
+				local resource_name = GetResourceInfo(resource_produced).id
 				if short then
 					items[#items + 1] = T{9724, "<resource(PredictedDailyProduction, GetResourceProduced)>", 
 					resource = resource_name, PredictedDailyProduction = producer:GetPredictedDailyProduction(), GetResourceProduced = resource_produced, producer}

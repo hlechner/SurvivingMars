@@ -945,7 +945,7 @@ function Unit:ExitHolderImmediately() --unit appears directly on the exit spot
 	end
 end
 
-function Unit:Disappear(keep_in_holder)
+function Unit:Disappear(keep_in_holder, keep_in_labels)
 	self:OnPreDisappear()
 	SelectionRemove(self)
 	local pinned
@@ -973,8 +973,9 @@ function Unit:Disappear(keep_in_holder)
 	self.disappeared = true
 	self.appear_location = nil
 	self:OnDisappear()
-	self:RemoveFromLabels()
-	self.city:AddToLabel("Disappeared", self)
+	if not keep_in_labels then
+		self.city:AddToLabel("Disappeared", self)
+	end
 	
 	self:SetCommand("WaitToAppear", holder, pos, dome, pinned)
 end
@@ -995,7 +996,7 @@ function Unit:WaitToAppear(holder, pos, dome, pinned)
 		
 		self.city:RemoveFromLabel("Disappeared", self)
 		if self.holder then
-			self:AddToLabels()
+			self:AddToLabels() -- Deprecated. Keep for old saves.
 			self:OnAppear()
 			self.disappeared = nil
 			self.appear_location = nil
@@ -1009,7 +1010,7 @@ function Unit:WaitToAppear(holder, pos, dome, pinned)
 				return
 			end
 			
-			self:AddToLabels()
+			self:AddToLabels() -- Deprecated. Keep for old saves.
 			self:OnAppear()
 			self.disappeared = nil
 			self.appear_location = nil
@@ -1043,15 +1044,25 @@ function Unit:Appear(location)
 	Wakeup(self.thread_running_destructors or self.command_thread)
 end
 
-function Unit:Disembark(building, entrance_type)
+function Unit:StartDisembark(building)
 	self:DetachFromMap()
 	self:SetHolder(building)
-	
-	local entrances = building:GetEntrance(nil, entrance_type, nil, self)
-	self:SetPos(entrances[1])
+end
+
+function Unit:FinishDisembark(building, entrance_type, pos)
+	self:SetPos(pos)
 	self:SetOutside(false)
 	self:UpdateOutside()
+	
 	self:ExitBuilding(building, nil, entrance_type)
+end
+
+function Unit:Disembark(building, entrance_type)
+	if not IsValid(building) then return end
+	
+	self:StartDisembark(building)
+	local entrances = building:GetEntrance(nil, entrance_type, nil, self)
+	self:FinishDisembark(building, entrance_type, entrances[1])
 end
 
 function SavegameFixups.UndisappearStuckDrones()

@@ -515,7 +515,7 @@ PlaceObj('Scenario', {
 			'sequence', "Update Mystery Log",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery7WarTension")',
+			'expression', 'RemoveOnScreenNotification("Mystery7WarTension", MainMapID)',
 		}),
 		PlaceObj('SA_StopSequence', {
 			'sequence', "Trigger",
@@ -1160,7 +1160,7 @@ PlaceObj('Scenario', {
 			'dismissable', "dismissable",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery7WarTension")',
+			'expression', 'RemoveOnScreenNotification("Mystery7WarTension", MainMapID)',
 		}),
 		PlaceObj('SA_StopSequence', {
 			'sequence', "Trigger",
@@ -1289,7 +1289,7 @@ PlaceObj('Scenario', {
 			'dismissable', "dismissable",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery7WarTension")',
+			'expression', 'RemoveOnScreenNotification("Mystery7WarTension", MainMapID)',
 		}),
 		PlaceObj('SA_StopSequence', {
 			'sequence', "Trigger",

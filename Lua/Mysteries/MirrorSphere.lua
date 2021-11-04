@@ -41,7 +41,7 @@ end
 ----
 
 DefineClass.MirrorSphere = {
-	__parents = { "FlyingObject", "BaseHeater", "AnimatedTextureObject", "InfopanelObj", "PinnableObject" },
+	__parents = { "FlyingObject", "BaseHeater", "AnimatedTextureObject", "InfopanelObj", "PinnableObject", "CityObject" },
 	flags = { efSelectable = true, cofComponentInterpolation = true },
 	entity = "Mystery_MirrorSphere",
 	
@@ -85,15 +85,12 @@ function MirrorSphere:GetDisplayName()
 end
 
 function MirrorSphere:GameInit()
-	if MainCity then
-		MainCity:AddToLabel("MirrorSpheres", self)
-	end
+	assert(self.city and self.city == MainCity)
+	self.city:AddToLabel("MirrorSpheres", self)
 end
 
 function MirrorSphere:Done()
-	if MainCity then
-		MainCity:RemoveFromLabel("MirrorSpheres", self)
-	end
+	self.city:RemoveFromLabel("MirrorSpheres", self)
 	self:ColdWaveDstr()
 end
 
@@ -291,7 +288,6 @@ function MirrorSphere:ColdWaveCmd()
 	self.cold_wave = true
 	self:ShowRadius()
 	
-	self.city = MainCity
 	self:ApplyHeat(true)
 	self:IdleMark(true)
 	
@@ -462,7 +458,7 @@ function MirrorSphere:Idle()
 		MirrorSphereForcedTarget = false
 	else
 		local decoys
-		local buildings = MainCity.labels.PowerDecoy or empty_table
+		local buildings = self.city.labels.PowerDecoy or empty_table
 		for i=1,#buildings do
 			local decoy = buildings[i]
 			if IsValid(decoy) and not IsValid(decoy.sphere) and decoy.working
@@ -979,6 +975,26 @@ function PowerDecoy:StartAction(action)
 	self.action_end_time = action_end_time
 	self.action_thread = action_thread
 	RebuildInfopanel(self)
+end
+
+function SavegameFixups:FixMirrorSphereCity()
+	for _, sphere in ipairs(MainCity.labels.MirrorSpheres or empty_table) do
+		if not sphere.city then
+			sphere.city = MainCity
+		end
+	end
+end
+
+function SavegameFixups:RemoveInvalidSpheres()
+	for _, sphere in ipairs(MainCity.labels.MirrorSpheres or empty_table) do
+		if not sphere.command then
+			-- Have to sleep here since flight cache needs to be initialized
+			CreateGameTimeThread(function()
+				Sleep(1)
+				DoneObject(sphere)
+			end)
+		end
+	end
 end
 
 ----

@@ -11,6 +11,7 @@ DefineClass.AirConsumer = {
 		{ template = true, id = "disable_air_consumption", name = T(12290, "Disable Oxygen Consumption"), no_edit = true, modifiable = true, editor = "number", default = 0, help = "So consumption can be turned off with modifiers"},
 	},
 
+	is_lifesupport_consumer = true,
 	is_tall = true,
 }
 
@@ -111,6 +112,7 @@ DefineClass.WaterConsumer = {
 		{ template = true, id = "disable_water_consumption", name = T(12289, "Disable Water Consumption"), no_edit = true, modifiable = true, editor = "number", default = 0, help = "So consumption can be turned off with modifiers"},
 	},
 	
+	is_lifesupport_consumer = true,
 	is_tall = true,
 }
 

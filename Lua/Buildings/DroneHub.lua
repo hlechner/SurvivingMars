@@ -56,14 +56,14 @@ function DroneHub:OnRefabricate()
 	
 	-- Prefer own drones
 	while #found_drones < num_drones and #(self.drones or empty_table) > 0 do
-		local drone = ExpeditionPickDroneFrom(self, found_drones)
+		local drone = GetBestAvailableDroneFrom(self, found_drones)
 		if not drone then
 			break
 		end
 		table.insert(found_drones, drone)
 	end
 	-- Look in other command centers
-	ExpeditionPickDrones(found_drones, num_drones, self.city)
+	GatherBestAvailableDrones(found_drones, num_drones, self.city)
 	
 	for _, drone in ipairs(found_drones) do
 		drone:DespawnNow()
@@ -84,6 +84,12 @@ function DroneHub:OnSetWorking(working)
 	AttachedRechargeStations.SetWorking(self.charging_stations, working)
 end
 
+function DroneHub:OnModifiableValueChanged(prop, old_val, new_val)
+	if prop == "service_area_max" then
+		ChangeHexRanges(self)
+	end
+end
+
 function DroneHub:GetMaxDrones()
 	return g_Consts.CommandCenterMaxDrones
 end
@@ -99,11 +105,7 @@ function DroneHub:SpawnDrone()
 end
 
 function DroneHub:GetSelectionRadiusScale()
-	if not IsValid(self) and GetDefaultConstructionController().template_obj == self then
-		return const.CommandCenterDefaultRadius + (UIColony:IsTechResearched("SignalBoosters") and const.SignalBoostersBuff or 0)
-	else
-		return self.work_radius
-	end
+	return GetSignalBoostersSelectionRadiusScale(self)
 end
 
 function DroneHub:ShowUISectionConsumption()

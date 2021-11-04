@@ -54,8 +54,6 @@ DefineClass.BaseRover = {
 	operation_interrupted_reason = false,
 	
 	unreachable_objects = false,
-	has_auto_mode = false, --so ip knows wether to show btn
-	auto_mode_on = false,
 	
 	environment_fx = {
 		base = "Rover",
@@ -369,6 +367,9 @@ end
 function BaseRover:CanInteractWithObject(obj, interaction_mode)
 	if not IsValid(obj) then return false end
 	if self.command == "Dead" then return false end
+	if obj:HasMember("IsShroudedInRubble") and obj:IsShroudedInRubble() then
+		return false, NotWorkingWarning.ShroudedInRubble
+	end
 	
 	local can_interact, action = DroneBase.CanInteractWithObject(self, obj, interaction_mode)
 	if can_interact then
@@ -507,7 +508,7 @@ RoverCommands = {
 	Reload = T(6726, "Reloading"),
 	GotoAndEmbark =  T(11216, "Boarding Rocket"),
 	Landscaping = T(12424, "Landscaping"),
-	UseElevator = T("Going to an elevator"),
+	UseElevator = T(13878, "Going to an elevator"),
 }
 
 function BaseRover:Getui_command(for_cmd)
@@ -534,7 +535,8 @@ function BaseRover:Getui_command_queue()
 end
 
 function BaseRover:Getui_command_queue_title()
-	return T{12260, "Queued tasks<right><number>", number = self.auto_mode_on and T(12259, "Automated") or #(self.command_queue or "")}
+	local tasks = (IsKindOf(self, "AutoMode") and self:IsAutoModeEnabled() and T(12259, "Automated")) or #(self.command_queue or "")
+	return T{12260, "Queued tasks<right><number>", number = tasks}
 end
 
 local function SelectRover(dir)
@@ -653,7 +655,7 @@ end
 local function OnRoverCommandAIResearched()
 	g_RoverAIResearched = true
 	MapsForEach("map", "BaseRover", function(r)
-		if r.has_auto_mode and (r.command == "Idle" or r.command == "LoadingComplete") then
+		if IsKindOf(r, "AutoMode") and (r.command == "Idle" or r.command == "LoadingComplete") then
 			r:SetCommand(r.command)
 			if r == SelectedObj then
 				ObjModified(r)
@@ -684,21 +686,6 @@ function SavegameFixups.AddRoverChildrenLabels()
 		for _,rover in ipairs(city.labels.RCRover or empty_table) do
 			city:AddToLabel("RCRoverAndChildren", rover)
 		end
-	end
-end
-
-function BaseRover:ToggleAutoMode(broadcast)
-	if broadcast then
-		GetRealm(self):MapForEach("map", self.class, function(o, val)
-			o.auto_mode_on = val
-			o:ToggleAutoMode()
-		end, self.auto_mode_on)
-		return
-	end
-	
-	self.auto_mode_on = not self.auto_mode_on
-	if self.command == "Idle" then --reset idle
-		self:SetCommand("Idle")
 	end
 end
 
@@ -756,7 +743,7 @@ end
 
 local function InvalidateAllRoverUnreachables()
 	MapsForEach("map", "BaseRover", function(r)
-		if r.has_auto_mode then
+		if IsKindOf(r, "AutoMode") then
 			r:Notify("UnreachableObjectsInvalidated")
 		end
 	end)

@@ -218,7 +218,7 @@ function RCConstructorBase:Construct(construction)
 					assigned_to_demand_reqs[request] = nil
 				end)
 			end
-			local amount_step = Resources[resource].unit_amount
+			local amount_step = GetResourceInfo(resource).unit_amount
 			self:Gossip("unload", construction:GossipName(), construction.handle, resource, amount_step)
 			local req = request
 			construction:RoverWork(self, request, resource, amount_step)
@@ -227,7 +227,7 @@ function RCConstructorBase:Construct(construction)
 			end
 		elseif request:IsAnyFlagSet(const.rfSupply) and request:GetActualAmount() > 0 and table.find(self.storable_resources, resource) 
 				and (self:GetEmptyStorage() > 0 or self:GetStoredAmount(resource) > 0) then
-			local amount_step = Resources[resource].unit_amount
+			local amount_step = GetResourceInfo(resource).unit_amount
 			local p = self:GetPos()
 			local dump_fails = 0
 			while IsValid(construction) do

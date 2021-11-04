@@ -86,7 +86,8 @@ end
 function Demolishable:DoDemolish()
 	if self.demolishing_countdown > 0 then
 		if self:HasSpot("Top") then
-			self:Attach(PlaceObject("RotatyThing"), self:GetSpotBeginIndex("Top"))
+			local map_id = self:GetMapID()
+			self:Attach(PlaceObjectIn("RotatyThing", map_id), self:GetSpotBeginIndex("Top"))
 		elseif self:HasMember("rotaty_spot") then
 			local attach = AttachToObject(self, "RotatyThing", self.rotaty_spot)
 			if self:HasMember("rotaty_offset") then

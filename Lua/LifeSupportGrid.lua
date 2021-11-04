@@ -253,6 +253,20 @@ function LifeSupportGridObject:GetUISectionAirGridRollover()
 	end
 end
 
+function LifeSupportGridObject:ShowUISectionLifeSupportGrid()
+	local air_grid = self:IsKindOfClasses("AirProducer", "AirStorage") and self.air and self.air.grid
+		or self:IsKindOf("LifeSupportGridElement") and self.pillar and self.water and self.water.grid and self.water.grid.air_grid
+	local water_grid = self:IsKindOfClasses("WaterProducer", "WaterStorage") and self.water  
+		or self:IsKindOf("LifeSupportGridElement") and not IsKindOf(self, "ConstructionSite") and self.pillar and self.water
+	return water_grid or air_grid
+end
+
+function LifeSupportGridObject:ShowUISectionLifeSupportProduction()
+	local air_production = self:IsKindOf("AirProducer")
+	local water_production = self:IsKindOf("WaterProducer") 
+	return water_production or air_production
+end
+
 -- override this function to create water/air elements - it is called before ancestors' GameInit
 function LifeSupportGridObject:CreateLifeSupportElements()
 end

@@ -176,7 +176,7 @@ PlaceObj('XTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'comment', "toggle auto mode",
 			'__context_of_kind', "BaseRover",
-			'__condition', function (parent, context) return context.has_auto_mode and g_RoverAIResearched end,
+			'__condition', function (parent, context) return IsKindOf(context, "AutoMode") and g_RoverAIResearched end,
 			'__template', "InfopanelButton",
 			'RolloverText', T(325361555787, --[[XTemplate ipRover RolloverText]] "If Automated Mode is activated the RC Explorer will look for revealed anomalies and move to analyze them.<newline><newline>Current Status: <on_off(auto_mode_on)>"),
 			'RolloverDisabledText', T(806760132448, --[[XTemplate ipRover RolloverDisabledText]] "Vehicle inactive."),

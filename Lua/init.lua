@@ -35,6 +35,11 @@ function ResetGameSession()
 		ChangeMap("")
 	end
 	
+	-- reset cheats
+	if not Platform.developer then
+		config.BuildingInfopanelCheats = false
+	end
+	
 	StopRadioStation()
 	SetMusicPlaylist("MainTheme")
 end

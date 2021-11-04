@@ -771,7 +771,7 @@ PlaceObj('Scenario', {
 			'sequence', "Flavor Based on Player Actions",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery1Counter")',
+			'expression', 'RemoveOnScreenNotification("Mystery1Counter", MainMapID)',
 		}),
 		PlaceObj('SA_Exec', {
 			'expression', "BlackCubesSetActive(MainMapID, false)",

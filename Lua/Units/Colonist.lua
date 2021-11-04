@@ -267,6 +267,8 @@ function Colonist:AddToLabels()
 	self.city:AddToLabel("Colonist", self)	
 	self.city:AddToLabel(self.gender == "OtherGender" and "ColonistOther" or self.gender == "Male" and "ColonistMale" or "ColonistFemale", self)
 	self.city:AddToLabel(self.specialist, self)
+	self:UpdateHomelessLabels()
+	self:UpdateEmploymentLabels()
 end
 
 function Colonist:DetachFromRealm()
@@ -1653,7 +1655,7 @@ function Colonist:Rest()
 	end
 
 	self:PushDestructor(function(self)
-		if self.dome ~= self.holder then
+		if self.dome and self.dome ~= self.holder then
 			self:ExitBuilding()
 		end
 	end)
@@ -1940,7 +1942,8 @@ end
 function Colonist:UpdateResidence()
 	if not self:CanChangeCommand() then return end
 	local home = self:CheckForcedResidence() or self.reserved_residence
-	if not IsValid(home) or home.parent_dome ~= self.dome or not home.ui_working or not home:CanReserveResidence(self) then
+	local invalid_home = not IsValid(home) or (home.parent_dome and home.parent_dome ~= self.dome)
+	if invalid_home or not home.ui_working or not home:CanReserveResidence(self) then
 		home = self.dome:ChooseResidence(self)
 	end
 	self:SetResidence(home)
@@ -2614,6 +2617,9 @@ function Colonist:SetForcedDome(dome)
 end
 
 function Colonist:CanInteractWithObject(obj, mode)
+	if obj:HasMember("IsShroudedInRubble") and obj:IsShroudedInRubble() then
+		return false, NotWorkingWarning.ShroudedInRubble
+	end
 	if mode == "assign_to_bld" or mode == false then
 		if IsKindOf(obj, "Building") and ValidateBuilding(obj) then	
 			local can, hint, go_to = obj:ColonistCanInteract(self)
@@ -3494,6 +3500,7 @@ function Colonist:OnDisappear()
 	for effect in pairs(self.status_effects) do
 		self:Affect(effect, false)
 	end
+	self:SetOutside(false)
 end
 
 function Colonist:BoardExpeditionRocket(rocket)

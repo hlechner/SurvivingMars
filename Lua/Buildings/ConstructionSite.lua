@@ -676,11 +676,12 @@ function ConstructionSite:SetConstructionSiteEntity()
 	AttachDoors(self, entity)
 	if IsKindOf(self.building_class_proto, "RocketBuildingBase") then
 		if self:HasSpot("Rocket") then
-			local e = GetConstructionRocketEntity(self.building_class_proto.construction_rocket_class)
+			local rocket_class = self.building_class_proto.construction_rocket_class
+			local e = GetConstructionRocketEntity(rocket_class)
 			local a = PlaceObjectIn("Shapeshifter", self:GetMapID())
 			a:ChangeEntity(e)
 			self:Attach(a, self:GetSpotBeginIndex("Rocket"))
-			cm1, cm2, cm3, cm4 = DecodePalette(GetConstructableRocketPalette())
+			cm1, cm2, cm3, cm4 = DecodePalette(GetConstructableRocketPalette(rocket_class))
 		end
 	end
 	if not cm1 then
@@ -1901,6 +1902,16 @@ function RemoveUnderConstruction(obj)
 	end
 end
 
+function GetConstructionSiteClass(class_name, building_proto_class)
+	local construction_site_class = ((class_name == "ElectricitySwitch" or class_name == "LifesupportSwitch") and "GridSwitchConstructionSite") or
+		(class_name == "LifeSupportGridElement" and "PipeConstructionSite") or
+		(class_name == "ElectricityGridElement" and "CableConstructionSite") or
+		(class_name == "PassageGridElement" and "PassageConstructionSite") or
+		(IsKindOf(building_proto_class, "OpenCity") and "OpenCityConstructionSite") or
+		(building_proto_class.construction_site_applies_height_surfaces and "ConstructionSiteWithHeightSurfaces" or "ConstructionSite")
+	return construction_site_class
+end
+
 function PlaceConstructionSite(city, class_name, pos, angle, params, no_block_pass, no_flatten)
 	SuspendTerrainInvalidations("PlaceConstructionSite")
 	
@@ -1908,12 +1919,7 @@ function PlaceConstructionSite(city, class_name, pos, angle, params, no_block_pa
 	
 	params = params or {}
 	local building_proto_class = ClassTemplates.Building[class_name] or g_Classes[class_name]
-	local construction_site_class = ((class_name == "ElectricitySwitch" or class_name == "LifesupportSwitch") and "GridSwitchConstructionSite") or
-											(class_name == "LifeSupportGridElement" and "PipeConstructionSite") or
-											(class_name == "ElectricityGridElement" and "CableConstructionSite") or
-											(class_name == "PassageGridElement" and "PassageConstructionSite") or
-											(IsKindOf(building_proto_class, "OpenCity") and "OpenCityConstructionSite") or
-											(building_proto_class.construction_site_applies_height_surfaces and "ConstructionSiteWithHeightSurfaces" or "ConstructionSite")
+	local construction_site_class = GetConstructionSiteClass(class_name, building_proto_class)
 	local site = PlaceObjectIn(construction_site_class, city.map_id, params)
 	site:SetBuildingClass(class_name)
 	AutoAttachObjectsToShapeshifter(site)
@@ -2616,7 +2622,7 @@ function ConstructionSite:GetResourceProgress()
 			if req then
 				local res_amount = (self.construction_costs_at_start[res] or 0)
 				items[#items+1] = T{618, "<left><resource><right><resource(remaining,total,res)>",
-					resource = Resources[res].display_name or "",
+					resource = GetResourceInfo(res).display_name or "",
 					remaining = res_amount - req:GetActualAmount(),
 					total = res_amount,
 					res = res}

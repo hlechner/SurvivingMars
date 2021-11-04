@@ -158,3 +158,30 @@ function ServiceBase:Service(unit, duration, daily_interest)
 	StatsChangeBase.Service(self, unit, daily_interest)
 	return duration
 end
+
+function GetMaxComfortAvailableService(services, colonist)
+	local fail_reason = 1
+	local rnd = GameTime()
+	local max_comfort_service, max_comfort = false, 0
+	local IsKindOf = IsKindOf
+	for i = 1, #services do
+		local service = services[1 + (i + rnd) % #services]
+		local success, fail_reason = service:CanBeUsedBy(colonist)
+		
+		if success then
+			local service_comfort = IsKindOf(service, "Service") and service.service_comfort or 0
+			
+			local service_applicable_trait_multiplier = 1
+			if colonist.traits.Tourist and service.satisfaction_change > 0 then
+				service_applicable_trait_multiplier = 2
+			end
+			
+			service_comfort = service_comfort * service_applicable_trait_multiplier
+			if service_comfort > max_comfort then
+				max_comfort, max_comfort_service = service_comfort, service
+			end
+		end
+	end
+	
+	return max_comfort_service, fail_reason
+end

@@ -1,3 +1,6 @@
+DefineClass.RubbleBase = {
+}
+
 local RUBBLE_CLASS = "RubbleBase"
 
 DefineClass.RubbleClearer = {
@@ -5,7 +8,7 @@ DefineClass.RubbleClearer = {
 
 function RubbleClearer:CanInteractWithObject(obj, interaction_mode)
 	if IsKindOf(obj, RUBBLE_CLASS) and obj:CanBeCleared() then
-		return true, T{13735, "<UnitMoveControl('ButtonA', interaction_mode)>: Clear Cave-In", self} 
+		return true, T{13735, "<UnitMoveControl('ButtonA', interaction_mode)>: Clear Rubble", self} 
 	end
 	return false
 end

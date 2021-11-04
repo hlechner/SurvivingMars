@@ -113,6 +113,15 @@ function SharedStorageBaseVisualOnly:GetStoredAmount(resource)
 	end
 end
 
+function SharedStorageBaseVisualOnly:SetStoredAmount(resource, amount)
+	if not self.stockpiled_amount then
+		return
+	elseif resource and self.stockpiled_amount[resource] then
+		self.stockpiled_amount[resource] = amount
+		self:SetCount(amount, resource)
+	end
+end
+
 function SharedStorageBaseVisualOnly:MaxSharedStorageGetter()
 	return self.max_shared_storage
 end

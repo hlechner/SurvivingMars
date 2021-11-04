@@ -193,7 +193,7 @@ local function UpdateHexRangeClass(obj, prev)
 	end
 end
 
-function OnMsg.SelectedObjChange(obj, prev)
+function ChangeHexRanges(obj, prev)
 	if g_FXBuildingType then
 		if not obj or obj.class ~= g_FXBuildingType.class then
 			HideHexRanges(UICity, g_FXBuildingType.class)
@@ -239,6 +239,8 @@ function OnMsg.SelectedObjChange(obj, prev)
 		end
 	end
 end
+
+OnMsg.SelectedObjChange = ChangeHexRanges
 
 function ResetRTSCamera(zoom_mul, time_mul)	
 	zoom_mul = zoom_mul or 0.5
@@ -747,6 +749,8 @@ function OnMsg.SelectionChange()
 			SetUnitControlInteractionMode(dlg.unit, false)
 			if SelectedObj:CanBeControlled(false) then
 				dlg:ActivateUnitControl(SelectedObj, SelectedObj.start_player_controllable)
+			else
+				dlg:DeactivateUnitControl()
 			end
 		else
 			dlg:DeactivateUnitControl()

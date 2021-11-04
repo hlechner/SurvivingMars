@@ -61,6 +61,14 @@ function DroneNode:GetCommandCenter()
 	return self
 end
 
+function GetSignalBoostersSelectionRadiusScale(node)
+	if not IsValid(node) then
+		return node.work_radius + (UIColony:IsTechResearched("SignalBoosters") and const.SignalBoostersBuff or 0)
+	else
+		return node.work_radius
+	end
+end
+
 function DroneNode:GetSelectionRadiusScale()
 	return self.work_radius
 end

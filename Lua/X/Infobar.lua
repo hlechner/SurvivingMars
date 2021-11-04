@@ -503,7 +503,7 @@ function InfobarObj:AppendResourceToRollover(rollover, restype, reslookup)
 
 	for _,map_id in pairs(colony_maps) do
 		if UICity.map_id ~= map_id then
-			local map_name = T(UIColony:GetFormattedEnvironmentString(map_id))
+			local map_name = T(UIColony:GetMapDisplayName(map_id))
 			local amount = 0
 			if Cities[map_id] then
 				local res = GetCityResourceOverview(Cities[map_id])
@@ -719,11 +719,7 @@ function InfobarObj:GetSeedsRollover()
 end
 
 function InfobarObj:GetPrefabText()
-	local prefabs_count = 0
-	local prefabs = UICity.available_prefabs or empty_table
-	for prefab, count in pairs(prefabs) do
-		prefabs_count = prefabs_count + count
-	end
+	local prefabs_count = UICity:GetTotalPrefabs()
 	return T{13675, "<prefabs><icon_Prefab_orig>", prefabs = self:FmtRes(prefabs_count)}
 end
 
@@ -819,6 +815,7 @@ function InfobarObj:GetColonistsRollover()
 	local data = resource_overview.data
 	if not rawget(data, "children") then
 		resource_overview:GatherPerDomeInfo()
+		resource_overview:ProcessDomelessColonists()
 	end
 	local city_labels = resource_overview.city.labels	
 	local rollover = {

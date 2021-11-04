@@ -702,7 +702,7 @@ PlaceObj('Scenario', {
 			'sequence', "Infection Increase",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery8InfectionLevel")',
+			'expression', 'RemoveOnScreenNotification("Mystery8InfectionLevel", MainMapID)',
 		}),
 		PlaceObj('SA_AppendToLog', {
 			'register', "_MysteryLog",
@@ -917,7 +917,7 @@ PlaceObj('Scenario', {
 			'dismissable', "dismissable",
 		}),
 		PlaceObj('SA_Exec', {
-			'expression', 'RemoveOnScreenNotification("Mystery8InfectionLevel")',
+			'expression', 'RemoveOnScreenNotification("Mystery8InfectionLevel", MainMapID)',
 		}),
 		PlaceObj('SA_Comment', {
 			'comment', "Effects",

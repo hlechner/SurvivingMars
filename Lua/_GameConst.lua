@@ -164,11 +164,17 @@ ResourceDescription = {
 Resources = {}
 ResourcesDropDownListItems = {}
 for i, desc in ipairs(ResourceDescription) do
+	desc.id = desc.id or desc.name
+	desc.name = desc.id or desc.name
 	Resources[desc.name] = desc
 end
 
+function GetResourceInfo(resource_type)
+	return Resources[resource_type]
+end
+
 function IsDlcAccessibleForResource(resource)
-	local dsc = Resources[resource]
+	local dsc = GetResourceInfo(resource)
 	return IsDlcAccessible(dsc and dsc.dlc)
 end
 
@@ -269,6 +275,7 @@ const.TagLookupTable["icon_Power"]        = "<image UI/Icons/res_electricity.tga
 const.TagLookupTable["icon_Air"]          = "<image UI/Icons/res_oxygen.tga 1300>"
 const.TagLookupTable["icon_Water"]        = "<image UI/Icons/res_water.tga 1300>"
 const.TagLookupTable["icon_Drone"]        = "<image UI/Icons/res_drone.tga 1300>"
+const.TagLookupTable["icon_Rover"]        = "<image UI/Icons/res_rover.tga 1300>"
 const.TagLookupTable["icon_Shuttle"]      = "<image UI/Icons/res_shuttle.tga 1300>"
 const.TagLookupTable["icon_Colonist"]     = "<image UI/Icons/res_colonist.tga 1300>"
 const.TagLookupTable["icon_Tourist"]      = "<image UI/Icons/res_tourist.tga 1300>"
@@ -311,6 +318,7 @@ const.TagLookupTable["icon_Power_orig"]           = "<image UI/Icons/res_electri
 const.TagLookupTable["icon_Air_orig"]             = "<image UI/Icons/res_oxygen.tga>"
 const.TagLookupTable["icon_Water_orig"]           = "<image UI/Icons/res_water.tga>"
 const.TagLookupTable["icon_Drone_orig"]           = "<image UI/Icons/res_drone.tga>"
+const.TagLookupTable["icon_Rover_orig"]           = "<image UI/Icons/res_rover.tga>"
 const.TagLookupTable["icon_Shuttle_orig"]         = "<image UI/Icons/res_shuttle.tga>"
 const.TagLookupTable["icon_Colonist_orig"]        = "<image UI/Icons/res_colonist.tga>"
 const.TagLookupTable["icon_Tourist_orig"]         = "<image UI/Icons/res_tourist.tga>"

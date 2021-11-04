@@ -72,7 +72,7 @@ function Mine:GatherConstructionStatuses(statuses)
 end
 
 function Mine:GetResourceProducedIcon(idx)
-	return "UI/Icons/Sections/" .. Resources[self.exploitation_resource].name .. "_2.tga"
+	return "UI/Icons/Sections/" .. GetResourceInfo(self.exploitation_resource).id .. "_2.tga"
 end
 
 function Mine:GetUISectionMineRollover()

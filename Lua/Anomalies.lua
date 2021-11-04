@@ -1,3 +1,7 @@
+function GetMarsAnomalyScenarios()
+	return { "MarsAnomalies", "GenericAnomalies" }
+end
+
 function GroupMarsAnomalies()
 	local target = "Anomalies"
 	DataInstances.Scenario[target] = nil
@@ -7,7 +11,7 @@ function GroupMarsAnomalies()
 		'singleton', false,
 	})
 
-	local sources = { "MarsAnomalies", "GenericAnomalies" }
+	local sources = GetMarsAnomalyScenarios()
 	local target_seq_list = DataInstances.Scenario[target]
 	for _, source in pairs(sources) do
 		local source_seq_list = DataInstances.Scenario[source] or {}

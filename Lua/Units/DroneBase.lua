@@ -314,10 +314,6 @@ function DroneBase:GetShapePoints()
 	return GetEntityOutlineShape(nil) --will get the fallback shape 1 hex.
 end
 
-function DroneBase:CanBeControlled()
-	return true
-end
-
 function DroneBase:OnUnitControlActiveChanged(new_val)
 end
 
@@ -370,15 +366,18 @@ function DroneBase:UseTunnel(tunnel)
 	SetUnitControlInteraction(false, self)
 
 	-- get out from the tunnel exit
-	local max_da = 60*60
-	local angle = max_da - self:Random(2*max_da)
-	local dist = self:Random(5*guim, MulDivRound(20*guim, abs(cos(angle)), 4096))
-	local target_pos = RotateRadius(dist, self:GetAngle() + angle, self:GetPos())
-	if GetTerrain(self):LinePassable(self:GetPos(), target_pos) then
-		self:Goto(target_pos)
-	else
-		self:Goto(self:GetPos()) -- find a destlockable point nearby
-	end
+	local pos = tunnel:GetExitPosition(self)
+	self:Goto(pos)
+end
+
+function DroneBase:UseElevator(elevator)
+	self:PushDestructor(function(self)
+		local pos = elevator:GetExitPosition(self)
+		self:Goto(pos)
+	end)
+	
+	Unit.UseElevator(self, elevator)
+	self:PopDestructor()
 end
 
 function DroneBase:GotoAndEmbark(rocket)

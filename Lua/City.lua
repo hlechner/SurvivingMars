@@ -394,10 +394,32 @@ function City:GetPrefabs(bld)
 end
 
 function City:AddPrefabs(bld, count, refresh)
-	self.available_prefabs[bld] = (self.available_prefabs[bld] or 0) + count
+	assert((self.available_prefabs[bld] or 0) + count >= 0)
+	local available = (self.available_prefabs[bld] or 0) + count
+	self.available_prefabs[bld] = available > 0 and available or nil
 	if refresh==nil or refresh==true then
 		RefreshXBuildMenu()
 	end
+end
+
+function City:GetTotalPrefabs()
+	local prefabs_count = 0
+	local prefabs = self.available_prefabs or empty_table
+	for prefab, count in pairs(prefabs) do
+		prefabs_count = prefabs_count + count
+	end
+	return prefabs_count
+end
+
+function City:GetTotalPrefabsAllowedIn(environments)
+	local prefabs_count = 0
+	local prefabs = self.available_prefabs or empty_table
+	for prefab, count in pairs(prefabs) do
+		if IsBuildingAllowedIn(prefab, environments) then
+			prefabs_count = prefabs_count + count
+		end
+	end
+	return prefabs_count
 end
 
 function City:RegisterBuildingCompleted(bld)
@@ -480,6 +502,7 @@ function OnMsg.MapUnload(map_id)
 		Cities[map_id] = nil
 		local index = table.find(Cities, city)
 		assert(index)
+		DoneObject(city)
 		table.remove(Cities, index)
 	end
 end

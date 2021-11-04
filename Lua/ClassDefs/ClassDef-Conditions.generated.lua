@@ -346,7 +346,7 @@ function CheckResource:__eval(map_id, obj, context)
 end
 
 function CheckResource:GetResourceText(obj, context)
-	local desc = Resources[self.Resource]
+	local desc = GetResourceInfo(self.Resource)
 	return desc and desc.display_name or T(15, "Resource")
 end
 

@@ -1,4 +1,4 @@
-local l_traits_rollover_for_domes = T(1143, "Colonists with <em>ANY</em> of the must include traits will prefer this Dome, regardless of their undesired traits.<newline><newline>Colonists with <em>MORE</em> of the desired traits will prefer this Dome.<newline><newline>Colonists with <em>ANY</em> of the undesired traits will leave, provided there is <em>available living space</em> elsewhere.<newline><newline>Colonists can walk to closely positioned Domes but will need Shuttles to reach distant Domes.")
+local l_traits_rollover_for_domes = T{1143, "Colonists with <em>ANY</em> of the must include traits will prefer this <community>, regardless of their undesired traits.<newline><newline>Colonists with <em>MORE</em> of the desired traits will prefer this <community>.<newline><newline>Colonists with <em>ANY</em> of the undesired traits will leave, provided there is <em>available living space</em> elsewhere.<newline><newline>Colonists can walk to closely positioned <communities> but will need Shuttles to reach distant <communities>.", community = T(13926, "Dome<if_all(has_dlc('picard'))>/Habitat</if>"), communities = T(13927, "Domes<if_all(has_dlc('picard'))>/Habitats</if>")}
 local l_traits_rollover_for_rocket = T(1144, "Applicants with <em>ANY</em> of the must include traits will board the Rocket before those with desired traits, regardless of their undesired traits.<newline><newline>Applicants with <em>MORE</em> of the desired traits will board the Rocket.<newline><newline>Applicants with <em>ANY</em> of the undesired traits will be rejected.")
 local function TraitCategoryItems(self, cat_id)
 	local items = {}
@@ -60,7 +60,7 @@ function CycleFilterTraits(obj, dir, category)
 end
 
 DefineClass.TraitsObject = {
-	__parents = { "PropertyObject" },
+	__parents = { "PropertyObject", "FilterObject" },
 	properties = {
 		{id =  "Age Group", items = function(self) return TraitCategoryItems(self, "Age Group") end, name = T(3929, "Age Group"), title = T(3929, "Age Group"), descr = T(3930, "Colonists are divided into five Age Groups. Children and seniors cannot work."), editor = "dropdown", default = "", gamepad_hint = T(1145, "<DPadLeft> Expand this category <DPadRight>"), hint = T(1146, "<left_click> Expand this category"), submenu = true,},
 		{id =  "Specialization", items = function(self) return TraitCategoryItems(self, "Specialization") end, name = T(240, "Specialization"), title = T(240, "Specialization"), descr = T(3931, "Specialized Colonists perform better at certain workplaces."), editor = "dropdown", default = "", gamepad_hint = T(1145, "<DPadLeft> Expand this category <DPadRight>"), hint = T(1146, "<left_click> Expand this category"), submenu = true,},
@@ -76,8 +76,6 @@ DefineClass.TraitsObject = {
 	locked_applicants = false,
 	applicants_invalid = true,
 	colonist_count = false,
-	filter = false,
-	categories = false,
 	approved_applicants = false,
 	approved_per_trait = false,
 }
@@ -183,7 +181,7 @@ function TraitsObject:GetDomeSubtitle()
 		unemployed = labels.Unemployed and #labels.Unemployed or 0, homeless = labels.Homeless and #labels.Homeless or 0, count = count, all = all}
 end
 
-function TraitsObject:GetPropTraitDisplayName(prop_meta)
+function TraitsObject:GetPropFilterDisplayName(prop_meta)
 	local id = prop_meta.value == "all" and prop_meta.cat_id or prop_meta.value or prop_meta.id
 	local approved = self.approved_per_trait and self.approved_per_trait[id] or 0
 	return T{7646, "<name> (<approved>/<count>)", name = prop_meta.name, approved = approved, count = self.colonist_count[id] or 0}
@@ -196,83 +194,15 @@ TraitFilterState = {
 	Negative = -1000,
 }
 
-function TraitsObject:FilterTrait(prop_meta, state)
+function TraitsObject:UpdateFilterForAttribute(prop_meta, state)
 	local filter = self.filter
 	local cat_id = prop_meta.cat_id or prop_meta.id
-	local all = prop_meta.value == "all" or prop_meta.submenu
-	if all then
-		local categories = self.categories
-		local musthave = categories[cat_id].__musthave == categories[cat_id].count
-		local mix_musthave = not musthave and (categories[cat_id].__musthave or 0) >= 1
-
-		local positive = categories[cat_id].__positive == categories[cat_id].count
-		local mix_positive = not positive and (categories[cat_id].__positive or 0) >= 1
-
-		local negative = categories[cat_id].__negative == categories[cat_id].count
-		local mix_negative = not negative and (categories[cat_id].__negative or 0) >= 1
-		if (musthave or mix_musthave) and state == TraitFilterState.Musthave then
-			local current_state = mix_musthave and TraitFilterState.Musthave or nil
-			self:SetFilter(prop_meta, nil, current_state)
-		elseif (positive or mix_positive) and state == TraitFilterState.Positive then
-			local current_state = mix_positive and TraitFilterState.Positive or nil
-			self:SetFilter(prop_meta, nil, current_state)
-		elseif (negative or mix_negative) and state == TraitFilterState.Negative then
-			local current_state = mix_negative and TraitFilterState.Negative or nil
-			self:SetFilter(prop_meta, nil, current_state)
-		else
-			self:SetFilter(prop_meta, state)
-		end
-	elseif filter[prop_meta.value] == state then
-		self:SetFilter(prop_meta, nil)
-	else
-		self:SetFilter(prop_meta, state)
-	end
+	FilterObject.UpdateFilterForAttribute(self,prop_meta.value,state,cat_id,TraitPresets)
+	self:InvalidateApplicants()
 	self:CountTraitsPerCategory()
 	self:CountApprovedColonistsForCategory(cat_id)
 	ObjModified(self)
 	self.dialog:UpdateActionViews(self.dialog.idActionBar)
-end
-
-function TraitsObject:SetFilter(prop_meta, state, current_state)
-	self:InvalidateApplicants()
-	local filter = self.filter
-	local cat_id = prop_meta.cat_id or prop_meta.id
-	local all = prop_meta.value == "all" or prop_meta.submenu
-	if all then
-		ForEachPreset(TraitPreset, function(trait, group_list)
-			if trait.group == cat_id and (current_state == nil or filter[trait.id] == current_state) then
-				filter[trait.id] = state
-			end
-		end)
-	else
-		filter[prop_meta.value] = state
-	end
-end
-
-function TraitsObject:UpdateImages(ctrl, prop_meta)
-	local filter = self.filter
-	local categories = self.categories
-	local musthave, positive, negative, mix_musthave, mix_positive, mix_negative
-	local cat_id = prop_meta.cat_id or prop_meta.id
-	local all = prop_meta.value == "all" or prop_meta.submenu
-	if all then
-		musthave = categories[cat_id].__musthave == categories[cat_id].count
-		mix_musthave = not musthave and (categories[cat_id].__musthave or 0) >= 1
-
-		positive = categories[cat_id].__positive == categories[cat_id].count
-		mix_positive = not positive and (categories[cat_id].__positive or 0) >= 1
-
-		negative = categories[cat_id].__negative == categories[cat_id].count
-		mix_negative = not negative and (categories[cat_id].__negative or 0) >= 1
-	else
-		musthave = filter[prop_meta.value] == TraitFilterState.Musthave
-		positive = filter[prop_meta.value] == TraitFilterState.Positive
-		negative = filter[prop_meta.value] == TraitFilterState.Negative
-	end
-
-	ctrl.idMusthave:SetImage(mix_musthave and "UI/Icons/traits_random_musthave.tga" or musthave and "UI/Icons/traits_musthave.tga" or "UI/Icons/traits_musthave_disabled.tga")
-	ctrl.idPositive:SetImage(mix_positive and "UI/Icons/traits_random_approve.tga" or positive and "UI/Icons/traits_approve.tga" or "UI/Icons/traits_approve_disable.tga")
-	ctrl.idNegative:SetImage(mix_negative and "UI/Icons/traits_random_disapprove.tga" or negative and "UI/Icons/traits_disapprove.tga" or "UI/Icons/traits_disapprove_disable.tga")
 end
 
 function TraitsObject:CountTraitsPerCategory()
@@ -976,13 +906,7 @@ function FilterCompatibleTraitsWith(traits, compatible_with)
 end
 
 function TraitFilterColonist(trait_filter, unit_traits)
-	local match = 0
-	for trait, value in pairs(trait_filter or empty_table) do
-		if unit_traits[trait] then
-			match = match + (not value and 0 or value)
-		end
-	end
-	return match
+	return FilterObjectAttributes(trait_filter, unit_traits)
 end
 
 TraitFilterUnit = TraitFilterColonist --old fn. name (for savegame compatibility)

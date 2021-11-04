@@ -132,9 +132,11 @@ end
 function Drone:Done()
 	self:Gossip("done")
 	self:RemoveFromLabels()
+
+	local map_id = self:GetMapID()
 	
 	if self.is_orphan then
-		DiscardNewObjsNotif(g_OrphanedDrones, self, self:GetMapID())
+		DiscardNewObjsNotif(g_OrphanedDrones, self, map_id)
 	elseif self.command_center and IsValid(self.command_center) then
 		local hub = self.command_center
 		table.remove_entry(hub.drones, self)
@@ -146,11 +148,11 @@ function Drone:Done()
 		end
 	end
 	if self.is_broken then
-		local broken_drones = g_BrokenDrones[self:GetMapID()] or {}
+		local broken_drones = g_BrokenDrones[map_id] or {}
 		table.remove_entry(broken_drones, self)
 	end
 	
-	DiscardNewObjsNotif(g_DestroyedVehicles, self, self:GetMapID())
+	DiscardNewObjsNotif(g_DestroyedVehicles, self, map_id)
 end
 
 function ShowRogueNotification(list, map_id)
@@ -2261,6 +2263,10 @@ end
 
 function Drone:CanInteractWithObject(obj, interaction_mode)
 	if self:IsDisabled() then return false, T(4392, "This Drone is disabled") end
+	if obj:HasMember("IsShroudedInRubble") and obj:IsShroudedInRubble() then
+		return false, NotWorkingWarning.ShroudedInRubble
+	end
+	
 	RebuildInfopanel(self)
 	
 	local can_interact, action = RubbleClearer.CanInteractWithObject(self, obj, interaction_mode)
@@ -2646,7 +2652,7 @@ function Drone:GetSelectorItems(dataset)
 		local res_id = AllResourcesList[i]
 		if not dataset.target or dataset.target:DoesAcceptResource(res_id)
 									and dataset.target:GetStoredAmount(res_id) > 0 then
-			local res = Resources[res_id]
+			local res = GetResourceInfo(res_id)
 			if res then
 				table.insert(items, {
 						name = res_id, 
@@ -2685,10 +2691,10 @@ function Drone:GetResource()
 		return Untranslated(self.resource)
 	end	
 	
-	return self.resource and Resources[self.resource] and Resources[self.resource].display_name or T(720, "Nothing")
+	return self.resource and GetResourceInfo(self.resource) and GetResourceInfo(self.resource).display_name or T(720, "Nothing")
 end
 function Drone:GetResourceAmount() 
-	return Resources[self.resource] and T(7395, "<resource(amount,resource)>") or T(720, "Nothing")
+	return GetResourceInfo(self.resource) and T(7395, "<resource(amount,resource)>") or T(720, "Nothing")
 end
 
 function Drone:GetTarget()
@@ -2785,10 +2791,11 @@ DroneCommands = {
 	DeliverLSCS = T(12603, "Depositing Waste Rock"), --for 100 secs
 	WaitingCommand = T(12549, "<red>Orphaned Drone. Assign to a Drone commander.</red>"),
 	Refab = T(13670, "Converting building to prefab"),
+	UseElevator = T(13878, "Going to an elevator"),
 }
 
 function Drone:GetSRequestResource()
-	local res = Resources[self.s_request and self.s_request:GetResource()]
+	local res = GetResourceInfo(self.s_request and self.s_request:GetResource())
 	return res and res.display_name or ""
 end
 

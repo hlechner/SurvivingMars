@@ -70,7 +70,7 @@ function SupplyPod:Unload()
 	for _, item in ipairs(self.cargo) do
 		local classdef = g_Classes[item.class]
 		if item.amount > 0 then
-			if Resources[item.class] then
+			if GetResourceInfo(item.class) then
 				if item.amount > 0 then
 					local pos, angle = self:GetSpotLoc(self:GetSpotBeginIndex("Resource"))
 					PlaceResourceStockpile_Delayed(pos, map_id, item.class, item.amount * const.ResourceScale, angle, true)

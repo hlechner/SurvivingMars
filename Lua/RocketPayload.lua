@@ -1,8 +1,3 @@
-GlobalVar("g_InitialRocketCargo", false)
-GlobalVar("g_InitialCargoCost", 0)
-GlobalVar("g_InitialCargoWeight", 0)
-GlobalVar("g_InitialSessionSeed", false)
-
 function ResetCargo()
 	g_RocketCargo = false
 	g_CargoCost = 0
@@ -63,6 +58,18 @@ function RocketPayloadObject:GetProperties()
 	local props = table.icopy(self.properties)
 	table.iappend(props, ResupplyItemDefinitions)
 	return props
+end
+
+function RocketPayloadObject:GetColonistSpecializationItems()
+	local items = {}
+
+	for id, entry in pairs(const.ColonistSpecialization) do
+		items[#items+1] = {id = id, sort_key = entry.sort_key, name = entry.display_name_plural}
+	end
+	
+	table.sortby_field(items, "sort_key")
+	
+	return items
 end
 
 function RocketPayloadObject:IsLocked(item_id)
@@ -149,8 +156,10 @@ end
 
 function RocketPayloadObject:SetItem(item_id, amount)
 	local cargo = RocketPayload_GetCargo(item_id)
-	cargo.amount = amount
-	ObjModified(self)
+	if cargo then
+		cargo.amount = amount
+		ObjModified(self)
+	end
 end
 
 function RocketPayloadObject:AddItem(item_id, ignore_funds, custom_pack_multiplier)
@@ -513,9 +522,9 @@ function RocketPayloadObjectCreate(context)
 	return RocketPayloadObject:new({object = context, traits_object = traits_object})
 end
 
-function RocketPayloadObjectCreateAndSetRequested(context)
+function RocketPayloadObjectCreateAndRestoreRequest(context)
 	local payload = RocketPayloadObjectCreate(context)
-	context:SetPayload(payload)
+	context:RestorePayloadRequest(payload)
 	RocketPayload_CalcCargoWeightCost()
 	local has_requested_passengers = table.find_if(payload.traits_object.approved_per_trait or empty_table, function(v) return v > 0 end)
 	if not has_requested_passengers and g_CargoWeight == 0 then
@@ -543,4 +552,17 @@ end
 function ClearRocketCargo()
 	g_RocketCargo = GetMissionInitialLoadout()
 	RocketPayload_CalcCargoWeightCost()	
+end
+
+function SavegameFixups.FixResupplyDefinitions()
+	local entries_to_remove = {}
+	for k, item in ipairs(ResupplyItemDefinitions) do
+		if item.id == "MissingPreset" then
+			entries_to_remove[#entries_to_remove + 1] = item
+		end
+	end
+	
+	for _, item in ipairs(entries_to_remove) do
+		table.remove_entry(ResupplyItemDefinitions, item)
+	end
 end

@@ -64,7 +64,7 @@ function GetMissingMods(active_mods, max_mods)
 		if (mod.lua_revision or 0) > LuaRevision or (mod.lua_revision or 9999999) < ModMinLuaRevision
 			or not local_mod or not table.find(AccountStorage.LoadMods, mod.id or mod)
 			or (local_mod and local_mod:CompareVersion(mod) < 0) then
-			if #mods_list >= max_mods then
+			if max_mods and #mods_list >= max_mods then
 				more = true
 				break
 			end

@@ -15,15 +15,13 @@ function OnMsg.DataLoaded()
 	end
 end
 
-future_dlc_list = {"picard"}
-
 function OnMsg.GenerateDocs(project_folder, empty_name)
 	local output = { "# Documentation for *Technology Names*\n" }
 	local fields = Presets.TechFieldPreset.Default
 	for i = 1 , #fields do
 		local field = fields[i]
 		local field_id = field.id
-		if (not table.find(future_dlc_list, field.save_in)) and field_id ~= "Mysteries" then
+		if field_id ~= "Mysteries" then
 			output[#output+1] = "##  "..field_id
 			if field.description then
 				output[#output+1] = TDevModeGetEnglishText(field.description)

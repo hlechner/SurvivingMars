@@ -69,4 +69,6 @@ DefineClass.Infirmary = {
 	flags = { efWalkable = true },
 	interior = {"InfirmaryInterior"},
 	rejuvenation_upgrade = "Infirmary_RejuvenationTreatment",
+	
+	upgrade2_icon = "UI/Icons/Upgrades/Exotic_Mineral_Treatment_01.tga",
 }

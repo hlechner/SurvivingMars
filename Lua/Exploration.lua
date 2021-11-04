@@ -892,7 +892,7 @@ function OnMsg.LoadGame()
 		end)
 end
 
-local function InitialReveal(eligible, trand)
+function InitialReveal(eligible, trand)
 	local filtered, best = {}, {}
 	local has_metals, has_concrete = {}, {}
 	
@@ -1153,8 +1153,9 @@ function OnMsg.TechResearched(tech_id, research)
 	end
 	
 	if not resource and not anomaly then return end
+	local cities_to_spawn = resource and Cities or { MainCity }
 	
-	for _, city in ipairs(Cities) do
+	for _, city in ipairs(cities_to_spawn) do
 		local map_id = city.map_id
 		local game_map = GameMaps[map_id]
 		local buildable_grid = game_map.buildable

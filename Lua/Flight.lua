@@ -824,6 +824,7 @@ function FlyingObject:GetLogicalPos()
 end
 
 function FlyingObject:IsLanded()
+	return false
 end
 
 function FlyingObject:WaitFollowPath(path)

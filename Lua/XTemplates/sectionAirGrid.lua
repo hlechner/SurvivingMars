@@ -4,15 +4,11 @@ PlaceObj('XTemplate', {
 	group = "Infopanel Sections",
 	id = "sectionAirGrid",
 	PlaceObj('XTemplateTemplate', {
-		'__context', function (parent, context)
-			return context:IsKindOfClasses("AirProducer", "AirStorage") and context.air 
-				or context:IsKindOf("LifeSupportGridElement") and context.pillar and context.water
-		end,
+		'__context', function (parent, context) return context:IsKindOfClasses("AirProducer", "AirStorage") and context.air or context:IsKindOf("LifeSupportGridElement") and context.pillar and context.water end,
 		'__condition', function (parent, context)
 			if not context then return end
 			local building = context.building
-			return building:IsKindOfClasses("AirProducer", "AirStorage") and building.air and building.air.grid
-				or building:IsKindOf("LifeSupportGridElement") and building.pillar and building.water and building.water.grid and building.water.grid.air_grid
+			return building:IsKindOf("LifeSupportGridObject") and building:ShowUISectionLifeSupportGrid()
 		end,
 		'__template', "InfopanelSection",
 		'RolloverText', T(946079411041, --[[XTemplate sectionAirGrid RolloverText]] "<UISectionAirGridRollover>"),

@@ -351,9 +351,10 @@ function BlackCubeDumpSite:DroneUnloadResource(drone, request, resource, amount)
 end
 
 function BlackCubeDumpSite:Done()
-	if self.city.colony.mystery then
+	local mystery = self.city.colony.mystery
+	if mystery and IsKindOf(mystery, "BlackCubeMystery") then
 		local count = self:GetStored_BlackCube() / const.ResourceScale
-		self.city.colony.mystery.stored_cubes = self.city.colony.mystery.stored_cubes - count
+		mystery.stored_cubes = mystery.stored_cubes - count
 	end
 end
 

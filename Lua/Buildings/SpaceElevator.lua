@@ -215,7 +215,7 @@ function SpaceElevator:UnloadCargo(items)
 		local item = items[i]
 		local classdef = g_Classes[item.class]
 		if item.amount > 0 then
-			if Resources[item.class] then
+			if GetResourceInfo(item.class) then
 				self:AddResource(item.amount*const.ResourceScale, item.class)
 				unloaded = true
 			elseif BuildingTemplates[item.class] then
@@ -367,7 +367,7 @@ function SpaceElevator:GetCargoManifest()
 		local item = cargo[i]
 		if item.amount > 0 then
 			local classdef = g_Classes[item.class]
-			if Resources[item.class] then
+			if GetResourceInfo(item.class) then
 				resources[#resources + 1] = T{722, "<resource(amount,res)>", amount = item.amount*const.ResourceScale, res = item.class}
 			elseif BuildingTemplates[item.class] then
 				local def = BuildingTemplates[item.class]

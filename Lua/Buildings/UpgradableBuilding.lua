@@ -12,13 +12,7 @@ do
 			{ template = true, name = T(1000067, "Display Name"),    id = "display_name", editor = "text", default = T{""}, translate = true },
 			{ template = true, name = T(1000017, "Description"),     id = "description",  editor = "text", default = T{""}, translate = true },
 			{ template = true, name = T(94, "Icon"),                 id = "icon",         editor = "browse", default = "UI/Icons/Upgrades/build.tga", folder = "UI" },
-	
-			{ template = true, name = T(95, "Concrete Cost"),        id = "upgrade_cost_Concrete",       editor = "number", default = 0, scale = const.ResourceScale},
-			{ template = true, name = T(96, "Metals Cost"),          id = "upgrade_cost_Metals",         editor = "number", default = 0, scale = const.ResourceScale},
-			{ template = true, name = T(97, "Polymers Cost"),        id = "upgrade_cost_Polymers",       editor = "number", default = 0, scale = const.ResourceScale},
-			{ template = true, name = T(98, "Electronics Cost"),     id = "upgrade_cost_Electronics",    editor = "number", default = 0, scale = const.ResourceScale},
-			{ template = true, name = T(99, "Machine Parts Cost"),   id = "upgrade_cost_MachineParts",   editor = "number", default = 0, scale = const.ResourceScale},
-			{ template = true, name = T(100, "Rare Metals Cost"),    id = "upgrade_cost_PreciousMetals", editor = "number", default = 0, scale = const.ResourceScale},
+
 			{ template = true, name = T(101, "Upgrade Time Cost"),   id = "upgrade_time",                editor = "number", default = 0, scale = const.HourDuration},
 
 			{ template = true, name = T(102, "Modifier Target 1"),   id = "mod_target_1",  editor = "dropdownlist", default = "self", items = l_ModifierTargets },
@@ -46,6 +40,13 @@ do
 			{ template = true, name = T(120, "Consumption Type"),          id = "consumption_type",                         editor = "dropdownlist", items = GetConsumptionTypeDropdownItems(), default = GetConsumptionTypeDropdownItems()[1].value, help = "Determines the purpose of the consumption resource.",},
 			{ template = true, name = T(121, "Input Pile Spot Name"),      id = "consumption_resource_stockpile_spot_name", editor = "text", default = "Resourcepile2", help = "If there is any consumption, will try to attacha purely visual stockpile at this spot.",},
 		}
+
+		local upgrade_costs = {}
+		for k, v in pairs(AllResourcesList) do
+			upgrade_costs[#upgrade_costs + 1] = { template = true, name = Untranslated(v .. " Cost"), id = "upgrade_cost_" .. v, editor = "number", default = 0, scale = const.ResourceScale}
+		end	
+		table.iappend(upgrade_properties, upgrade_costs)
+
 		local upgrade_pretty_name = "Upgrade " .. k
 		local upgrade_id_preposition = "upgrade" .. k .. "_"
 		for k, v in pairs(upgrade_properties) do

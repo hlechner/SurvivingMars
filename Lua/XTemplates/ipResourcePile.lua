@@ -77,7 +77,7 @@ PlaceObj('XTemplate', {
 		PlaceObj('XTemplateTemplate', {
 			'__template', "InfopanelSection",
 			'OnContextUpdate', function (self, context, ...)
-				self:SetVisible(not IsKindOf(context, "BlackCubeStockpileBase") or UIColony.mystery.can_destroy_cubes == true )
+				self:SetVisible(not IsKindOf(context, "BlackCubeStockpileBase") or (IsKindOf(UIColony.mystery, "BlackCubeMystery") and UIColony.mystery.can_destroy_cubes == true))
 			end,
 			'Title', T(489, --[[XTemplate ipResourcePile Title]] "Available resources"),
 			'Icon', "UI/Icons/Sections/deposit.tga",

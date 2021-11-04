@@ -8,7 +8,11 @@ PlaceObj('XTemplate', {
 			return context:IsKindOfClasses("WaterProducer", "WaterStorage") and context.water  
 				or context:IsKindOf("LifeSupportGridElement") and not IsKindOf(context, "ConstructionSite") and context.pillar and context.water
 		end,
-		'__condition', function (parent, context) return context and context.grid end,
+		'__condition', function (parent, context) 
+			if not context then return end
+			local building = context.building
+			return building:IsKindOf("LifeSupportGridObject") and building:ShowUISectionLifeSupportGrid()
+		end,
 		'__template', "InfopanelSection",
 		'RolloverText', T(733271764708, --[[XTemplate sectionWaterGrid RolloverText]] "<UISectionWaterGridRollover>"),
 		'OnContextUpdate', function (self, context, ...)

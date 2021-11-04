@@ -1074,10 +1074,10 @@ for i, entry in ipairs(RCRoverResources) do
 	RCRover.resource_storage[resource] = entry.initial * const.ResourceScale
 	RCRover.resource_capacity[resource] = entry.capacity * const.ResourceScale
 	
-	table.insert(RCRover.properties, {id = resource, editor = "number", min = 0, max = 100000, name = Resources[resource].display_name, default = 0, scale = const.ResourceScale, category = "Resources"})
+	table.insert(RCRover.properties, {id = resource, editor = "number", min = 0, max = 100000, name = GetResourceInfo(resource).display_name, default = 0, scale = const.ResourceScale, category = "Resources"})
 	
 	local field = string.format("<name><right><%s>/%d", resource, entry.capacity)
-	table.insert(resource_items, T{field, name = Resources[resource].display_name})
+	table.insert(resource_items, T{field, name = GetResourceInfo(resource).display_name})
 	
 	RCRover["Get" .. resource] = function(self)
 		return self.resource_storage[resource] / const.ResourceScale

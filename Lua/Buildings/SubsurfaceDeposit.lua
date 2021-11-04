@@ -67,7 +67,7 @@ function SubsurfaceDepositMarker:OnPropertyChanged(prop_id)
 end
 
 function SubsurfaceDepositMarker:PostLoad()
-	self:SetColorModifier(Resources[self.resource].color)
+	self:SetColorModifier(GetResourceInfo(self.resource).color)
 	if TerrainDeposits[self.resource] then
 		self:ClearGameFlags(const.gofPermanent)
 		local obj = PlaceObjectIn("TerrainDepositMarker", self:GetMapID(), {resource = self.resource})
@@ -235,7 +235,7 @@ function SubsurfaceDeposit:OnReveal()
 	print(" Max Amount", self.max_amount)
 	print(" Amount Left", self.amount)
 	print(" Grade", self.grade)
-	print(" Resource", Resources[self.resource].display_name)
+	print(" Resource", GetResourceInfo(self.resource).display_name)
 	print(" Depth(Layer)", self.depth_layer)
 	--]]
 end

@@ -1,0 +1,196 @@
+-- ========== THIS IS AN AUTOMATICALLY GENERATED FILE! ==========
+
+PlaceObj('XTemplate', {
+	__is_kind_of = "XPropControl",
+	group = "PreGame",
+	id = "PropFilter",
+	PlaceObj('XTemplateWindow', {
+		'__class', "XPropControl",
+		'RolloverOnFocus', true,
+		'MouseCursor', "UI/Cursors/Rollover.tga",
+		'FXMouseIn', "MenuItemHover",
+		'FXPress', "NewMissionParamsClick",
+	}, {
+		PlaceObj('XTemplateTemplate', {
+			'__template', "PropArrow",
+			'Id', "idArrow",
+		}),
+		PlaceObj('XTemplateTemplate', {
+			'__template', "PropName",
+			'VAlign', "center",
+		}),
+		PlaceObj('XTemplateTemplate', {
+			'__template', "PropCheckBoxValue",
+			'Id', "idNegative",
+			'HandleMouse', true,
+			'Image', "UI/Icons/traits_disapprove_disable.tga",
+		}, {
+			PlaceObj('XTemplateFunc', {
+				'name', "OnMouseButtonDown(self, pos, button)",
+				'func', function (self, pos, button)
+					if button == "L" and not self.parent.prop_meta.submenu then
+						self:Press()
+						return "break"
+					end
+				end,
+			}),
+			PlaceObj('XTemplateFunc', {
+				'name', "Press",
+				'func', function (self, ...)
+					local obj = ResolvePropObj(self.parent.context)
+					local dlg = GetDialog(self)
+					local prop_meta = self.parent.prop_meta
+					obj:UpdateFilterForAttribute(prop_meta, TraitFilterState.Negative)
+					self.parent.active = self.parent.active ~= self and self or false
+				end,
+			}),
+			}),
+		PlaceObj('XTemplateTemplate', {
+			'__template', "PropCheckBoxValue",
+			'RolloverAnchor', "left",
+			'Id', "idPositive",
+			'Margins', box(0, 0, 5, 0),
+			'HandleMouse', true,
+			'Image', "UI/Icons/traits_approve_disable.tga",
+		}, {
+			PlaceObj('XTemplateFunc', {
+				'name', "OnMouseButtonDown(self, pos, button)",
+				'func', function (self, pos, button)
+					if button == "L" and not self.parent.prop_meta.submenu then
+						self:Press()
+						return "break"
+					end
+				end,
+			}),
+			PlaceObj('XTemplateFunc', {
+				'name', "Press",
+				'func', function (self, ...)
+					local obj = ResolvePropObj(self.parent.context)
+					local dlg = GetDialog(self)
+					local prop_meta = self.parent.prop_meta
+					obj:UpdateFilterForAttribute(prop_meta, TraitFilterState.Positive)
+					self.parent.active = self.parent.active ~= self and self or false
+				end,
+			}),
+			}),
+		PlaceObj('XTemplateTemplate', {
+			'__template', "PropCheckBoxValue",
+			'RolloverAnchor', "left",
+			'Id', "idMusthave",
+			'Margins', box(0, 0, 5, 0),
+			'HandleMouse', true,
+			'Image', "UI/Icons/traits_musthave_disabled.tga",
+		}, {
+			PlaceObj('XTemplateFunc', {
+				'name', "OnMouseButtonDown(self, pos, button)",
+				'func', function (self, pos, button)
+					if button == "L" and not self.parent.prop_meta.submenu then
+						self:Press()
+						return "break"
+					end
+				end,
+			}),
+			PlaceObj('XTemplateFunc', {
+				'name', "Press",
+				'func', function (self, ...)
+					local obj = ResolvePropObj(self.parent.context)
+					local dlg = GetDialog(self)
+					local prop_meta = self.parent.prop_meta
+					obj:UpdateFilterForAttribute(prop_meta, TraitFilterState.Musthave)
+					self.parent.active = self.parent.active ~= self and self or false
+				end,
+			}),
+			}),
+		PlaceObj('XTemplateFunc', {
+			'name', "OnPropUpdate(self, context, prop_meta, value)",
+			'func', function (self, context, prop_meta, value)
+				self.idArrow:SetVisible(prop_meta.submenu)
+				local obj = ResolvePropObj(context)
+				if prop_meta.add_count_in_name then
+					local name = obj:GetPropFilterDisplayName(prop_meta)
+					self.idName:SetText(name)
+				end
+				obj:UpdateImages(self, prop_meta)
+			end,
+		}),
+		PlaceObj('XTemplateFunc', {
+			'name', "OnMouseButtonDown(self, pos, button)",
+			'func', function (self, pos, button)
+				local obj = ResolvePropObj(self.context)
+				if self.prop_meta.submenu or obj.dome then
+					XPropControl.OnMouseButtonDown(self, pos, button)
+					if button == "L" and self.prop_meta.submenu then
+						if obj.dome then 
+							obj:CountApprovedColonistsForCategory(self.prop_meta.id)
+						end
+						SetDialogMode(self, "items", self.prop_meta)
+						return "break"
+					end
+				end
+			end,
+		}),
+		PlaceObj('XTemplateFunc', {
+			'name', "OnShortcut(self, shortcut, source)",
+			'func', function (self, shortcut, source)
+				if self.prop_meta.submenu and (shortcut == "DPadLeft" or shortcut == "LeftThumbLeft" or shortcut == "DPadRight" or shortcut == "LeftThumbRight") then
+				  return self:OnMouseButtonDown(nil, "L")
+				elseif not self.prop_meta.submenu and shortcut == "ButtonX" then
+				  return self:OnMouseButtonDoubleClick(nil, "L")
+				elseif shortcut == "DPadLeft" or shortcut == "LeftThumbLeft" then
+					if self.active == self.idPositive or self.active == self.idMusthave then
+						self.idMusthave:Press()
+					else
+						self.idPositive:Press()
+					end
+					return "break"
+				elseif shortcut == "DPadRight" or shortcut == "LeftThumbRight" then
+					if self.active == self.idMusthave then
+						self.idPositive:Press()
+					else
+						self.idNegative:Press()
+					end
+					return "break"
+				end
+			end,
+		}),
+		PlaceObj('XTemplateFunc', {
+			'name', "SetSelected(self, selected)",
+			'func', function (self, selected)
+				if GetUIStyleGamepad() then
+					self:SetFocus(selected)
+				end
+			end,
+		}),
+		PlaceObj('XTemplateFunc', {
+			'name', "OnMouseButtonDoubleClick(self, pos, button)",
+			'func', function (self, pos, button)
+				local obj = ResolvePropObj(self.context)
+				if obj.dome and button == "L" then
+					XPropControl.OnMouseButtonDoubleClick(self, pos, button)
+					CloseDialog("DomeTraits")
+					CreateRealTimeThread(function()
+						OpenCommandCenter({dome = obj.dome, trait = {name = self.prop_meta.value, display_name = self.prop_meta.name}}, "Colonists")
+					end)
+					return "break"
+				end
+			end,
+		}),
+		PlaceObj('XTemplateCode', {
+			'run', function (self, parent, context)
+				parent.active = false
+			end,
+		}),
+		}),
+	PlaceObj('XTemplateWindow', {
+		'__condition', function (parent, context) return context.prop_meta.leave_space end,
+		'__class', "XContextWindow",
+	}, {
+		PlaceObj('XTemplateFunc', {
+			'name', "IsSelectable",
+			'func', function (self, ...)
+				return false
+			end,
+		}),
+		}),
+})
+

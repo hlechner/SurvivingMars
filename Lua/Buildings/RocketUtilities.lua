@@ -89,10 +89,6 @@ function OnMsg.GatherLabels(labels)
 	labels.AllRockets = true
 end
 
-function GetConstructableRocketPalette()
-	return GetAdjustedRocketPalette(GetConstructionRocketEntity(), SupplyRocket.rocket_palette, GetCurrentColonyColorScheme())
-end
-
 function GetConstructionRocketEntity(rocket_class)
 	local cls_str = rocket_class or GetRocketClass()
 	local t = BuildingTemplates[cls_str]
@@ -101,6 +97,19 @@ function GetConstructionRocketEntity(rocket_class)
 	end
 	local cls = g_Classes[cls_str]
 	return cls:GetEntity()
+end
+
+function GetConstructionRocketPalette(rocket_class)
+	local t = BuildingTemplates[rocket_class]
+	local class_name = t and t.template_class or rocket_class
+	local class = g_Classes[class_name]
+	return class.rocket_palette
+end
+
+function GetConstructableRocketPalette(rocket_class)
+	local cls_str = rocket_class or GetRocketClass()
+	local palette = GetConstructionRocketPalette(cls_str)
+	return GetAdjustedRocketPalette(GetConstructionRocketEntity(cls_str), palette, GetCurrentColonyColorScheme())
 end
 
 function GetAdjustedRocketPalette(rocket_entity, palette, ccs)

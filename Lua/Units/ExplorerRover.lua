@@ -1,5 +1,12 @@
 DefineClass.ExplorerRover = {
-	__parents = {  "BaseRover", "ComponentAttach" },
+	__parents = {
+		"AutoMode",
+		"BaseRover",
+		"ComponentAttach",
+	},
+	
+	auto_mode_on = false,
+	
 	entity = "RoverExplorer",
 	SelectionClass = "ExplorerRover",
 	display_name = T(1684, "RC Explorer"),
@@ -28,8 +35,6 @@ DefineClass.ExplorerRover = {
 	
 	malfunction_idle_state = "malfunctionIdle",
 	
-	has_auto_mode = true,
-	
 	environment_entity = {
 		base = "RoverExplorer",
 		Asteroid = "RoverFlyingExplorer",
@@ -41,7 +46,7 @@ end
 
 function ExplorerRover:Idle()
 	self:SetState("idle")
-	if g_RoverAIResearched and self.auto_mode_on then
+	if g_RoverAIResearched and self:IsAutoModeEnabled() then
 		local unreachable_objects = self:GetUnreachableObjectsTable()
 
 		local anomaly = GetRealm(self):MapFindNearest(self, "map", "SubsurfaceAnomaly", 
@@ -178,10 +183,9 @@ function ExplorerRover:TransferToMap(map_id)
 	BaseRover.TransferToMap(self, map_id)
 end
 
-function ExplorerRover:ToggleAutoMode_Update(button)
-	if not self.auto_mode_on then
-		button:SetIcon("UI/Icons/IPButtons/automated_mode_off.tga")
-	else
-		button:SetIcon("UI/Icons/IPButtons/automated_mode_on.tga")
+function ExplorerRover:SetAutoMode(value)
+	AutoMode.SetAutoMode(self, value)
+	if self.command == "Idle" then --reset idle
+		self:SetCommand("Idle")
 	end
 end

@@ -198,6 +198,10 @@ end
 
 ----
 
+function Research:IsTechAvailable(tech_id)
+	return self.tech_status[tech_id]
+end
+
 function Research:IsTechDiscovered(tech_id)
 	local status = self.tech_status[tech_id]
 	return status and status.discovered
@@ -572,6 +576,36 @@ function Research:SetTechNew(tech_id, is_new)
 	end
 	status.new = is_new and GameTime() or nil
 	return true
+end
+
+function Research:ReplaceTech(tech_id, tech_id_new)
+	local status = self.tech_status[tech_id]
+	assert(status)
+	if not status then return end
+
+	local tech_def = TechDef[tech_id_new]
+	assert(tech_def.group == status.field)
+
+	local is_queued = self:TechQueueIndex(tech_id)
+	if is_queued then
+		self:DequeueResearch(tech_id)
+	end
+
+	self.tech_status[tech_id] = nil
+	self.tech_status[tech_id_new] = status
+	
+	local field = self.tech_field[tech_def.group]
+	local field_idx = table.find(field, tech_id)
+	if field_idx then
+		field[field_idx] = tech_id_new
+	end
+
+	if is_queued then
+		self:QueueResearch(tech_id_new)
+	elseif status.researched then
+		status.researched = false
+		self:SetTechResearched(tech_id_new, "notify")
+	end
 end
 
 function Research:ModifyResearchPoints(research_points, tech_id)

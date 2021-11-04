@@ -76,6 +76,8 @@ end
 
 DefineClass.SolarPanelBuilding = {
 	__parents = { "SolarPanelBase", "ElectricityProducer" },
+	
+	upgrade1_icon = "UI/Icons/Upgrades/Improved_Photovoltaics_01.tga",
 }
 
 function SolarPanelBuilding:Init()

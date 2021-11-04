@@ -5,6 +5,10 @@ PlaceObj('XTemplate', {
 	id = "sectionWaterProduction",
 	PlaceObj('XTemplateTemplate', {
 		'__context_of_kind', "WaterProducer",
+		'__condition', function (parent, context)
+			if not context then return end
+			return context:ShowUISectionLifeSupportProduction()
+		end,
 		'__template', "InfopanelSection",
 		'RolloverText', T(502733614779, --[[XTemplate sectionWaterProduction RolloverText]] "<UISectionWaterProductionRollover>"),
 		'Title', T(80, --[[XTemplate sectionWaterProduction Title]] "Production"),

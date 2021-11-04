@@ -334,12 +334,12 @@ PlaceObj('XTemplate', {
 								end
 								if GameState.gameplay and GetCityResourceOverview(MainCity).data then
 									local resource_overview = GetCityResourceOverview(MainCity)
-									if Resources[id] then
+									if GetResourceInfo(id) then
 										child.idAvailable:SetText(T{11592, "<num>", num = FormatResource(resource_overview, resource_overview:GetAvailable(id), id)})
 									elseif id == "Drone" or id == "FlyingDrone" then
 										child.idAvailable:SetText(T{11592, "<num>", num = FormatResource(empty_table, #(MainCity.labels.Drone or {}), "Drone")})
 									elseif not item.submenu then
-										child.idAvailable:SetText(T{11592, "<num>", num = GetTotalAvailable("Colony", id)})
+										child.idAvailable:SetText(T{11592, "<num>", num = GetTotalAvailableInColony(id)})
 									end
 								end
 							end,

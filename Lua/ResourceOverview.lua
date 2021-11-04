@@ -25,6 +25,7 @@ function ResourceOverviewThreadBody()
 		resource_overview.estimated_maintenance_time = RealTime() -- avoid performing estimation on a regular basis
 		pcall(GatherResourceOverviewData, resource_overview.data, city)
 		resource_overview:GatherPerDomeInfo()
+		resource_overview:ProcessDomelessColonists()
 		resource_overview:CalcColonistsTraits()
 		resource_overview:CalcConsumptionProduction()
 		resource_overview:GatherDronesInfo()
@@ -247,6 +248,30 @@ function ResourceOverview:GatherPerDomeInfo()
 	self.data.tourists        = tourists
 	self.data.colonists       = self:GetColonistCount()
 	self.data.earthborn       = self.data.colonists - martianborn
+end
+
+local AgeTraitToFieldMapping = {
+	Child = "children",
+	Youth = "youths",
+	Adult = "adults",
+	["Middle Aged"] = "middleageds",
+	Senior = "seniors",
+}
+
+function ResourceOverview:ProcessDomelessColonists()
+	if not self.city then return end
+	local homeless = self.city.labels.Homeless or empty_table
+	local domeless = table.filter(homeless, function(_,colonist) return not colonist.dome end)
+	for _,domeless_colonist in ipairs(domeless) do
+		if domeless_colonist.traits.Celebrity then self.data.celebrity_count = self.data.celebrity_count + 1 end
+		if domeless_colonist.traits.Renegade then self.data.renegades = self.data.renegades + 1 end
+		
+		local age_field = AgeTraitToFieldMapping[domeless_colonist.age_trait]
+		self.data[age_field] = self.data[age_field] + 1
+		
+		if domeless_colonist.traits.Martianborn then self.data.martianborn = self.data.martianborn + 1 end
+		if domeless_colonist.traits.Tourist then self.data.tourists = self.data.tourists + 1 end
+	end
 end
 
 function ResourceOverview:GatherDronesInfo()
@@ -878,6 +903,10 @@ function ResourceOverview:CalcConsumptionProduction()
 	local gtime = GameTime()
 	local data = self.data
 	if GameTime() - (data.last_averages_gtime or 0) > 0 then
+		--update resource demand with the other side consumption
+		data.total_power_demand = data.total_power_demand + self:GetExcessOtherSideConsumption("electricity")
+		data.total_water_demand = data.total_water_demand + self:GetExcessOtherSideConsumption("water")
+		data.total_air_demand = data.total_air_demand + self:GetExcessOtherSideConsumption("air")
 		-- "consumption" below actually means "demand" - not changing to preserve savegames
 		data.total_power_production_sum = (data.total_power_production_sum or 0) + data.total_power_production
 		data.total_power_consumption_sum = (data.total_power_consumption_sum or 0) + data.total_power_demand
@@ -1093,4 +1122,18 @@ function ResourceOverview:GetUpgradeConstruction(resource_type, function_type)
 		end
 	end
 	return result
+end
+
+function ResourceOverview:GetExcessOtherSideConsumption(grid_type)
+	local buildings = self.city.labels.GridTransfer or empty_table
+	local other_side_consumption = 0
+	local stored_other_side_grid = false
+	for _, building in ipairs(buildings) do
+		local building_other_side_grid = building.other.grids[grid_type].grid
+		if building_other_side_grid and stored_other_side_grid ~= building_other_side_grid then
+			other_side_consumption = other_side_consumption + building:GetOtherSideConsumption(grid_type)
+		end
+		stored_other_side_grid = building_other_side_grid
+	end
+	return other_side_consumption
 end

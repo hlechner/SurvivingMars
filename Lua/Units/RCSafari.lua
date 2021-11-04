@@ -62,8 +62,6 @@ DefineClass.RCSafari = {
 	amount_transfered_last_ct = 0,
 	
 	Select = BaseRover.Select,
-	
-	has_auto_mode = false,
 
 	sight_range = 8,
 	awarded_satisfaction = false,
@@ -292,15 +290,6 @@ end
 
 function OnMsg.SelectionRemoved(obj)
 	DestroySafariRouteVisuals(obj)
-end
-
-function RCSafari:ToggleAutoMode_Update(button)
-	button:SetRolloverText(T{10987, "If Automated Mode is activated the RC Transport will gather resources automatically.<newline><newline>Current Status: <em><on_off(auto_mode_on)></em>", self})
-	if not self.auto_mode_on then
-		button:SetIcon("UI/Icons/IPButtons/automated_mode_off.tga")
-	else
-		button:SetIcon("UI/Icons/IPButtons/automated_mode_on.tga")
-	end
 end
 
 function RCSafari:Assign(unit)

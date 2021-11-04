@@ -251,7 +251,7 @@ function IsInWalkingDistDome(bld1, bld2)
 	end
 	local dist_map = g_DomeToDomeDist[bld1]
 	local dist = dist_map and dist_map[bld2]
-	local map_id = bld1:GetMapID()
+	local map_id = not IsPoint(bld1) and bld1:GetMapID() or bld2:GetMapID()
 	if dist then
 		--only when bld1 and bld2 are domes can there be cache, hence
 		return dist[1] or AreDomesConnectedWithPassage(bld1, bld2) 
@@ -595,8 +595,6 @@ function Dome:GameInit()
 	self:GenerateWalkablePoints()
 	UpdateDistToDomes(self,"add")
 	
-	g_DomeVersion = g_DomeVersion + 1
-	
 	local skin, palette = self:GetCurrentSkin()
 	self:SetPalette(DecodePalette(palette))
 end
@@ -615,7 +613,6 @@ function Dome:AddOutskirtBuildings()
 end
 
 function Dome:Done()
-	g_DomeVersion = g_DomeVersion + 1
 	self.city:RemoveFromLabel("Dome", self)
 	
 	local objs_inside = self.labels.SupplyGridBuildings
@@ -2575,34 +2572,6 @@ end
 DefineClass("DomeMeteorFractureSmall", "DomeMeteorFracture")
 DefineClass("DomeMeteorFractureLarge", "DomeMeteorFracture")
 
-local function GetServiceInDome(dome, need, colonist)
-	local services = dome.labels[need] or empty_table
-	local fail_reason = 1
-	local rnd = GameTime()
-	local max_comfort_service, max_comfort = false, 0
-	local IsKindOf = IsKindOf
-	for i = 1, #services do
-		local service = services[1 + (i + rnd) % #services]
-		local success, fail_reason = service:CanBeUsedBy(colonist)
-		
-		if success then
-			local service_comfort = IsKindOf(service, "Service") and service.service_comfort or 0
-			
-			local service_applicable_trait_multiplier = 1
-			if colonist.traits.Tourist and service.satisfaction_change > 0 then
-				service_applicable_trait_multiplier = 2
-			end
-			
-			service_comfort = service_comfort * service_applicable_trait_multiplier
-			if service_comfort > max_comfort then
-				max_comfort, max_comfort_service = service_comfort, service
-			end
-		end
-	end
-	
-	return max_comfort_service, fail_reason
-end
-
 function Dome:CanColonistsFromDifferentDomesWorkServiceTrainHere()
 	return self.accept_colonists and not self.supply_interrupted and self.ui_working
 end
@@ -2618,14 +2587,19 @@ function Dome:GetClosestFoodPile(colonist)
 	return minpile
 end
 
+local function GetMaxComfortAvailableServiceInDome(dome, need, colonist)
+	local services = dome.labels[need] or empty_table
+	return GetMaxComfortAvailableService(services, colonist)
+end
+
 function Dome:GetService(need, colonist, starving)
-	local max_comfort_service, fail = GetServiceInDome(self, need, colonist)
+	local max_comfort_service, fail = GetMaxComfortAvailableServiceInDome(self, need, colonist)
 	
 	if not max_comfort_service and self.allow_service_in_connected and self.accept_colonists then
 		--try domes connected with passages.
 		for dome in pairs(self:GetConnectedDomes()) do
 			if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then --quarantine
-				max_comfort_service, fail = GetServiceInDome(dome, need, colonist)
+				max_comfort_service, fail = GetMaxComfortAvailableServiceInDome(dome, need, colonist)
 				if max_comfort_service then
 					break 
 				end

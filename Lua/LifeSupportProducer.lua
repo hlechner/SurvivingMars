@@ -67,11 +67,28 @@ function WaterProducer:ShouldShowNotConnectedToLifeSupportGridSign()
 		if not self:HasPipes() then
 			return true
 		end
-		if #self.water.grid.consumers <= 0 and #self.water.grid.storages <= 0 then
+		local transfer = self:WaterProducerConnectedToTransfer()
+		if #self.water.grid.consumers <= 0 and #self.water.grid.storages <= 0 and (not transfer or not self:HasOtherSideWaterConsumers(transfer)) then
 			return true
 		end
 	end
 	return false
+end
+
+function WaterProducer:WaterProducerConnectedToTransfer()
+	for _, producer in ipairs(self.water.grid.producers) do
+		if IsKindOf(producer.building, "GridTransfer") then
+			return producer.building
+		end
+	end
+	return false
+end
+
+function WaterProducer:HasOtherSideWaterConsumers(transfer)
+	if transfer and transfer.other then
+		local other_side_grid = transfer.other.grids.water.grid
+		return #other_side_grid.consumers + #other_side_grid.storages > 0
+	end
 end
 
 function WaterProducer:UpdateAttachedSigns()
@@ -167,11 +184,28 @@ function AirProducer:ShouldShowNotConnectedToLifeSupportGridSign()
 		if not self:HasPipes() then
 			return true
 		end
-		if #self.air.grid.consumers <= 0 and #self.air.grid.storages <= 0 then
+		local transfer = self:AirProducerConnectedToTransfer()
+		if #self.air.grid.consumers <= 0 and #self.air.grid.storages <= 0 and (not transfer or not self:HasOtherSideAirConsumers(transfer)) then
 			return true
 		end
 	end
 	return false
+end
+
+function AirProducer:AirProducerConnectedToTransfer()
+	for _, producer in ipairs(self.air.grid.producers) do
+		if IsKindOf(producer.building, "GridTransfer") then
+			return producer.building
+		end
+	end
+	return false
+end
+
+function AirProducer:HasOtherSideAirConsumers(transfer)
+	if transfer and transfer.other then
+		local other_side_grid = transfer.other.grids.air.grid
+		return #other_side_grid.consumers + #other_side_grid.storages > 0
+	end
 end
 
 function AirProducer:UpdateAttachedSigns()

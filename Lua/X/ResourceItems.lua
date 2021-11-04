@@ -158,7 +158,7 @@ function ResourceItems:OnMouseButtonDown(pt, button)
 end
 
 function OpenResourceSelector(object, context)
-	if IsKindOf(SelectedObj, "MultiSelectionWrapper") and table.find(SelectedObj.objects, object) then
+	if IsObjectSelected(object) then
 		context.object = SelectedObj
 	else
 		context.object = object

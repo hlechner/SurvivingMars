@@ -1626,7 +1626,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 8,
-	description = T(6374, --[[TechPreset LowGEngineering description]] "New Dome: <em>Medium</em> (<buildinginfo('DomeMedium')>) - A medium-sized Dome.\nNew Dome: <em>Trigon</em> (<buildinginfo('DomeTrigon')>) - A triangle base Dome.\nNew Building: <em>Low-G Amusement Park</em> (<buildinginfo('LowGAmusementPark')>) - A service building which provides Satisfaction for Tourists\n\n<grey>Gaining experience in actually building constructions on Mars rather than just hypothesizing has vastly advanced our off-Earth architectural capabilities.</grey>"),
+	description = T(6374, --[[TechPreset LowGEngineering description]] "New Dome: <em>Medium</em> (<buildinginfo('DomeMedium')>) - A medium-sized Dome.\nNew Dome: <em>Trigon</em> (<buildinginfo('DomeTrigon')>) - A triangle base Dome.\nNew Building: <em>Low-G Amusement Park</em> (<buildinginfo('LowGAmusementPark')>) - A service building which provides Satisfaction for Tourists.\n\n<grey>Gaining experience in actually building constructions on Mars rather than just hypothesizing has vastly advanced our off-Earth architectural capabilities.</grey>"),
 	display_name = T(6373, --[[TechPreset LowGEngineering display_name]] "Low-G Engineering"),
 	group = "Engineering",
 	icon = "UI/Icons/Research/low-g_engineering.tga",
@@ -3015,7 +3015,7 @@ PlaceObj('TechPreset', {
 
 PlaceObj('TechPreset', {
 	SortKey = 9,
-	description = T(6501, --[[TechPreset EmergencyTraining description]] "<em>Security Officers and Medics</em> have +<param1> performance when working in their specialty.<if_all(has_dlc('kerwin'))>\nNew Building: <em>Hospital</em> (<buildinginfo('HospitalCCP1')>) - A larger, more improved version of the Infirmary</if>\n\n<grey>One can never be too prepared for the vast array of emergencies that could arise at any given moment on Mars.</grey>"),
+	description = T(6501, --[[TechPreset EmergencyTraining description]] "<em>Security Officers and Medics</em> have +<param1> performance when working in their specialty.<if_all(has_dlc('kerwin'))>\nNew Building: <em>Hospital</em> (<buildinginfo('HospitalCCP1')>) - A larger, more improved version of the Infirmary.</if>\n\n<grey>One can never be too prepared for the vast array of emergencies that could arise at any given moment on Mars.</grey>"),
 	display_name = T(6500, --[[TechPreset EmergencyTraining display_name]] "Emergency Training"),
 	group = "Social",
 	icon = "UI/Icons/Research/emergency_training.tga",

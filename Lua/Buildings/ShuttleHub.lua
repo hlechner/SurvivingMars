@@ -1296,7 +1296,7 @@ function CargoShuttle:GetCarriedResourceStr()
 		return T{748, "Payload<right><colonist(StoredAmount)>", self}
 	else
 		return T{749, "Payload<right><resource(StoredAmount,max_amount,resource)>",
-			resource = Resources[self.carried_resource_type].name, self}
+			resource = GetResourceInfo(self.carried_resource_type).id, self}
 	end
 end
 
@@ -1767,7 +1767,7 @@ function ShuttleHub:GetShuttleConstructionCostsStr()
 	local ret = {}
 	
 	for r_n, amount in pairs(self.shuttle_construction_stockpiled_resources) do
-		ret[#ret + 1] = T{cost_t, resource_display_name = Resources[r_n].display_name,
+		ret[#ret + 1] = T{cost_t, resource_display_name = GetResourceInfo(r_n).display_name,
 								received_amount = amount, 
 								total_amount = self.queued_shuttles_for_construction * shuttle_construction_cost[r_n],
 								icon = r_n}
