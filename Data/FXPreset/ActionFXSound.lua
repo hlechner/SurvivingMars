@@ -2024,6 +2024,28 @@ PlaceObj('ActionFXSound', {
 PlaceObj('ActionFXSound', {
 	Action = "ContainFireflies",
 	Actor = "LightTrap",
+	AttachToObj = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "ContainFireflies",
+			'EndMoment', "start",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "Working",
+			'EndMoment', "end",
+		}),
+	},
+	FadeIn = 2000,
+	FadeOut = 2000,
+	Moment = "end",
+	Sound = "Object LightTrap LoopEmpty",
+	handle = 1372520554,
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "ContainFireflies",
+	Actor = "LightTrap",
 	Moment = "end",
 	Sound = "Object LightTrap Deactivate",
 	Target = "ignore",
@@ -2639,6 +2661,23 @@ PlaceObj('ActionFXSound', {
 	Moment = "end",
 	Sound = "Object StorageDepot Demolition",
 	Source = "ActionPos",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Demolish",
+	Actor = "StorageRareMinerals",
+	Moment = "end",
+	Sound = "Object StorageDepot Demolition",
+	Source = "ActionPos",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Demolish",
+	Actor = "StorageSeeds",
+	Moment = "end",
+	Sound = "Object StorageDepot Demolition",
+	Source = "ActionPos",
+	id = "",
 })
 
 PlaceObj('ActionFXSound', {
@@ -3794,7 +3833,23 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "DoorClose",
+	Actor = "DomeDoorEntrance_02",
+	Disabled = true,
+	Moment = "start",
+	Sound = "Building Dome DoorClose",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "DoorClose",
 	Actor = "DomeDoorExit_01",
+	Moment = "start",
+	Sound = "Building Dome DoorClose",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "DoorClose",
+	Actor = "DomeDoorExit_02",
+	Disabled = true,
 	Moment = "start",
 	Sound = "Building Dome DoorClose",
 })
@@ -3816,7 +3871,23 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "DoorOpen",
+	Actor = "DomeDoorEntrance_02",
+	Disabled = true,
+	Moment = "start",
+	Sound = "Building Dome DoorOpen",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "DoorOpen",
 	Actor = "DomeDoorExit_01",
+	Moment = "start",
+	Sound = "Building Dome DoorOpen",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "DoorOpen",
+	Actor = "DomeDoorExit_02",
+	Disabled = true,
 	Moment = "start",
 	Sound = "Building Dome DoorOpen",
 })
@@ -4318,6 +4389,22 @@ PlaceObj('ActionFXSound', {
 	Moment = "start",
 	Sound = "Unit Rover EmergencyPower",
 	handle = 1634345564,
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "EmergencyPower",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	FadeIn = 100,
+	FadeOut = 100,
+	Moment = "start",
+	Sound = "UI AlertEmergencyPower",
+	Source = "UI",
+	handle = 2113700352,
 })
 
 PlaceObj('ActionFXSound', {
@@ -6708,6 +6795,30 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "NoBattery",
+	Actor = "RCExplorer",
+	Disabled = true,
+	Moment = "start",
+	Sound = "Unit RoverExplorer Fail",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "NoBattery",
+	Actor = "RCRover",
+	Disabled = true,
+	Moment = "start",
+	Sound = "Unit Rover Fail",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "NoBattery",
+	Actor = "RCTransport",
+	Disabled = true,
+	Moment = "start",
+	Sound = "Unit TransportRC Fail",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "NoBattery",
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
 			'EndMoment', "end",
@@ -7662,6 +7773,14 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "RegolithExtractorDigging",
+	Actor = "RegolithExtractorDigger",
+	Disabled = true,
+	Moment = "digEnd",
+	Sound = "Object RegolithExtractor LoopStop",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "RegolithExtractorDigging",
 	Actor = "ConcreteExtractorCP3JointShovel",
 	Moment = "enter",
 	Sound = "Object 0 Pressure",
@@ -7733,6 +7852,32 @@ PlaceObj('ActionFXSound', {
 	Actor = "RegolithExtractorDigger",
 	Moment = "exit",
 	Sound = "Object RegolithExtractor RollerOUT",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "RegolithExtractorDigging",
+	Actor = "RegolithExtractorDigger",
+	AttachToObj = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "RegolithExtractorDigging",
+			'EndMoment', "enter",
+		}),
+	},
+	FadeIn = 1000,
+	FadeOut = 1000,
+	Moment = "exit",
+	Sound = "Object RegolithExtractor Loop",
+	handle = 1331119746,
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "RegolithExtractorDigging",
+	Actor = "RegolithExtractorDigger",
+	Disabled = true,
+	Moment = "exit",
+	Sound = "Object RegolithExtractor LoopStart",
 })
 
 PlaceObj('ActionFXSound', {
@@ -8066,6 +8211,17 @@ PlaceObj('ActionFXSound', {
 	Moment = "pre-hit-ground",
 	Sound = "Unit Rocket Warmup",
 	Source = "ActionPos",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "RocketLand",
+	Actor = "FXRocket",
+	Disabled = true,
+	FadeIn = 5000,
+	FadeOut = 3000,
+	Moment = "pre-hit-ground",
+	Sound = "Unit Rocket EngineStop",
+	handle = 382667585,
 })
 
 PlaceObj('ActionFXSound', {
@@ -10933,6 +11089,38 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "SelectObj",
+	Actor = "StorageRareMinerals",
+	Moment = "start",
+	Sound = "Object StorageDepot Select",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "SelectObj",
+	Actor = "StorageRareMinerals",
+	Moment = "start",
+	Sound = "UI SelectObject",
+	Source = "UI",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "SelectObj",
+	Actor = "StorageSeeds",
+	Moment = "start",
+	Sound = "Object StorageDepot Select",
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "SelectObj",
+	Actor = "StorageSeeds",
+	Moment = "start",
+	Sound = "UI SelectObject",
+	Source = "UI",
+	id = "",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "SelectObj",
 	Actor = "SubsurfaceHeater",
 	Moment = "start",
 	Sound = "Object SubsurfaceHeater Select",
@@ -11742,6 +11930,22 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Spawn",
+	Actor = "DustDevilMajor1",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	FadeIn = 1000,
+	FadeOut = 1000,
+	Moment = "start",
+	Sound = "Ambience Wind High 1",
+	handle = 561167909,
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Spawn",
 	Actor = "DustDevilMajor2",
 	AttachToObj = true,
 	EndRules = {
@@ -11783,6 +11987,22 @@ PlaceObj('ActionFXSound', {
 	Moment = "start",
 	Sound = "Ambience Wind Sand 2",
 	handle = 224796967,
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Spawn",
+	Actor = "DustDevilMajor2",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	FadeIn = 800,
+	FadeOut = 800,
+	Moment = "start",
+	Sound = "Ambience Wind High 3",
+	handle = 1125841561,
 })
 
 PlaceObj('ActionFXSound', {
@@ -12562,6 +12782,7 @@ PlaceObj('ActionFXSound', {
 	Moment = "start",
 	Sound = "UI BuildComplete",
 	Source = "UI",
+	id = "",
 })
 
 PlaceObj('ActionFXSound', {
@@ -12602,7 +12823,6 @@ PlaceObj('ActionFXSound', {
 	Moment = "start",
 	Sound = "UI BuildComplete",
 	Source = "UI",
-	id = "",
 })
 
 PlaceObj('ActionFXSound', {
@@ -12691,6 +12911,23 @@ PlaceObj('ActionFXSound', {
 	Moment = "start",
 	Sound = "UI BuildComplete",
 	Source = "UI",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Spawn",
+	Actor = "StorageRareMinerals",
+	Moment = "start",
+	Sound = "UI BuildComplete",
+	Source = "UI",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Spawn",
+	Actor = "StorageSeeds",
+	Moment = "start",
+	Sound = "UI BuildComplete",
+	Source = "UI",
+	id = "",
 })
 
 PlaceObj('ActionFXSound', {
@@ -13097,6 +13334,16 @@ PlaceObj('ActionFXSound', {
 	Moment = "start",
 	Sound = "UI ButtonConfirm",
 	Source = "UI",
+	Target = "idCategory1",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "UIButtonPressed",
+	Actor = "Button",
+	EndRules = {},
+	Moment = "start",
+	Sound = "UI ButtonConfirm",
+	Source = "UI",
 	Target = "idCategory10",
 })
 
@@ -13107,16 +13354,6 @@ PlaceObj('ActionFXSound', {
 	Sound = "UI ButtonConfirm",
 	Source = "UI",
 	Target = "idCategory11",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "UIButtonPressed",
-	Actor = "Button",
-	EndRules = {},
-	Moment = "start",
-	Sound = "UI ButtonConfirm",
-	Source = "UI",
-	Target = "idCategory1",
 })
 
 PlaceObj('ActionFXSound', {
@@ -13190,6 +13427,14 @@ PlaceObj('ActionFXSound', {
 	Sound = "UI ButtonConfirm",
 	Source = "UI",
 	Target = "idCategory9",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "UIButtonPressed",
+	Disabled = true,
+	Moment = "start",
+	Sound = "UI ButtonSpecialClickIn",
+	Source = "UI",
 })
 
 PlaceObj('ActionFXSound', {
@@ -14162,6 +14407,22 @@ PlaceObj('ActionFXSound', {
 	Moment = "start",
 	Sound = "Building WorkshopBiorobotics Loop",
 	handle = 200791963,
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Working",
+	Actor = "BlackCube",
+	Disabled = true,
+	Moment = "start",
+	Sound = "Mystery Cube Appear",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Working",
+	Actor = "BlackCubeMonolith",
+	Disabled = true,
+	Moment = "start",
+	Sound = "Mystery Cube Appear",
 })
 
 PlaceObj('ActionFXSound', {
@@ -15330,6 +15591,23 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Working",
+	Actor = "PowerDecoy",
+	AttachToObj = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	FadeIn = 1000,
+	FadeOut = 1000,
+	Moment = "start",
+	Sound = "Object PowerDecoy LoopIdle",
+	handle = 1607868112,
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Working",
 	Actor = "PreciousMetalsExtractor",
 	Moment = "start",
 	Sound = "Object 0 Pressure",
@@ -15406,6 +15684,27 @@ PlaceObj('ActionFXSound', {
 	Actor = "RareMetalsRefinery",
 	Moment = "start",
 	Sound = "Object MetalsRefineryRare LoopStart",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Working",
+	Actor = "RechargeStation",
+	AttachToObj = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "RechargeStation",
+			'EndMoment', "start",
+		}),
+	},
+	FadeIn = 1000,
+	FadeOut = 1000,
+	Moment = "start",
+	Sound = "Object RechargeStation Loop",
+	handle = 372424243,
 })
 
 PlaceObj('ActionFXSound', {
@@ -15819,6 +16118,16 @@ PlaceObj('ActionFXSound', {
 
 PlaceObj('ActionFXSound', {
 	Action = "Working",
+	Actor = "TheExcavator",
+	Delay = 7000,
+	Disabled = true,
+	Moment = "start",
+	Sound = "Object Excavator LoopPeak",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXSound', {
+	Action = "Working",
 	Actor = "TriboelectricScrubber",
 	AttachToObj = true,
 	EndRules = {
@@ -16097,248 +16406,5 @@ PlaceObj('ActionFXSound', {
 	FadeIn = 500,
 	Moment = "Hit",
 	Sound = "Object WaterExtractor LoopPeaks",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "ContainFireflies",
-	Actor = "LightTrap",
-	AttachToObj = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "ContainFireflies",
-			'EndMoment', "start",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "Working",
-			'EndMoment', "end",
-		}),
-	},
-	FadeIn = 2000,
-	FadeOut = 2000,
-	Moment = "end",
-	Sound = "Object LightTrap LoopEmpty",
-	handle = 1372520554,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "DoorClose",
-	Actor = "DomeDoorEntrance_02",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Building Dome DoorClose",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "DoorClose",
-	Actor = "DomeDoorExit_02",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Building Dome DoorClose",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "DoorOpen",
-	Actor = "DomeDoorEntrance_02",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Building Dome DoorOpen",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "DoorOpen",
-	Actor = "DomeDoorExit_02",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Building Dome DoorOpen",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "EmergencyPower",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	FadeIn = 100,
-	FadeOut = 100,
-	Moment = "start",
-	Sound = "UI AlertEmergencyPower",
-	Source = "UI",
-	handle = 2113700352,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "NoBattery",
-	Actor = "RCExplorer",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Unit RoverExplorer Fail",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "NoBattery",
-	Actor = "RCRover",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Unit Rover Fail",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "NoBattery",
-	Actor = "RCTransport",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Unit TransportRC Fail",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "RegolithExtractorDigging",
-	Actor = "RegolithExtractorDigger",
-	Disabled = true,
-	Moment = "digEnd",
-	Sound = "Object RegolithExtractor LoopStop",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "RegolithExtractorDigging",
-	Actor = "RegolithExtractorDigger",
-	AttachToObj = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "RegolithExtractorDigging",
-			'EndMoment', "enter",
-		}),
-	},
-	FadeIn = 1000,
-	FadeOut = 1000,
-	Moment = "exit",
-	Sound = "Object RegolithExtractor Loop",
-	handle = 1331119746,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "RegolithExtractorDigging",
-	Actor = "RegolithExtractorDigger",
-	Disabled = true,
-	Moment = "exit",
-	Sound = "Object RegolithExtractor LoopStart",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "RocketLand",
-	Actor = "FXRocket",
-	Disabled = true,
-	FadeIn = 5000,
-	FadeOut = 3000,
-	Moment = "pre-hit-ground",
-	Sound = "Unit Rocket EngineStop",
-	handle = 382667585,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "Spawn",
-	Actor = "DustDevilMajor1",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	FadeIn = 1000,
-	FadeOut = 1000,
-	Moment = "start",
-	Sound = "Ambience Wind High 1",
-	handle = 561167909,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "Spawn",
-	Actor = "DustDevilMajor2",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	FadeIn = 800,
-	FadeOut = 800,
-	Moment = "start",
-	Sound = "Ambience Wind High 3",
-	handle = 1125841561,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "UIButtonPressed",
-	Disabled = true,
-	Moment = "start",
-	Sound = "UI ButtonSpecialClickIn",
-	Source = "UI",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "Working",
-	Actor = "BlackCube",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Mystery Cube Appear",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "Working",
-	Actor = "BlackCubeMonolith",
-	Disabled = true,
-	Moment = "start",
-	Sound = "Mystery Cube Appear",
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "Working",
-	Actor = "PowerDecoy",
-	AttachToObj = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	FadeIn = 1000,
-	FadeOut = 1000,
-	Moment = "start",
-	Sound = "Object PowerDecoy LoopIdle",
-	handle = 1607868112,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "Working",
-	Actor = "RechargeStation",
-	AttachToObj = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "RechargeStation",
-			'EndMoment', "start",
-		}),
-	},
-	FadeIn = 1000,
-	FadeOut = 1000,
-	Moment = "start",
-	Sound = "Object RechargeStation Loop",
-	handle = 372424243,
-})
-
-PlaceObj('ActionFXSound', {
-	Action = "Working",
-	Actor = "TheExcavator",
-	Delay = 7000,
-	Disabled = true,
-	Moment = "start",
-	Sound = "Object Excavator LoopPeak",
-	Target = "ignore",
 })
 

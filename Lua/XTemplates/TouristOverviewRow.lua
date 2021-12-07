@@ -6,7 +6,7 @@ PlaceObj('XTemplate', {
 	id = "TouristOverviewRow",
 	PlaceObj('XTemplateTemplate', {
 		'__template', "CommandCenterRow",
-		'RolloverText', T(12799, --[[XTemplate TouristOverviewRow RolloverText]] "<OverviewInfo>"),
+		'RolloverText', T(12799, --[[XTemplate TouristOverviewRow RolloverText]] "<UIOverviewInfo>"),
 		'RolloverHint', T(12800, --[[XTemplate TouristOverviewRow RolloverHint]] "<left_click><left_click> Select"),
 		'RolloverHintGamepad', T(12801, --[[XTemplate TouristOverviewRow RolloverHintGamepad]] "<ButtonA> Select"),
 		'OnContextUpdate', function (self, context, ...)

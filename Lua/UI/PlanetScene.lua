@@ -2,6 +2,7 @@ local PlanetCameras =
 {
 	["PlanetNone"] = { point(0, 3398, 30000), point(-700, 0, 29900) },
 	["PlanetMars"] = { point(0, 3398, 30000), point(-700, 0, 29900) },
+	["PlanetMarsCloseup"] = { point(-521, 1645, 30300),point(-893, 1060, 30453) },
 	["PlanetEarth"] = { point(-334, 2536, 30126), point(-472, 2056, 30114) },
 	["PlanetEarthCloseup"] = { point(-571, 1545, 30400),point(-683, 1060, 30353) },
 }
@@ -12,7 +13,9 @@ local planet_earth_close_rotation_speed = 250
 
 GlobalVar("PlanetScene", false)
 GlobalVar("PlanetCamera", false)
-GlobalVar("PlanetThread", false)
+if FirstLoad then
+	PlanetThread = false
+end
 GlobalVar("PlanetStack", false)
 
 function SetPlanetCamera(planet, state)
@@ -110,6 +113,7 @@ end
 
 local RocketOffsets = {
 	ZeusRocket = point(0, -20*guic, 0),
+	LanderRocket = point(0, -50*guic, 0),
 }
 
 GlobalVar("PlanetMaxWaterLevel", false)
@@ -178,6 +182,7 @@ function PlacePlanet(scene)
 	local planets = {
 		["PlanetNone"] = false,
 		["PlanetMars"] = "PlanetMars",
+		["PlanetMarsCloseup"] = "PlanetMars",
 		["PlanetEarth"] = "PlanetEarth",
 		["PlanetEarthCloseup"] = "PlanetEarth",
 	}
@@ -215,6 +220,10 @@ function PlacePlanet(scene)
 		rotation_obj:Attach(atmosphere, rotation_obj:GetSpotBeginIndex("Planet"))
 		atmosphere:SetScale(101)
 		atmosphere:SetOpacity(GetTerraformParamPct("Atmosphere"))
+
+		if scene == "PlanetMarsCloseup" then
+			rocket_obj = PlacePlanetRocket("LanderRocket")
+		end
 	elseif class == "PlanetEarth" then
 		rotation_obj:SetState("idleSlow")
 		rotation_obj:SetAxis(point(-1361, 1113, 3700))

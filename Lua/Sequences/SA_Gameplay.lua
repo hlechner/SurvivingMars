@@ -707,25 +707,9 @@ function SA_RemoveTrait:ShortDescription()
 end
 --
 DefineClass.SA_AddApplicants = {
-	__parents = { "SequenceAction" },
+	__parents = { "RandomApplicantProps", "SequenceAction" },
 	properties = {
 		{ id = "Number", name = T(3710, "Number"), editor = "text", default = "1" },
-		{ id = "Trait",  name = T(3720, "Trait"), editor = "dropdownlist", default = "", 
-			items = function() 
-				local traits = TraitsCombo(nil, nil, "no specialziations") 
-				table.insert(traits, {value = "random_positive", text = "Random Positive"})
-				table.insert(traits, {value = "random_negative", text = "Random Negative"})
-				table.insert(traits, {value = "random_rare", text = "Random Rare"})
-				table.insert(traits, {value = "random_common", text = "Random Common"})
-				table.insert(traits, {value = "random", text = "Random"})
-				return traits
-			end},
-		{ id = "Specialization",  name = T(240, "Specialization"), editor = "dropdownlist", default = "any", 
-			items = function() 
-				local items = GetColonistSpecializationCombo("empty")()
-				table.insert(items, 1, {value = "any", text = "Random Specialization"})
-				return items
-			end},
 	},
 	MenuName = "Add Applicants",
 	Menu = "Gameplay",
@@ -737,42 +721,8 @@ function SA_AddApplicants:ShortDescription()
 end
 
 function SA_AddApplicants:Exec(seq_player, ip, seq, registers)
-	if self.Trait=="" then
-		self.Trait = "random"
-	end
-	if self.Specialization=="" then
-		self.Specialization = "any"
-	end
 	local number = seq_player:Eval("return " .. self.Number, registers)
-	local now = GameTime()
-	for i=1,number do
-		local colonist = GenerateApplicant(now)
-		local to_add = self.Trait
-		if self.Trait == "random_positive" then
-			to_add = GetRandomTrait(colonist.traits, {}, {}, "Positive", "base")
-		elseif self.Trait == "random_negative" then
-			to_add =  GetRandomTrait(colonist.traits, {}, {}, "Negative", "base")
-		elseif self.Trait == "random_rare" then
-			to_add =  GetRandomTrait(colonist.traits, {}, {}, "Rare", "base")
-		elseif self.Trait == "random_common" then
-			to_add =  GetRandomTrait(colonist.traits, {}, {}, "Common", "base")
-		elseif self.Trait == "random" then
-			to_add = GenerateTraits(colonist, false, 1)
-		else
-			to_add = self.Trait
-		end
-		if type(to_add) == "table" then
-			for trait in pairs(to_add) do
-				colonist.traits[trait] = true
-			end
-		elseif to_add then
-			colonist.traits[to_add] = true
-		end
-		if self.Specialization ~= "any" then
-			colonist.traits[self.Specialization] = true
-			colonist.specialist = self.Specialization
-		end
-	end
+	GenerateApplicants(number, self.Trait, self.Specialization)
 end
 --------
 
@@ -954,7 +904,7 @@ DefineClass.SA_CheckResearch = {
 	properties = {
 		{ id = "Field",    name = T(3721, "Field"),    editor = "dropdownlist", items = ResearchFieldsCombo, default = "" },
 		{ id = "Research", name = T(311, "Research"), editor = "dropdownlist", items = ResearchTechsCombo,  default = "" },
-		{ id = "State",    name = T(3722, "State"),    editor = "dropdownlist", items = {"Available","Researched"},  default = "" },
+		{ id = "State",    name = T(3722, "State"),    editor = "dropdownlist", items = {"Available","Researched","Undiscovered"},  default = "" },
 	},
 	
 	Menu = "Research",
@@ -962,7 +912,9 @@ DefineClass.SA_CheckResearch = {
 }
 
 function SA_CheckResearch:TestCondition(sequence_player, ip, seq, registers)
-	if self.State == "Available" then
+	if self.State == "Undiscovered" then
+		return not UIColony:IsTechDiscovered(self.Research) and not UIColony:IsTechResearched(self.Research)
+	elseif self.State == "Available" then
 		return UIColony:IsTechDiscovered(self.Research) and not UIColony:IsTechResearched(self.Research)
 	else
 		return UIColony:IsTechResearched(self.Research)
@@ -1494,7 +1446,7 @@ function PositionFinder:TestPos(pt_pos, map_id, q, r, angle, class_def, building
 	return true
 end
 
-function PositionFinder:TryFindRandomPos(class_def, map_id, building_shape, building_other_shape)
+function PositionFinder:TryFindRandomPos(class_def, map_id, building_shape, building_other_shape, origin_pos)
 	local terrain = GetTerrainByID(map_id)
 	local w, h = terrain:GetMapSize()
 	local r_w, r_h, q, r, angle, all_clear
@@ -1562,6 +1514,11 @@ function PositionFinder:TryFindRandomPos(class_def, map_id, building_shape, buil
 			end
 			r_w = city:Random(area:minx(), area:maxx())
 			r_h = city:Random(area:miny(), area:maxy())
+		elseif origin_pos then
+			random_pos_max_dist_from_label = self.random_pos_label_dist or 5000
+			local r_l = city:Random(random_pos_max_dist_from_label)
+			local a = city:Random(360*60)
+			r_w, r_h = RotateRadius(r_l, a, origin_pos, true)
 		else
 			r_w = city:Random(w - 1) + 1
 			r_h = city:Random(h - 1) + 1
@@ -2032,7 +1989,9 @@ DefineClass.SA_PickRandomObject = {
 		{ id = "obj_class", name = T(3765, "Pick object from class"), editor = "dropdownlist", default = false, items = function() local t = ClassNameItems();table.insert(t, 1, false);return t end, },
 		{ id = "obj_reg",   name = T(3766, "Pick object from register"), editor = "text", default = false,  },
 		{ id = "store_obj",       name = T(8037, "Store object in register"), editor = "text", default = "RandomObject",  },
-		{ id = "visible_only",    name = T(8038, "Visible only"), editor = "bool", default = false },
+		{ id = "visible_only",    name = T(8038, "Visible only"), editor = "bool", default = false, },
+		{ id = "nearby_reg", name = T(14322, "Near obj in register"), editor = "text", default = false, },
+		{ id = "range", name = T(14323, "Range (m)"), editor = "number", default = 50, scale = guim, },
 	},
 	
 	Menu = "Gameplay",
@@ -2060,6 +2019,13 @@ end
 
 function SA_PickRandomObject:ShortDescription()
 	return string.format("Pick a random %sobject %s and store it in register %s", self.visible_only and "visible " or "", self:GetObjectString(), self.store_obj)
+end
+
+function SA_PickRandomObject:IsObjectNearby(object, registers)
+	local center = registers[self.nearby_reg]
+	center = IsPoint(center) and center or center:GetPos()
+	local distance = object:GetPos():Dist(center)
+	return distance < self.range
 end
 
 function SA_PickRandomObject:GatherObjects(seq_player, ip, seq, registers)
@@ -2104,6 +2070,18 @@ function SA_PickRandomObject:GatherObjects(seq_player, ip, seq, registers)
 		end
 		objects = visible
 	end
+	
+	if self.nearby_reg then
+		copy = false
+		local nearby = {}
+		for i=1,#objects do
+			if self:IsObjectNearby(objects[i], registers) then
+				table.insert(nearby, objects[i])
+			end			
+		end
+		objects = nearby
+	end
+	
 	return copy and table.icopy(objects) or objects
 end
 
@@ -2185,6 +2163,14 @@ function SA_SpawnObjectAt:Exec(seq_player, ip, seq, registers)
 			q, r = WorldToHex(pos)
 			angle = 0		
 			pos_test_result = self:TestPos(pos, map_id, q, r, angle, class_def, outline, interior)
+			if not pos_test_result  then
+				-- Try to find a nearby valid point
+				local x, y
+				pos_test_result, x, y, q, r, angle = self:TryFindRandomPos(class_def, map_id, outline, interior, pos)
+				if pos_test_result then
+					pos = point(x, y)
+				end
+			end
 		else
 			local x, y
 			pos_test_result, x, y, q, r, angle = self:TryFindRandomPos(class_def, map_id, outline, interior)
@@ -2253,6 +2239,7 @@ DefineClass.SA_SpawnAnomaly = {
 		{ category = "Anomaly", name = T(3775, "Sequence List"), 				id = "sequence_list", default = "",    editor = "dropdownlist", items = function() return table.map(DataInstances.Scenario, "name") end, },
 		{ category = "Anomaly", name = T(5, "Sequence"),                id = "sequence", editor = "dropdownlist", items = function(self) return self.sequence_list == "" and {} or table.map(DataInstances.Scenario[self.sequence_list], "name") end, default = "", help = "Sequence to start when the anomaly is scanned" },
 		{ category = "Anomaly", name = T(8696, "Expiration Time"),                id = "expiration_time", editor = "number", default = 0, scale = const.HourDuration, help = "If > 0 the anomaly will expire and disappear in this many hours." },
+		{ category = "Anomaly", name = T(3940, "Rare"), id = "rare", editor = "bool", default = false, help = "Whether we should spawn a rare anomaly" },
 
 		-- Override default to make sure anomalies do not overlap each other
 		{ id = "check_terran_deposit", name = T(3742, "Check Terrain Deposit"), editor = "bool", default = true},
@@ -2277,6 +2264,7 @@ function SA_SpawnAnomaly:SpawnObject(map_id)
 		sequence_list = self.sequence_list == "" and seq_player.seq_list.name or self.sequence_list,
 		expiration_time = self.expiration_time,
 		revealed = true,
+		rare = self.rare,
 	}, map_id)
 end
 

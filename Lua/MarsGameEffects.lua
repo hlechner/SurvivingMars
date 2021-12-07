@@ -46,6 +46,29 @@ function Effect_TechUnlockBuilding:OnDataLoaded(parent)
 	end
 end
 
+----- Effect_TechEnableBuildingInEnvironment
+
+DefineClass.Effect_TechEnableBuildingInEnvironment = {
+	__parents = { "Tech_Effect" },
+	properties = {
+		{ category = "Unlock", id = "Building", name = "Building", editor = "dropdownlist", default = "", items = function() return BuildingsCombo() end, editor_update = true },
+		{ category = "Unlock", id = "Environment", name = "Environment", editor = "dropdownlist", default = "", items = EnvironmentTypes, editor_update = true },
+		{ category = "Unlock", id = "Disable", name = "Disable Building", editor = "bool", default = false, },
+	},
+	EditorName = "Enable building in environment",
+	Description = T(14320, "<if(Disable)>Disable<else>Enable</if> <Building> in <Environment>"),
+}
+
+function Effect_TechEnableBuildingInEnvironment:OnApplyEffect(parent)
+	if not BuildingTemplates[self.Building] then return end
+	
+	if self.Disable then
+		DisableInEnvironment(self.Building, self.Environment)
+	else
+		EnableInEnvironment(self.Building, self.Environment)
+	end
+end
+
 
 ----- Effect_Funding
 
@@ -259,7 +282,7 @@ DefineClass.Effect_UnlockResupplyItem = {
 }
 
 function Effect_UnlockResupplyItem:OnApplyEffect(colony, parent)
-	local def = RocketPayload_GetMeta(self.Item)
+	local def = GetResupplyItem(self.Item)
 	if def then
 		if type(def.verifier) == "function" then
 			def.locked = not def.verifier(def, GetMissionSponsor().id)
@@ -399,4 +422,17 @@ function Effect_GrantPrefab:OnApplyEffect(colony)
 	else
 		MainCity:AddPrefabs(prefab, amount, false)
 	end
+end
+
+DefineClass.Effect_GrantApplicants = {
+	__parents = { "RandomApplicantProps", "Tech_Effect", },
+	properties = {
+		{ category = "General", id = "Amount", name = "Amount", editor = "number", default = 1, editor_update = true },
+	},
+	EditorName = "Grant Applicants",
+	Description = T(14321, "<Amount> Applicants with <Specialization> specialization"),
+}
+
+function Effect_GrantApplicants:OnApplyEffect(colony)
+	GenerateApplicants(self.Amount, self.Trait, self.Specialization)
 end

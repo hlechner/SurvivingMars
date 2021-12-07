@@ -168,6 +168,7 @@ function LandscapeConstructionSiteBase:GetIPStatus()
 end
 
 function LandscapeConstructionSiteBase:DroneApproach(drone, resource, is_closest)
+	if not IsValid(self) or not IsValid(drone) then return end
 	local q, r = WorldToHex(drone)
 	local landscape_grid = IsValid(self) and GetLandscapeGrid(self) or GetLandscapeGrid(drone)
 	if self.mark and self.mark == LandscapeCheck(landscape_grid, q, r, true) then

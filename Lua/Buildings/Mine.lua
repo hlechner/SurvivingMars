@@ -72,7 +72,8 @@ function Mine:GatherConstructionStatuses(statuses)
 end
 
 function Mine:GetResourceProducedIcon(idx)
-	return "UI/Icons/Sections/" .. GetResourceInfo(self.exploitation_resource).id .. "_2.tga"
+	local info = GetResourceInfo(self.exploitation_resource or "Metals")
+	return "UI/Icons/Sections/" .. info.id .. "_2.tga"
 end
 
 function Mine:GetUISectionMineRollover()

@@ -9,10 +9,10 @@ DefineClass.SpawnsAnomalyOnGameInit = {
 		{ template = true, category = "Anomaly", name = T(3775, "Sequence List"), id = "sequence_list", default = "", editor = "dropdownlist", items = function() return table.map(DataInstances.Scenario, "name") end, },
 		{ template = true, category = "Anomaly", name = T(5, "Sequence"), id = "sequence", editor = "dropdownlist", items = function(self) return self.sequence_list == "" and {} or table.map(DataInstances.Scenario[self.sequence_list], "name") end, default = "", help = "Sequence to start when the anomaly is scanned" },
 		{ template = true, category = "Anomaly", name = T(8696, "Expiration Time"), id = "expiration_time", editor = "number", default = 0, scale = const.HourDuration, help = "If > 0 the anomaly will expire and disappear in this many hours." },
+		{ template = true, category = "Anomaly", name = T(3940, "Rare"), id = "anomaly_rare", editor = "bool", default = false, help = "Whether we should spawn a rare anomaly" },
 	},
 }
-
-function SpawnsAnomalyOnGameInit:GameInit()
+function SpawnsAnomalyOnGameInit:SpawnAnomaly()
 	local map_id = self:GetMapID()
 	local pos = self:GetPos()
 
@@ -24,6 +24,7 @@ function SpawnsAnomalyOnGameInit:GameInit()
 	marker.expiration_time = self.expiration_time
 	marker.tech_action = self.is_breakthrough and "breakthrough"
 	marker.revealed = self.anomaly_revealed
+	marker.rare = self.anomaly_rare
 	marker:SetPos(pos)
 
 	local x, y, unobstructed, obstructed = FindUnobstructedDepositPos(marker)
@@ -37,4 +38,8 @@ function SpawnsAnomalyOnGameInit:GameInit()
 	if sector then
 		sector:RegisterDeposit(marker)
 	end
+end
+
+function SpawnsAnomalyOnGameInit:GameInit()
+	self:SpawnAnomaly()
 end

@@ -264,6 +264,10 @@ function RequiresMaintenance:SetNeedsMaintenanceState()
 	end
 end
 
+function RequiresMaintenance:NeedsMaintenance()
+	return self:DoesRequireMaintenance() and (self:IsMalfunctioned() or self.maintenance_phase)
+end
+
 function RequiresMaintenance:SetMalfunction()
 	self.is_need_maintenance= false -- when malfunction by other reason than resources make real malfunction and reset that state
 	if not self:DoesRequireMaintenance() then return end --blds that do not require maintenance cannot malfunction.

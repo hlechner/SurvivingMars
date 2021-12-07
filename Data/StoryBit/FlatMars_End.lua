@@ -3,6 +3,7 @@
 PlaceObj('StoryBit', {
 	ActivationEffects = {},
 	Effects = {},
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -23,6 +24,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(150695526934, --[[voice:narrator]] "The head of the, now quite grown in numbers, Flat Mars Society has come up with a plan that will, quote - “bring down the veil of lies that the Martian government is feeding its colonists and will enlighten anyone who is willing to see past it!”"),
 	group = "Colonists",
 	id = "FlatMars_End",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637248193,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "number_of_idiots",
 		'Value', 10,

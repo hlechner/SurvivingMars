@@ -524,7 +524,7 @@ function UIGetBuildingPrerequisites(cat_id, template, bCreateItems, ignore_check
 
 	local tech_shown, tech_enabled, tech_rollover = GetBuildingTechsStatus(template.id, template.build_category)
 	local available_prefabs = UICity:GetPrefabs(template.id)
-	local prefab_item = template.require_prefab and RocketPayload_GetMeta(template.id)
+	local prefab_item = template.require_prefab and GetResupplyItem(template.id)
 	local require_prefab = not tech_enabled and prefab_item and not prefab_item.locked
 
 	if not tech_shown and not require_prefab and available_prefabs == 0 then

@@ -65,8 +65,8 @@ function TriggerMarsquake(epicenter_label, radius, targets_count)
 	
 	g_MarsquakeActive = true
 	PlayFX("Marsquake", "start", center_building)
-	MarsquakeShakeCamera(durations[1], 0, shake_force)
-	CreateGameTimeThread(MarsquakeShakeCamera, total_duration, shake_force)
+	MarsquakeShakeCamera(durations[1], 0, shake_force, MainMapID)
+	CreateGameTimeThread(MarsquakeShakeCamera, total_duration, shake_force, nil, MainMapID)
 	for i=1,#affected_buildings do
 		Sleep(durations[i])
 		local bld = affected_buildings[i]
@@ -80,11 +80,11 @@ function TriggerMarsquake(epicenter_label, radius, targets_count)
 	AddOnScreenNotification("Marsquake", nil, { count = #affected_buildings }, affected_buildings, MainCity.map_id)
 	
 	PlayFX("Marsquake", "end", center_building)
-	MarsquakeShakeCamera(2000, shake_force, 0)
+	MarsquakeShakeCamera(2000, shake_force, 0, MainMapID)
 	g_MarsquakeActive = false
 end
 
-function MarsquakeShakeCamera(total_time, start_force, end_force)
+function MarsquakeShakeCamera(total_time, start_force, end_force, map_id)
 	total_time = total_time or 1000
 	start_force = start_force or 300
 	end_force = end_force or start_force
@@ -100,14 +100,13 @@ function MarsquakeShakeCamera(total_time, start_force, end_force)
 	
 	local start_time = now()
 	local end_time = now() + total_time
-	local surface_map_id = MainCity:GetMapID()
 	while true do
 		local passed_time = now() - start_time
 		if passed_time >= total_time then
 			break
 		end
 		
-		if not IsCameraLocked() and not CameraTransitionThread and ActiveMapID == surface_map_id then
+		if not IsCameraLocked() and not CameraTransitionThread and ActiveMapID == map_id then
 			local dir2D
 			local next_pos, next_lookat
 			
@@ -159,7 +158,7 @@ function MarsquakeShakeCamera(total_time, start_force, end_force)
 		end
 	end
 	
-	if starting_pos and starting_lookat then
+	if starting_pos and starting_lookat and map_id == ActiveMapID then
 		cameraRTS.SetCamera(starting_pos, starting_lookat)
 	end
 end

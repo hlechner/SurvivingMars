@@ -339,8 +339,24 @@ DefineClass.UniversalStorageDepot = {
 function UniversalStorageDepot:Init()
 	self.placement_offset = {}
 end
+
+function UniversalStorageDepot:SetDepotEntity()
+	if self.template_name == "UniversalStorageDepot" then
+		local has_minerals = IsDlcAccessible("picard")
+		local has_seeds = IsDlcAccessible("armstrong")
+		local entity = self:GetEntity()
+		if has_minerals and has_seeds then
+			entity = "StorageDepotAIO"
+		elseif has_minerals or has_seeds then
+			entity = "StorageDepotBB"
+		end
+		self:ChangeEntity(entity)
+	end
+end
 	
 function UniversalStorageDepot:GameInit()
+	self:SetDepotEntity()
+	
 	local len = #self.storable_resources
 	for i = 1, len do
 		local resource_name = self.storable_resources[i]
@@ -404,7 +420,18 @@ function UniversalStorageDepot:RegisterResourceRequest(resource_name)
 	end
 end
 
+function UniversalStorageDepot:SetStorableResources()
+	self.storable_resources = table.copy(self.storable_resources)
+	if self.template_name == "UniversalStorageDepot" then
+		local has_minerals = IsDlcAccessible("picard")
+		local has_seeds = IsDlcAccessible("armstrong")
+		if has_minerals then self.storable_resources[#self.storable_resources + 1] = "PreciousMinerals" end
+		if has_seeds then self.storable_resources[#self.storable_resources + 1] = "Seeds" end
+	end
+end
+
 function UniversalStorageDepot:CreateResourceRequests()
+	self:SetStorableResources()
 	Building.CreateResourceRequests(self)
 	local storable_resources = self.storable_resources
 	assert(storable_resources, "Shared Storage Depot cannot initialize properly!")

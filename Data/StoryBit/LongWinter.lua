@@ -35,6 +35,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(839881602984, --[[voice:narrator]] "As you sip your hot Earl Gray tea, a weather update comes up on your monitor."),
 	group = "Disasters",
 	id = "LongWinter",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(944660397278, --[[StoryBit LongWinter Text]] "Our first priority is to make sure our power generation is in working order."),
 		'OutcomeText', "custom",
@@ -103,12 +111,14 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "WaterExtractor",
+				'InColony', false,
 				'Prop', "water_production",
 				'Percent', "<water_boost>",
 				'ModifyId', "LongWinter",
 			}),
 			PlaceObj('ModifyLabel', {
 				'Label', "MoistureVaporator",
+				'InColony', false,
 				'Prop', "water_production",
 				'Percent', "<water_boost>",
 				'ModifyId', "LongWinter",

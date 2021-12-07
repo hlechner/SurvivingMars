@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 		"Masterpiece_PeriodicFunding",
 	},
 	Effects = {},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 36000000,
@@ -13,5 +14,13 @@ PlaceObj('StoryBit', {
 	TextsDone = true,
 	group = "Buildings",
 	id = "Masterpiece_KillIn50Sols",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 })
 

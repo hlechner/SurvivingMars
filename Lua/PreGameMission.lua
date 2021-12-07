@@ -363,111 +363,6 @@ function LockStatusCombo()
 	}
 end
 
-local function ModifyResupplyDef(def, param, percent)
-	local orig_def = def and CargoPreset[def.id]
-	if not orig_def then
-		-- asserts olny if all dlcs are available and cannot find the cargo preset
-		-- otherwise the preset may be in disabled dlc and return is enough
-		if Platform.developer then
-			assert(DbgAreDlcsMissing(), "No such cargo preset " .. tostring(def and def.id))
-		else
-			print("No such cargo preset " .. tostring(def and def.id))
-		end
-		return
-	end
-	if param == "price" then
-		def.mod_price = (def.mod_price or 100) + percent
-		def.price = MulDivRound(orig_def.price, def.mod_price, 100)
-	elseif param == "weight" then
-		def.mod_weight = (def.mod_weight or 100) + percent
-		def.kg = MulDivRound(orig_def.kg, def.mod_weight, 100)
-	else
-		assert(false, "unexpected resupply parameter received for modification: " .. tostring(param))
-	end
-end
-
---[[@@@
-Change price or weight of resupply item. If called multiple times, first sums percents.
-@function void Gameplay@ModifyResupplyParam(string id, string param, int percent)	
-@param string id - resupply item identifier.Can be
-		"RCRover","ExplorerRover","RCTransport", "Drone", "Concrete", "Metals", "Food", "Polymers", "MachineParts", "Electronics" "DroneHub","MoistureVaporator","FuelFactory", "StirlingGenerator", "MachinePartsFactory","ElectronicsFactory",  "PolymerPlant","OrbitalProbe","ShuttleHub", "MetalsExtractor",  "RegolithExtractor", "WaterExtractor", "PreciousMetalsExtractor","Apartments", "LivingQuarters", "SmartHome", "Arcology",  "HangingGardens","WaterReclamationSystem", "CloningVats","NetworkNode", "MedicalCenter",  "Sanatorium",
-@param string param  - type of change: "price", "weight" 
-@param int percent - percent to change with.
---]]
-function ModifyResupplyParam(id, param, percent)
-	local def = RocketPayload_GetMeta(id)
-	return ModifyResupplyDef(def, param, percent)
-end
-
---[[@@@
-Change price or weight of all resupply items.
-@function void Gameplay@ModifyResupplyParams(string param, int percent)	
-@param string param  - type of change: "price", "weight" 
-@param int percent - percent to change with.
---]]
-function ModifyResupplyParams(param, percent)
-	for _, def in ipairs(ResupplyItemDefinitions) do
-		ModifyResupplyDef(def, param, percent)
-	end
-end
-
-function UpdateResupplyDef(sponsor, mods, locks, def)
-	local mod = mods[def.id] or 0
-	if mod ~= 0 then
-		ModifyResupplyDef(def, "price", mod)
-	end
-	local lock = locks[def.id]
-	if lock ~= nil then
-		def.locked = lock
-	end
-	if type(def.verifier) == "function" then 
-		def.locked = def.locked or not def.verifier(def, sponsor)
-	end
-end
-
-function RocketPayload_Init(ignore_existing_defs)
-	local sponsor = g_CurrentMissionParams and g_CurrentMissionParams.idMissionSponsor or ""
-	local mods = GetSponsorModifiers(sponsor)
-	local locks = GetSponsorLocks(sponsor)
-	local defs = {}
-	ForEachPreset("Cargo", function(item, group, self, props)
-		local def = setmetatable({}, {__index = item})
-		if ignore_existing_defs then
-			local resupply_item = GetResupplyItem(def.id)
-			if not resupply_item then
-				defs[#defs + 1] = def
-				UpdateResupplyDef(sponsor, mods, locks, def)
-			else
-				table.insert(defs, resupply_item)
-			end
-		else
-			defs[#defs + 1] = def
-			UpdateResupplyDef(sponsor, mods, locks, def)
-		end
-	end)
-	if _G["Cargo"].HasSortKey then
-		table.sort(defs, PresetSortLessCb)
-	end
-	ResupplyItemDefinitions = defs
-end
-
-function OnMsg.PostNewGame()
-	--when a new game is loaded, ResupplyItemDefinitions gets initialized with default values
-	--so we need to apply the sponsor modifiers once again
-	RocketPayload_Init()
-end
-
-function GetResupplyItem(name)
-	return table.find_value(ResupplyItemDefinitions, "id", name)
-end
-
-function IsResupplyItemAvailable(name)
-	local item = GetResupplyItem(name)
-	return item and not item.locked
-end
-
-GlobalVar("ResupplyItemDefinitions", {})
-
 modifiableConsts = {
 	{local_id = "additional_research_points", global_id = "SponsorResearch"},
 	{local_id = "additional_colonists_per_rocket", global_id = "MaxColonistsPerRocket"},
@@ -484,12 +379,6 @@ directlyModifiableConsts = {
 
 function SavegameFixups.ModifiableRocketPrice()
 	g_Consts:SetBase("RocketPrice", GetMissionSponsor().rocket_price)
-end
-
-function SavegameFixups.CorrectOrderingOfResources()
-	if _G["Cargo"].HasSortKey then
-		table.sort(ResupplyItemDefinitions, PresetSortLessCb)
-	end
 end
 
 function DirectlyModifiedConstValue(label, base_value)
@@ -744,7 +633,7 @@ function GenerateRandomMissionParams()
 end
 
 function GenerateRocketCargo()
-	RocketPayload_Init()
+	ResupplyItemsInit()
 	g_RocketCargo = GetMissionInitialLoadout("on_start")
 	RocketPayload_CalcCargoWeightCost()
 end

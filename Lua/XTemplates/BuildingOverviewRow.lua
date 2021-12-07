@@ -8,7 +8,7 @@ PlaceObj('XTemplate', {
 		'__template', "CommandCenterRow",
 		'RolloverAnchor', "bottom",
 		'RolloverAnchorId', "idUpgrades",
-		'RolloverText', T(345376930850, --[[XTemplate BuildingOverviewRow RolloverText]] "<OverviewInfo>"),
+		'RolloverText', T(345376930850, --[[XTemplate BuildingOverviewRow RolloverText]] "<UIOverviewInfo>"),
 		'RolloverHint', T(115984499466, --[[XTemplate BuildingOverviewRow RolloverHint]] "<left_click><left_click> Select"),
 		'RolloverHintGamepad', T(764097870353, --[[XTemplate BuildingOverviewRow RolloverHintGamepad]] "<ButtonA> Select"),
 		'OnContextUpdate', function (self, context, ...)

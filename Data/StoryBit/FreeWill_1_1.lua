@@ -12,6 +12,7 @@ PlaceObj('StoryBit', {
 	Enables = {
 		"FreeWill_2",
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	Text = T(786447347502, --[[StoryBit FreeWill_1_1 Text]] 'The security personnel quickly caught the would-be perpetrators before they could strike. The life in the colony continues to go by but something sinister is unfolding.\n\n<effect>A new tech - "Violent Urges" – has become available. Research it to gain insight on the situation.'),
@@ -21,5 +22,13 @@ PlaceObj('StoryBit', {
 	VoicedText = T(366425044247, --[[voice:narrator]] "Only our preemptive measures have prevented another crime spree as several Arcology residents attempted assaults against unsuspecting Colonists."),
 	group = "Breakthroughs",
 	id = "FreeWill_1_1",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 })
 

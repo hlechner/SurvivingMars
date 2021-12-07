@@ -438,8 +438,11 @@ Applies a modifier to a property for all objects in the specified label. Label m
 Label
 : The label to be affected; labels specify certain specific subsets of objects
 
+InColony
+: If true, apply to a label for the entire Colony. if false, apply to a label for the current city.
+
 InDome
-: It true, apply to a label within the Dome passed as a parameter to this effect instead
+: If true, apply to a label within the Dome passed as a parameter to this effect instead.
 
 Property
 : Name of a numeric property to modify
@@ -621,6 +624,9 @@ Amount
 ## RewardNewRocket
 
 Grant a new rocket.
+Rocket Class
+: The rocket class to reward
+
 ## RewardPrefab
 
 Grant a specific amounts of building prefabs or drones.

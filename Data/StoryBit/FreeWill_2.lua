@@ -7,6 +7,7 @@ PlaceObj('StoryBit', {
 		PlaceObj('EraseColonist', nil),
 	},
 	Enabled = true,
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('PickResident', {
 			'ParentBuildingLabel', "Arcology",
@@ -26,6 +27,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(569428296629, --[[voice:narrator]] "The mysterious crime spree by Arcology residents has been solved. As with most complicated cases, the truth is hard to believe, but yet evident."),
 	group = "Breakthroughs",
 	id = "FreeWill_2",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(858940240505, --[[StoryBit FreeWill_2 Text]] "Upgrade Hive Mind hardware in all Arcologies."),
 		'OutcomeText', "custom",

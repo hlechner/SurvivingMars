@@ -651,7 +651,7 @@ end
 function ApplyModAttach(object, event, apply)
 	local matched = 0
 	for _, mod in ipairs(ModsLoaded or empty_table) do
-		for _, item in ipairs(mod.items) do
+		for _, item in ipairs(mod.items or empty_table) do
 			if IsKindOf(item, "ModItemAttachment") and item:ApplyToObject(object, event, apply) then
 				matched = matched + 1
 			end

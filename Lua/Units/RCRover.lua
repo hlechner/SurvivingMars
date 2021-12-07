@@ -130,6 +130,9 @@ end
 
 function RCRover:DetachFromRealm()
 	DroneControl.RemoveLabelsFromCity(self)
+	for _, drone in ipairs(table.subtraction(self.drones, self.attached_drones)) do
+		self:Abandon(drone)
+	end
 end
 
 function RCRover:AttachedToRealm()
@@ -714,6 +717,10 @@ function RCRover:IsDroneEmbarked(drone)
 	return drone.command == "Embark" --can also check .attached_drones
 end
 
+function RCRover:IsIdle()
+	return self.command == "Siege" or BaseRover.IsIdle(self)
+end
+
 local MaxBuildingPriority = const.MaxBuildingPriority
 function RCRover:OnRemoveBuilding(building)
 	if not self.sieged_state or self.siege_state_name == "Unsiege" then --for this line
@@ -1040,7 +1047,6 @@ function RCRover:RepairDrone(drone, power)
 	end
 end
 
-
 function RCRover:AbandonAllDrones()
 	for i = 1, #self.attached_drones do
 		self.attached_drones[i]:Detach()
@@ -1094,6 +1100,11 @@ end
 function RCRover:BuildWithRover()
 	OpenXBuildMenu(nil)
 	BuildingWithRCRover = self
+end
+
+function RCRover:EnterTransporter(transporter)
+	self.sieged_state = false
+	BaseRover.EnterTransporter(self, transporter)
 end
 
 --ui only!

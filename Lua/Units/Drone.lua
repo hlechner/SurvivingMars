@@ -291,6 +291,8 @@ function Drone:SetCommandCenter(command_center, do_not_orphan)
 		table.insert(command_center.drones, self)
 		if command_center:IsRestrictingDroneWorkRadius() then
 			self:RestrictArea(command_center:GetPos(), const.DroneRestrictRadius)
+		else
+			self:RestrictArea(command_center:GetPos(), 0)
 		end
 	elseif old_command_center and not self:IsDead() and not do_not_orphan then --dead drones cannot be orphans.
 		--just became orphan.
@@ -842,7 +844,7 @@ function Drone:ImproveDemandRequest(s_request, d_request, resource, amount, must
 	end
 end
 
-const.MaxUnreachablesInTable = 4 --will keep up to this much unreachables
+const.MaxUnreachablesInTable = 16 --will keep up to this much unreachables
 --capture unreachable buildings with this wrapper
 function Drone:ApproachWrapper(building, resource)
 	if not IsValid(building) or not building:IsValidPos() then
@@ -877,7 +879,7 @@ function Drone:ApproachWrapper(building, resource)
 end
 
 GlobalVar("g_DroneUnreachablesVersion", 0)
-const.UnreachablesCleanupDeltaT = const.DayDuration * 3 --about how long will a bld stay in the unreachable table
+const.UnreachablesCleanupDeltaT = const.DayDuration * 5 --about how long will a bld stay in the unreachable table
 
 function BumpDroneUnreachablesVersion()
 	g_DroneUnreachablesVersion = g_DroneUnreachablesVersion + 1
@@ -1540,7 +1542,7 @@ function Drone:MoveSleep(time)
 end
 
 function Drone:UseBattery(amount)
-	if self.command_center and not self.command_center:ProvidesBatteryCharging() then
+	if self.command_center and self.command_center:ProvidesRemoteBatteryCharging() then
 		return
 	end
 	
@@ -2279,7 +2281,7 @@ function Drone:CanInteractWithObject(obj, interaction_mode)
 		return can_interact, action
 	end
 	
-	if self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move" then
+	if IsMoveInteractionMode(self.interaction_mode) then
 		if not IsKindOfClasses(obj, "Building", "DroneBase", "ResourceStockpileBase", "SurfaceDeposit", "ResourcePile", "Tunnel", "ElectricityGridElement", "LifeSupportGridElement", "ToxicPool") then
 			return false, GetUIStyleGamepad() and  T{4339, "<UnitMoveControl('ButtonA',interaction_mode)>: Move",self} or false
 		end
@@ -2428,7 +2430,7 @@ function Drone:InteractWithObject(obj, interaction_mode)
 	end
 	RubbleClearer.InteractWithObject(self, obj, interaction_mode)
 	
-	if self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move" then
+	if IsMoveInteractionMode(self.interaction_mode) then
 		--[[
 		-- from 122882
 		 - (if on a broken building) fix it
@@ -2792,6 +2794,7 @@ DroneCommands = {
 	WaitingCommand = T(12549, "<red>Orphaned Drone. Assign to a Drone commander.</red>"),
 	Refab = T(13670, "Converting building to prefab"),
 	UseElevator = T(13878, "Going to an elevator"),
+	ClearRubble = T(13948, "Clearing Rubble"),
 }
 
 function Drone:GetSRequestResource()
@@ -2968,6 +2971,11 @@ function Drone:GetUIWarning()
 	end
 end
 
+function Drone:EnterTransporter(transporter)
+	self:SetCommandCenter(false, "do not orphan!")
+	Unit.EnterTransporter(self, transporter)
+end
+
 function DroneClassComboItems()
 	local items = { {value = false, text = ""} }
 	ClassDescendants("Drone", function(classname, classdef)
@@ -2994,6 +3002,7 @@ function OnMsg.GatherFXActions(list)
 	list[#list + 1] = "RechargeStation"
 	list[#list + 1] = "Freeze"
 	list[#list + 1] = "Dead"
+	list[#list + 1] = "Refabbing"
 end
 
 function OnMsg.GatherFXActors(list)

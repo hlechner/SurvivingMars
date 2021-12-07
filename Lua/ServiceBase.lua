@@ -114,14 +114,14 @@ ServiceFailure = {
 	None = -1,
 	NotTried = 0,
 	NotFound = 1,
-	Closed = 2,
-	Full = 3,
-	CanServiceFailed = 4,
+	CanServiceFailed = 2,
+	Closed = 3,
+	Full = 4,
 }
 
 function ServiceBase:CanBeUsedBy(colonist)
 	if not self:HasFreeVisitSlots() then
-		return false, ServiceFailure.Closed
+		return false, ServiceFailure.Full
 	elseif not self:CanService(colonist) then
 		return false, ServiceFailure.CanServiceFailed
 	else
@@ -160,13 +160,14 @@ function ServiceBase:Service(unit, duration, daily_interest)
 end
 
 function GetMaxComfortAvailableService(services, colonist)
-	local fail_reason = 1
+	local fail_reason = ServiceFailure.NotFound
 	local rnd = GameTime()
 	local max_comfort_service, max_comfort = false, 0
 	local IsKindOf = IsKindOf
 	for i = 1, #services do
 		local service = services[1 + (i + rnd) % #services]
-		local success, fail_reason = service:CanBeUsedBy(colonist)
+		local success, service_fail_reason = service:CanBeUsedBy(colonist)
+		fail_reason = Max(fail_reason, service_fail_reason)
 		
 		if success then
 			local service_comfort = IsKindOf(service, "Service") and service.service_comfort or 0
@@ -183,5 +184,5 @@ function GetMaxComfortAvailableService(services, colonist)
 		end
 	end
 	
-	return max_comfort_service, fail_reason
+	return max_comfort_service, max_comfort_service and ServiceFailure.None or fail_reason
 end

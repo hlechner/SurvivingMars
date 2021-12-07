@@ -25,6 +25,7 @@ PlaceObj('StoryBit', {
 		"TheRogueDome_Dead",
 	},
 	Effects = {},
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckAverageComfort', {
 			'Amount', 70,
@@ -45,6 +46,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(184300870505, --[[voice:narrator]] "Our colony is united once again! The rogue dome has rejoined us. Here is a statement from their leaders:"),
 	group = "Renegades",
 	id = "TheRogueDome_Clear",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637250330,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(578164752099, --[[StoryBit TheRogueDome_Clear Text]] "We are glad that our brothers and sisters have remembered our common Dream."),
 	}),

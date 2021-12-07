@@ -25,6 +25,7 @@ PlaceObj('StoryBit', {
 		"TheRogueDome_Clear",
 	},
 	Effects = {},
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "Colonist",
@@ -41,6 +42,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(732685877861, --[[voice:narrator]] "The First Martian Republic is no more. The entire population of the rogue Dome is now deceased."),
 	group = "Renegades",
 	id = "TheRogueDome_Dead",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637250330,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(734813490091, --[[StoryBit TheRogueDome_Dead Text]] "What a pointless waste of human life..."),
 	}),

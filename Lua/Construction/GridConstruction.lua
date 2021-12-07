@@ -655,17 +655,6 @@ function GridConstructionController:GetDoubleLinePoints(pt, sp)
 	return { point(HexToWorld((point(WorldToHex(sp or self.starting_point)) + d1 * d1_dist):xy())), pt }
 end
 
-function table.iappend_unique(t1, t2)
-	for i = 1, #t2 do
-		table.insert_unique(t1, t2[i])
-	end
-end
-
-function table.append_unique(t1, t2)
-	assert(false, "Use table.iappend_unique instead.")
-	table.iappend_unique(t1, t2)
-end
-
 local UnbuildableZ = buildUnbuildableZ()
 
 function GridConstructionController:Rotate()

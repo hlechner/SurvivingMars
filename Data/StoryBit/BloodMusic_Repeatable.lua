@@ -25,6 +25,7 @@ PlaceObj('StoryBit', {
 		"BloodMusic_Repeatable",
 	},
 	InheritsObject = false,
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 7200000,
@@ -35,6 +36,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(867033361154, --[[voice:narrator]] "More Colonists have been completely re-written!"),
 	group = "Breakthroughs",
 	id = "BloodMusic_Repeatable",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "changed_colonists",
 		'Value', 5,

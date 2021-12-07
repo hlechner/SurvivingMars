@@ -16,6 +16,41 @@ function GenerateApplicant(time, city)
 	return colonist
 end
 
+function GenerateApplicants(number, trait, specialization)
+	assert(number)
+	trait = trait ~= "" and trait or "random"
+	specialization = specialization ~= "" and specialization or "any"
+	local now = GameTime()
+	for i=1,number do
+		local colonist = GenerateApplicant(now)
+		local to_add = trait
+		if trait == "random_positive" then
+			to_add = GetRandomTrait(colonist.traits, {}, {}, "Positive", "base")
+		elseif trait == "random_negative" then
+			to_add =  GetRandomTrait(colonist.traits, {}, {}, "Negative", "base")
+		elseif trait == "random_rare" then
+			to_add =  GetRandomTrait(colonist.traits, {}, {}, "Rare", "base")
+		elseif trait == "random_common" then
+			to_add =  GetRandomTrait(colonist.traits, {}, {}, "Common", "base")
+		elseif trait == "random" then
+			to_add = GenerateTraits(colonist, false, 1)
+		else
+			to_add = trait
+		end
+		if type(to_add) == "table" then
+			for trait in pairs(to_add) do
+				colonist.traits[trait] = true
+			end
+		elseif to_add then
+			colonist.traits[to_add] = true
+		end
+		if specialization ~= "any" then
+			colonist.traits[specialization] = true
+			colonist.specialist = specialization
+		end
+	end
+end
+
 function MakeTourist(applicant)
 	applicant.traits["Tourist"] = true
 	applicant.traits["Safari"] = true

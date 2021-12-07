@@ -705,7 +705,7 @@ function GetAverageStat(colonists, stat)
 			count = count + 1
 		end
 	end
-	return count > 0 and (sum / count) or 0
+	return count > 0 and Min(100000, sum / count) or 0
 end
 
 ---------------nested_list classes--------------
@@ -747,4 +747,8 @@ end
 
 TFormat.has_prefabs = function (context_obj, template_id, min_count)
 	return UICity:GetPrefabs(template_id) >= (min_count or 1)
+end
+
+function IsMoveInteractionMode(interaction_mode)
+	return interaction_mode == false or interaction_mode == "default" or interaction_mode == "move"
 end

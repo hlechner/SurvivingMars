@@ -295,6 +295,8 @@ function ShowSavegameDescription(item, dialog)
 				problem_text = T{8502, "<red>Missing downloadable content: <dlcs></red>", dlcs = Untranslated(missing_dlcs)}
 			elseif mods_missing then
 				problem_text = T(4195, "<red>There are missing mods!</red>")
+			elseif metadata and metadata.lua_revision > LuaRevision then
+				problem_text = T{14344, "Save file was made on a newer version (<save_revision>) of the game (<game_revision>)", save_revision = metadata.lua_revision, game_revision = LuaRevision}
 			elseif unused_dlcs and unused_dlcs ~= "" then
 				problem_text = T{13762, "Unused downloadable content: <dlcs>", dlcs = Untranslated(unused_dlcs)}
 			end

@@ -260,7 +260,8 @@ end
 function Unit:KickFromBuilding(building, entrance_type)
 	local target = RotateRadius(100*guim, AsyncRand(360*60), building:GetPos())
 	local entrance, pos, spot_type = building:GetEntrance(target, entrance_type, nil, self)
-	pos = spot_type and building:GetSpotPos(building:GetRandomSpot(spot_type)) or pos or building:GetPos()
+	pos = spot_type and building:GetSpotPos(building:GetRandomSpot(spot_type)) or pos
+	pos = IsValid(pos) and pos or building:GetPos()
 	self:Detach()
 	self:ClearPath()
 	self:SetPos(pos)
@@ -590,10 +591,14 @@ function Unit:IsInDome()
 	return IsObjInDome(self)
 end
 
-function Unit:SetHolder(building)
+function Unit:IsIdle()
+	return self.command == "Idle" and not self.thread_running_destructors
+end
+
+function Unit:SetHolderOnMap(building, map_id)
 	local holder = self.holder
 	building = building or false
-	assert(not building or building:GetMapID() == self:GetMapID())
+	assert(not building or building:GetMapID() == map_id)
 	if holder == building or building and not building:IsKindOf("Holder") then
 		return
 	end
@@ -605,6 +610,10 @@ function Unit:SetHolder(building)
 		building:OnEnterHolder(self)
 	end
 	assert(IsBeingDestructed(self) or self.holder or self:IsValidPos())
+end
+
+function Unit:SetHolder(building)
+	self:SetHolderOnMap(building, self:GetMapID())
 end
 
 function Unit:UpdateEntity()
@@ -1044,9 +1053,21 @@ function Unit:Appear(location)
 	Wakeup(self.thread_running_destructors or self.command_thread)
 end
 
+function Unit:EnterTransporter(transporter)
+	if IsObjectSelected(self) then
+		SelectionRemove(self)
+	end
+	if not self:IsValidPos() then
+		-- About to be transfered anyway, force a valid position here
+		self:SetPos(self:GetPos())
+	end
+	self:SetHolder(transporter)
+	self:UpdateOutside()
+	self:SetCommand("Disappear", "keep in holder", transporter.keep_cargo_in_labels and "keep_in_labels")
+end
+
 function Unit:StartDisembark(building)
 	self:DetachFromMap()
-	self:SetHolder(building)
 end
 
 function Unit:FinishDisembark(building, entrance_type, pos)
@@ -1062,7 +1083,8 @@ function Unit:Disembark(building, entrance_type)
 	
 	self:StartDisembark(building)
 	local entrances = building:GetEntrance(nil, entrance_type, nil, self)
-	self:FinishDisembark(building, entrance_type, entrances[1])
+	local entrance = (entrances and #entrances > 0) and entrances[1] or building:GetPos()
+	self:FinishDisembark(building, entrance_type, entrance)
 end
 
 function SavegameFixups.UndisappearStuckDrones()

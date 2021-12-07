@@ -306,7 +306,8 @@ function InfobarObj:GetResearchRollover()
 		research_text = T{12475, "Researching <em><name></em> (<percent(progress)>)",
 			name = function()
 				local current_research = UIColony:GetResearchInfo()
-				return current_research and TechDef[current_research].display_name or T(6761, "None")
+				local tech = current_research and TechDef[current_research]
+				return tech and tech.display_name or T(6761, "None")
 			end,
 			progress = function()
 				local _, points, max_points = UIColony:GetResearchInfo()
@@ -498,7 +499,7 @@ function InfobarObj:AppendResourceToRollover(rollover, restype, reslookup)
 	local colonist_message = T{13825, "Total living across maps<right><resource(amount, type)>", amount = total_amount, type = restype }
 	local tourist_message = T{13826, "Total staying across maps<right><resource(amount, type)>", amount = total_amount, type = restype }
 	local resource_message = T{13673, "Total stored across maps<right><resource(amount, type)>", amount = total_amount, type = restype }
-	local message = restype == ("Colonist" and colonist_message) or (restype == "Tourist" and tourist_message) or resource_message
+	local message = (restype == "Colonist" and colonist_message) or (restype == "Tourist" and tourist_message) or resource_message
 	table.insert(rollover, message)
 
 	for _,map_id in pairs(colony_maps) do
@@ -814,7 +815,7 @@ function InfobarObj:GetColonistsRollover()
 	local resource_overview = GetCityResourceOverview(UICity)
 	local data = resource_overview.data
 	if not rawget(data, "children") then
-		resource_overview:GatherPerDomeInfo()
+		resource_overview:GatherPerCommunityInfo()
 		resource_overview:ProcessDomelessColonists()
 	end
 	local city_labels = resource_overview.city.labels	

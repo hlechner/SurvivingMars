@@ -1377,10 +1377,20 @@ function LandingSiteObject:SetUIAsteroidParams()
 	if spot and spot.spot_type == "asteroid" then
 		if not spot.rocket then
 			local travel_time = self.dialog:ResolveId("idTravelTime")
-			if travel_time then travel_time:SetText(T{11604, "<time(time)>", time = spot.expedition_time}) end
+			if travel_time then
+				local text = spot.expedition_time > 0 and T{11604, "<time(time)>", time = spot.expedition_time} or T(130, "N/A")
+				travel_time:SetText(text)
+			end
 			
 			local remaining_time = self.dialog:ResolveId("idRemainingTime")
-			if remaining_time then remaining_time:SetText(T{11604, "<time(time)>", time = spot.asteroid.end_time - GameTime()}) end
+			if remaining_time then 
+				if spot.asteroid.end_time then 
+					remaining_time:SetText(T{11604, "<time(time)>", time = spot.asteroid.end_time - GameTime()}) 
+				else
+					local remaining_time_header = self.dialog:ResolveId("idRemainingTimeHeader")
+					if remaining_time_header then remaining_time_header:SetText(T(14343, "In Orbit")) end
+				end
+			end
 		end
 	end
 end
@@ -1521,6 +1531,10 @@ end
 function LandingSiteObject:IsWithinTimeWindow()
 	local selected_spot = self:SelectedAsteroidSpot()
 	if selected_spot then
+		if not selected_spot.asteroid.end_time then
+			return true
+		end
+		
 		local remaining_time = selected_spot.asteroid.end_time - selected_spot.asteroid.start_time
 		return selected_spot.expedition_time < remaining_time
 	else

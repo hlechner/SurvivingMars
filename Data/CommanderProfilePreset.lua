@@ -213,6 +213,16 @@ PlaceObj('CommanderProfilePreset', {
 		Percent = 10,
 		Prop = "production_per_day1",
 	}),
+	PlaceObj('Effect_ModifyLabel', {
+		Label = "MicroGAutoExtractor",
+		Percent = 10,
+		Prop = "production_per_day1",
+	}),
+	PlaceObj('Effect_ModifyLabel', {
+		Label = "MicroGExtractor",
+		Percent = 10,
+		Prop = "production_per_day1",
+	}),
 	PlaceObj('Effect_GrantTech', {
 		Field = "Physics",
 		Research = "DeepScanning",

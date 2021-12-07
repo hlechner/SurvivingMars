@@ -8,10 +8,11 @@ DefineClass.WaterReclamationSpire =
 	parent_dome_modifier = false,
 }
 
-function WaterReclamationSpire:OnModifiableValueChanged(prop)
+function WaterReclamationSpire:OnModifiableValueChanged(prop, ...)
 	if prop == "performance" then
 		self:RecalcModifiers()
 	end
+	Workplace.OnModifiableValueChanged(self, prop, ...)
 end
 
 function WaterReclamationSpire:GetWaterConsumptionReductionFromPerf(perf)

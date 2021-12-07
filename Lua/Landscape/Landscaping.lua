@@ -64,7 +64,7 @@ end
 
 function OnMsg.OnPassabilityChanged(rbox, map_id)
 	local map_id = map_id or ActiveMapID
-	local game_map = GameMaps[map_id]
+	local game_map = GameMaps and GameMaps[map_id]
 	if Landscapes and game_map and game_map.landscape_grid then
 		Landscape_BlockPass(Landscapes, game_map.landscape_grid, rbox)
 	end
@@ -202,10 +202,6 @@ local function CollectOffsets(obj, offsets)
 		offsets[obj] = dz
 	end
 end
-
-local foreach_params_default = {
-	reject = "FlyingObject",
-}
 
 local foreach_params_collision = {
 	collections = true,
@@ -345,6 +341,10 @@ function LandscapeFinish(mark)
 end
 
 ----
+
+foreach_params_default = {
+	reject = "FlyingObject"
+}
 
 local foreach_params_decals = {
 	enum_flags = const.efBakedTerrainDecal,

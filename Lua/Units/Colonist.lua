@@ -1064,8 +1064,11 @@ GlobalVar("g_NocturnalAdaptation", false)
 function Colonist:ChangeWorkplacePerformance()
 	local workplace = self.workplace
 
-	if workplace and workplace.parent_dome and workplace.parent_dome ~= self.dome then
-		--different dome penalty
+	local away_from_home_dome = workplace and
+		(workplace.parent_dome and workplace.parent_dome ~= self.dome
+			or (self.dome and not self.dome:IsInLabel("Workplace", workplace)))
+
+	if away_from_home_dome then
 		self:SetModifier("performance", "home_dome", -g_Consts.NonHomeDomePerformancePenalty, 0, T(8757, "<red>Not working in home dome <amount></color>"))
 	else
 		self:SetModifier("performance", "home_dome", 0, 0)
@@ -1076,14 +1079,17 @@ function Colonist:ChangeWorkplacePerformance()
 		local amount = match and 
 				self.preferred_workplace_performance_bonus 
 				or -g_Consts.NonSpecialistPerformancePenalty
-		local sponsor = GetMissionSponsor()
-		local text =  match and
+		local text = match and
 				T(6927, "<green>Correct workplace specialization +<amount></color>")
 				or T(6928, "<red>Wrong workplace specialization <amount></color>")
 		self:SetModifier("performance", "specialist_match", amount, 0, text)
-		if sponsor.specialist_bonus_performance and match then
-			text = T(10538, "<green>")..sponsor.specialist_bonus_performance_name..T{10539, " +<amount></color>", amount = sponsor.specialist_bonus_performance}
-			self:SetModifier("performance", "specialist_match_sponsor_bonus", sponsor.specialist_bonus_performance, 0, text)
+
+		local sponsor = GetMissionSponsor()
+		local bonus = sponsor.specialist_bonus_performance
+		local bonus_name = sponsor.specialist_bonus_performance_name
+		if bonus and match then
+			text = T(10538, "<green>") .. bonus_name .. T{10539, " +<amount></color>", amount = bonus}
+			self:SetModifier("performance", "specialist_match_sponsor_bonus", bonus, 0, text)
 		end
 	else
 		self:SetModifier("performance", "specialist_match", 0, 0)
@@ -2355,6 +2361,10 @@ function Colonist:GetUIInfo(remove_descr)
 	return table.concat(t, "<newline><left>")
 end
 
+function Colonist:GetMoraleAdjustmentDescriptions()
+	return {}
+end
+
 function Colonist:UIStatUpdate(win, stat)
 	local def = ColonistStat[stat]
 	win:SetIcon(def.icon)
@@ -2417,6 +2427,12 @@ function Colonist:UIStatUpdate(win, stat)
 					end
 				end
 			end
+			local morale_adjustment_descriptions = obj:GetMoraleAdjustmentDescriptions()
+			if #morale_adjustment_descriptions > 0 then
+				texts = texts or {def.description, "", T(4370, "Effects:")}
+				table.iappend(texts, morale_adjustment_descriptions)
+			end
+			
 			local morale_modifiers = obj.dome and obj.dome:GetMoraleModifiers() or empty_table
 			if #morale_modifiers > 0 then
 				texts = texts or {def.description, "", T(4370, "Effects:")}
@@ -3277,6 +3293,10 @@ function Colonist:IsMoraleMax()
 		self.stat_morale >= max_stat
 end
 
+function Colonist:GetMoraleAdjustment()
+	return 0
+end
+
 function Colonist:UpdateMorale()
 	if self:IsDead() then return end
 	local old_value = self.stat_morale
@@ -3308,6 +3328,8 @@ function Colonist:UpdateMorale()
 	if IsKindOf(self.workplace, "Workshop") and self.fulfill_workshift_boost then
 		new_value = new_value + g_Consts.WorkInWorkshopMoraleBoost
 	end
+	
+	new_value = new_value + self:GetMoraleAdjustment()
 	
 	self.stat_morale = new_value
 	self:UpdateSatisfaction("morale", old_value, new_value, g_Consts.SatisfactionHighStatBonus, g_Consts.SatisfactionPerfectStatBonus)
@@ -3497,9 +3519,6 @@ function Colonist:OnDisappear()
 	self:AssignToService(false)
 	self:SetDome(false)
 	UpdateAttachedSign(self)
-	for effect in pairs(self.status_effects) do
-		self:Affect(effect, false)
-	end
 	self:SetOutside(false)
 end
 
@@ -3539,6 +3558,9 @@ function Colonist:BoardExpeditionRocket(rocket)
 
 		SelectionRemove(self)
 		self:SetHolder(rocket)
+		for effect in pairs(self.status_effects) do
+			self:Affect(effect, false)
+		end
 		self:SetCommand("Disappear", "keep in holder")
 	end)
 	self:PopAndCallDestructor()
@@ -3546,6 +3568,11 @@ end
 
 function Colonist:SetDisembarkAnim(rocket)
 	self:SetAnim(1, GetAtmosphereBreathable(self:GetMapID()) and self:HasState(rocket.disembark_anim_walk) and rocket.disembark_anim_walk or rocket.disembark_anim)
+end
+
+function Colonist:EnterTransporter(transporter)
+	self:SetDome(false)
+	Unit.EnterTransporter(self, transporter)
 end
 
 function Colonist:ReturnFromExpedition(rocket, dome)

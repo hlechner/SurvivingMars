@@ -800,7 +800,8 @@ function SupplyGridFragment:Production(new_day)
 	if storage_change > 0 then
 		for _, storage in ipairs(self.storages) do
 			local stored = storage.current_storage
-			stored = stored + MulDivRound(storage_change, storage.charge_efficiency * storage.charge, 100 * charge)
+			local current_charge = charge > 0 and MulDivRound(storage_change, storage.charge_efficiency * storage.charge, 100 * charge) or 0
+			stored = stored + current_charge
 			if stored ~= storage.current_storage then
 				local capacity = storage.storage_capacity
 				if stored >= capacity then

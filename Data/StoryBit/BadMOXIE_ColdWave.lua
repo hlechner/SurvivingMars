@@ -24,6 +24,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(728411744190, --[[voice:narrator]] "As the frost outside settles, an urgent maintenance report flashes on your terminal. There’s a problem with a MOXIE unit."),
 	group = "Disasters",
 	id = "BadMOXIE_ColdWave",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(899944302275, --[[StoryBit BadMOXIE_ColdWave Text]] "Install additional heaters."),
 		'OutcomeText', "custom",
@@ -39,6 +47,7 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "MOXIE",
+				'InColony', false,
 				'Prop', "electricity_consumption",
 				'Amount', "<increased_consumption>",
 				'ModifyId', "BadMoxie_ColdWave",
@@ -86,6 +95,7 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "MOXIE",
+				'InColony', false,
 				'Prop', "maintenance_threshold_base",
 				'Percent', -25,
 				'ModifyId', "BadMoxie_ColdWave",

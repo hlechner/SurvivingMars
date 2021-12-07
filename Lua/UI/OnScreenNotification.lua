@@ -869,6 +869,10 @@ function GetOnScreenNotificationDismissable(id, map_id)
 end
 
 function GetFormattedExpirationString(start_time, end_time)
+	if not end_time then
+		return T{""}
+	end
+	
 	local time = end_time - start_time
 	local sols = time / const.DayDuration
 	local hours = (time % const.DayDuration) / const.HourDuration

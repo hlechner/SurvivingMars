@@ -207,7 +207,8 @@ end
 
 function HUD:GetCurrentResearchName()
 	local current_research = UIColony and UIColony:GetResearchInfo()
-	return current_research and TechDef[current_research].display_name or T(6868, "None")
+	local tech = current_research and TechDef[current_research]
+	return tech and tech.display_name or T(6868, "None")
 end
 
 function HUD:GetCurrentResearchProgress()

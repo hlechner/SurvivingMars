@@ -10,6 +10,7 @@ PlaceObj('StoryBit', {
 	Enables = {
 		"Boost19_BadStirlingGenerator_FaultGenerator",
 	},
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "StirlingGenerator",
@@ -47,6 +48,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1550494090,
 				user = "Blizzard",
+			},
+			{
+				action = "Modified",
+				time = 1637250706,
 			},
 		},
 	}),

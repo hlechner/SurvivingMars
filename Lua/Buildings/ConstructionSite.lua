@@ -67,6 +67,8 @@ DefineClass.ConstructionSite = {
 	orig_terrain2 = false,
 	construction_data = false,
 	prefab_objects = false,
+	
+	snapped_to = false,
 }
 
 function ConstructionSite:GetFrameEntity()
@@ -1070,6 +1072,7 @@ function ConstructionSite:GetConstructionCost(resource, mod_o)
 end
 
 function ConstructionSite:AddCommandCenter(center)
+	assert(center)
 	if self:IsBlockerClearenceComplete() then
 		if self.construction_group and self.construction_group[1] ~= self then
 			local ldr = self.construction_group[1]
@@ -2439,14 +2442,17 @@ if Platform.developer and debug_constr_grp_leaders then
 		print("leader removed, total leaders:", #all_construction_group_leaders)
 	end
 	
-	function CreateConstructionGroup(input_building_class, pos, map_id, prio, instabuild, per_object_bbox, use_group_goto)
+	function CreateConstructionGroup(input_building_class, pos, map_id, prio, instabuild, per_object_bbox, use_group_goto, params)
 		local construction_group = {}
-		local obj = PlaceObjectIn("ConstructionGroupLeader", map_id, {
+		local group_params = {
 			construction_group = construction_group, 
 			priority = prio or 2, 
 			instant_build = instabuild or false,
 			per_object_bbox = per_object_bbox,
-			use_group_goto = use_group_goto})
+			use_group_goto = use_group_goto
+		}
+		group_params = table.union(group_params, params)
+		local obj = PlaceObjectIn("ConstructionGroupLeader", map_id, group_params)
 		obj:SetBuildingClass(input_building_class)
 		obj:SetPos(pos)
 		all_construction_group_leaders[#all_construction_group_leaders + 1] = obj
@@ -2455,14 +2461,19 @@ if Platform.developer and debug_constr_grp_leaders then
 		return construction_group
 	end
 else
-	function CreateConstructionGroup(input_building_class, pos, map_id, prio, instabuild, per_object_bbox, use_group_goto)
+	function CreateConstructionGroup(input_building_class, pos, map_id, prio, instabuild, per_object_bbox, use_group_goto, params)
 		local construction_group = {}
-		local obj = PlaceObjectIn("ConstructionGroupLeader", map_id, {
+		local group_params = {
 			construction_group = construction_group, 
 			priority = prio or 2, 
 			instant_build = instabuild or false,
 			per_object_bbox = per_object_bbox,
-			use_group_goto = use_group_goto})
+			use_group_goto = use_group_goto
+		}
+		if params then
+			group_params = table.union(group_params, params)
+		end
+		local obj = PlaceObjectIn("ConstructionGroupLeader", map_id, group_params)
 		obj:SetBuildingClass(input_building_class)
 		obj:SetPos(pos)
 		construction_group[1] = obj
@@ -2705,6 +2716,9 @@ function ConstructionSite:IsOutsideCommandRange(ignore_cg)
 	end
 end
 
+function ConstructionSite:SnappedTo(building)
+	self.snapped_to = building
+end
 
 function OnMsg.GatherFXActors(list)
 	list[#list + 1] = "ConstructionSite"

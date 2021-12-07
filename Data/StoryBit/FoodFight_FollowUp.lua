@@ -15,6 +15,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(159415749951, --[[voice:narrator]] "The colonists are extremely unhappy with the quality of food. You have received tons of complaints. Who would have thought that inviting a fast food super-giant would cause super-trouble?"),
 	group = "Colonists",
 	id = "FoodFight_FollowUp",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637248193,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "foodservice_penalty_removed",
 		'Value', 30,

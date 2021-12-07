@@ -12,6 +12,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(120250251183, --[[voice:narrator]] "Two Colonists bump into each other accidentally. A heated argument follows. It’s not the first one."),
 	group = "Disasters",
 	id = "LongWinter_MoraleEvent",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "sanity_restored",
 		'Value', 40,
@@ -82,6 +90,7 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "MedicalBuilding",
+				'InColony', false,
 				'Prop', "sanity_change",
 				'Percent', "<medical_boost>",
 				'ModifyId', "LongWinter",
@@ -102,12 +111,14 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "Spacebar",
+				'InColony', false,
 				'Prop', "sanity_change",
 				'Amount', "<extra_sanity>",
 				'ModifyId', "LongWinter",
 			}),
 			PlaceObj('ModifyLabel', {
 				'Label', "CasinoComplex",
+				'InColony', false,
 				'Prop', "sanity_change",
 				'Amount', "<extra_sanity>",
 				'ModifyId', "LongWinter",

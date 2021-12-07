@@ -84,6 +84,17 @@ PlaceObj('Cargo', {
 })
 
 PlaceObj('Cargo', {
+	SortKey = 4006000,
+	description = T(14359, --[[Cargo WasteRock description]] "Waste materials usually introduced as a byproduct of mining and landscaping activities."),
+	group = "Other Resources",
+	hidden = true,
+	id = "WasteRock",
+	kg = 800,
+	name = T(4518, --[[Cargo WasteRock name]] "Waste Rock"),
+	price = 12000000,
+})
+
+PlaceObj('Cargo', {
 	SortKey = 4001000,
 	description = T(7911, --[[Cargo Polymers description]] "Advanced materials often used to construct and maintain Power accumulators, advanced Power generators, Domes and Spires."),
 	group = "Advanced Resources",

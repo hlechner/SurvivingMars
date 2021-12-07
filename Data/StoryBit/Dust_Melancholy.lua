@@ -34,6 +34,10 @@ PlaceObj('StoryBit', {
 				time = 1550844844,
 				user = "Radomir",
 			},
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
 		},
 	}),
 	PlaceObj('StoryBitReply', {
@@ -76,6 +80,7 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "Colonist",
+				'InColony', false,
 				'Prop', "performance",
 				'Amount', "<performance_penalty>",
 				'ModifyId', "Dust_Melancholy",

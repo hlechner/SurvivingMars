@@ -1162,7 +1162,7 @@ PlaceObj('XTemplate', {
 							'ActionToolbar', "ActionBar",
 							'ActionGamepad', "ButtonX",
 							'ActionState', function (self, host)
-								self.ActionName = host.context:SelectedAsteroidSpot() and Untranslated("PREPARE") or Untranslated("SEND")
+								self.ActionName = host.context:SelectedAsteroidSpot() and T(14345, "PREPARE") or T(14346, "SEND")
 								local list = host:ResolveId("idList")
 								if list and list.focused_item and list[list.focused_item]:GetEnabled() then return end
 								return "disabled"

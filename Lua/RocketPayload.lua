@@ -39,10 +39,8 @@ DefineClass.RocketPayloadObject = {
 	}
 }
 
-function RocketPayload_GetMeta(id)
-	assert(#(ResupplyItemDefinitions or "") > 0)
-	assert(type(id) == "string")
-	return table.find_value(ResupplyItemDefinitions, "id", id)
+function RocketPayload_GetMeta(id) -- deprecated
+	return GetResupplyItem(id)
 end
 
 function RocketPayload_GetCargo(id)
@@ -73,8 +71,9 @@ function RocketPayloadObject:GetColonistSpecializationItems()
 end
 
 function RocketPayloadObject:IsLocked(item_id)
-	local def = RocketPayload_GetMeta(item_id)
-	return def and def.locked
+	local def = GetResupplyItem(item_id)
+	local override_prerequisites = BuildMenuPrerequisiteOverrides[item_id] == true
+	return not override_prerequisites and (def and def.locked)
 end
 
 GlobalVar("g_ImportLocks", {})
@@ -141,7 +140,7 @@ end
 
 function RocketPayloadObject:IsHidden(prop_meta)
 	if prop_meta.submenu then return false end
-	local def = RocketPayload_GetMeta(prop_meta.id)
+	local def = GetResupplyItem(prop_meta.id)
 	return def and def.hidden
 end
 
@@ -164,7 +163,7 @@ end
 
 function RocketPayloadObject:AddItem(item_id, ignore_funds, custom_pack_multiplier)
 	custom_pack_multiplier = custom_pack_multiplier or 1
-	local item = RocketPayload_GetMeta(item_id)
+	local item = GetResupplyItem(item_id)
 	if self:CanLoad(item, ignore_funds, custom_pack_multiplier) then
 		local cargo = RocketPayload_GetCargo(item_id)
 		if cargo then
@@ -176,7 +175,7 @@ end
 
 function RocketPayloadObject:RemoveItem(item_id, custom_pack_multiplier)
 	custom_pack_multiplier = custom_pack_multiplier or 1
-	local item = RocketPayload_GetMeta(item_id)
+	local item = GetResupplyItem(item_id)
 	if self:CanUnload(item) then
 		local cargo = RocketPayload_GetCargo(item_id)
 		if cargo then
@@ -196,41 +195,7 @@ function RocketPayloadObject:ClearItems()
 	ObjModified(self)
 end
 
-function RocketPayloadObject:ClearCargoPriorities()
-	for _,item in ipairs(ResupplyItemDefinitions) do
-		self.object:SetCargoPriority(item.id, CargoPriority.Neutral)
-	end
-	for _,trait in sorted_pairs(TraitPresets) do
-		self.object:SetCargoPriority(trait.id, CargoPriority.Neutral)
-	end
-	ObjModified(self)
-end
-
 function LaunchModeCargoExceeded(item)
-end
-
-function RocketPayloadObject:SetPayloadPriority(item_id, priority)
-	self.object:SetCargoPriority(item_id, priority)
-	self.object:CalculateOptimalPayload()
-	ObjModified(self)
-end
-
-function RocketPayloadObject:GetPayloadPriority(item_id)
-	return self.object:GetCargoPriority(item_id)
-end
-
-function RocketPayloadObject:GetCargoPriorities(items)
-	local approved = 0
-	local disapproved = 0
-	for _,item in ipairs(items) do
-		local prio = self:GetPayloadPriority(item.id)
-		if prio == CargoPriority.disapprove then
-			disapproved = disapproved + 1
-		elseif prio == CargoPriority.approve then
-			approved = approved + 1
-		end
-	end
-	return approved, disapproved
 end
 
 function RocketPayloadObject:CanLoad(item, ignore_funds, custom_pack_multiplier)
@@ -257,11 +222,11 @@ end
 
 function RocketPayloadObject:GetTotalCapacity()
 	assert(g_RocketCargo)
-	if self.object and self.object:HasMember("GetCapacity") then
-		return self.object:GetCapacity()
+	if self.object and self.object:HasMember("GetCargoWeightCapacity") then
+		return self.object:GetCargoWeightCapacity()
 	else
 		local city = MainCity
-		local cargo = city and city:GetCargoCapacity() or GetMissionSponsor().cargo
+		local cargo = city and city:GetCargoWeightCapacity() or GetMissionSponsor().cargo
 		return cargo
 	end
 end
@@ -438,18 +403,14 @@ function RocketPayload_GetTotalItemPrice(item)
 end
 
 function RocketPayload_GetItemPrice(item)
-	local price = item.price
+	local price = GetResupplyItemPrice(item)
+
 	local city = MainCity
 	if city and city.launch_mode == "elevator" and #(city.labels.SpaceElevator or empty_table) > 0 then
 		local price_mod = city.labels.SpaceElevator[1].price_mod
-		price = MulDivRound(item.price, price_mod, 100)
+		price = MulDivRound(price, price_mod, 100)
 	end
-	
-	local sponsor = GetMissionSponsor()
-	if sponsor.WeightCostModifierGroup == item.group then
-		price = MulDivRound(price, sponsor.CostModifierPercent, 100)
-	end
-	
+
 	return price
 end
 
@@ -458,14 +419,7 @@ function RocketPayload_GetTotalItemWeight(item)
 end
 
 function RocketPayload_GetItemWeight(item)
-	local weight = item.kg
-	
-	local sponsor = GetMissionSponsor()
-	if sponsor.WeightCostModifierGroup == item.group then
-		weight = MulDivRound(weight, sponsor.WeightModifierPercent, 100)
-	end
-	
-	return weight
+	return GetResupplyItemWeight(item)
 end
 
 function RocketPayload_GetPrefabsPrice()
@@ -484,7 +438,7 @@ function RocketPayloadObject:GetRollover(id, custom_pack_multiplier)
 	end
 	
 	custom_pack_multiplier = custom_pack_multiplier or 1
-	local item = RocketPayload_GetMeta(id)
+	local item = GetResupplyItem(id)
 	if not item then
 		assert(false, "No such cargo item!")
 		return
@@ -537,7 +491,7 @@ end
 function RocketPayloadObjectCreateAndLoad(pregame)
 	InitRocketRenameObject(pregame, true)
 	if pregame then
-		RocketPayload_Init()
+		ResupplyItemsInit()
 	else
 		g_RocketCargo = false
 		g_CargoMode = false
@@ -552,17 +506,4 @@ end
 function ClearRocketCargo()
 	g_RocketCargo = GetMissionInitialLoadout()
 	RocketPayload_CalcCargoWeightCost()	
-end
-
-function SavegameFixups.FixResupplyDefinitions()
-	local entries_to_remove = {}
-	for k, item in ipairs(ResupplyItemDefinitions) do
-		if item.id == "MissingPreset" then
-			entries_to_remove[#entries_to_remove + 1] = item
-		end
-	end
-	
-	for _, item in ipairs(entries_to_remove) do
-		table.remove_entry(ResupplyItemDefinitions, item)
-	end
 end

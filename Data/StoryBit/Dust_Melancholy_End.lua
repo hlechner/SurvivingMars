@@ -4,6 +4,7 @@ PlaceObj('StoryBit', {
 	ActivationEffects = {
 		PlaceObj('ModifyLabel', {
 			'Label', "Colonist",
+			'InColony', false,
 			'Prop', "performance",
 			'ModifyId', "Dust_Melancholy",
 		}),
@@ -19,5 +20,13 @@ PlaceObj('StoryBit', {
 	VoicedText = T(728165434239, --[[voice:narrator]] "As the Dust Storm clears, life in the Dome seems to be getting back on the right track."),
 	group = "Disasters",
 	id = "Dust_Melancholy_End",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
+		},
+	}),
 })
 

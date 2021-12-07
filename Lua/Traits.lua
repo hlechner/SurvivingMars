@@ -764,7 +764,8 @@ function SanatoriumTraitsCombo(object)
 	if not g_SanatoriumTraits then
 		GenerateBuildingTraitLists()
 	end
-	return BuildingTraitsCombo(object, g_SanatoriumTraits)
+	local sanatorium_traits = IsKindOf(object, "Sanatorium") and object:GetSanatoriumTraits() or g_SanatoriumTraits
+	return BuildingTraitsCombo(object, sanatorium_traits)
 end
 
 function OnMsg.PostNewGame()

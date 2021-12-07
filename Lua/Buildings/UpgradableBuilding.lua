@@ -1,4 +1,4 @@
-local l_ModifierTargets = { "self", "parent_dome", "city" }
+local l_ModifierTargets = { "self", "parent_dome", "city", "colony", }
 
 local upgradable_building_props = {}
 do
@@ -13,7 +13,8 @@ do
 			{ template = true, name = T(1000017, "Description"),     id = "description",  editor = "text", default = T{""}, translate = true },
 			{ template = true, name = T(94, "Icon"),                 id = "icon",         editor = "browse", default = "UI/Icons/Upgrades/build.tga", folder = "UI" },
 
-			{ template = true, name = T(101, "Upgrade Time Cost"),   id = "upgrade_time",                editor = "number", default = 0, scale = const.HourDuration},
+			{ template = true, name = T(101, "Upgrade Time Cost"),   id = "upgrade_time",  editor = "number",       default = 0, scale = const.HourDuration},
+			{ template = true, name = T(14317, "Can turn off"),        id = "can_disable",   editor = "bool",         default = true },
 
 			{ template = true, name = T(102, "Modifier Target 1"),   id = "mod_target_1",  editor = "dropdownlist", default = "self", items = l_ModifierTargets },
 			{ template = true, name = T(103, "Modifier Label 1"),    id = "mod_label_1",   editor = "combo",        default = "",     items = LabelsCombo, },
@@ -169,8 +170,12 @@ function UISetupUpgradeButtonRollover(button, obj, upgrade_tier)
 		if not UIColony:IsUpgradeUnlocked(upgrade_id) then
 			status = T(7513, "Locked by research.")
 		elseif obj:HasUpgrade(upgrade_id) then
-			status = T{7514, "Upgrade already constructed. Current status: <working>", 
-				working = obj:IsUpgradeOn(upgrade_id) and T(6772, "<green>ON</green>") or T(6771, "<red>OFF</red>")}
+			if obj:CanDisableUpgrade(upgrade_id) then
+				status = T{7514, "Upgrade already constructed. Current status: <working>", 
+					working = obj:IsUpgradeOn(upgrade_id) and T(6772, "<green>ON</green>") or T(6771, "<red>OFF</red>")}
+			else
+				status = T(14318, "Upgrade already constructed")
+			end
 		elseif obj:IsUpgradeBeingConstructed(upgrade_id) then
 			status = T(7515, "Upgrade is under construction.")
 		else
@@ -183,7 +188,7 @@ function UISetupUpgradeButtonRollover(button, obj, upgrade_tier)
 		return T{7517, "<description><newline><newline><status>", description = obj:GetUpgradeDescription(upgrade_tier), status = status}
 	end
 	button.GetRolloverHint = function(self, shortcut, mass_shortcut)
-		if not UIColony:IsUpgradeUnlocked(upgrade_id) then
+		if not UIColony:IsUpgradeUnlocked(upgrade_id) or not obj:CanDisableUpgrade(upgrade_id) then
 			return ""
 		end
 		shortcut = shortcut or T(7519, "<left_click>")

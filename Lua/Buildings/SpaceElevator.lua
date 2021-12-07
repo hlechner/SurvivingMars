@@ -480,7 +480,7 @@ function OnMsg.GatherFXActions(list)
 	list[#list + 1] = "ElevatorMoving"
 end
 
-CargoCapacityLabels.elevator = "SpaceElevator"
+g_CargoWeightCapacityLabels.elevator = "SpaceElevator"
 
 function SavegameFixups.SpaceElevatorRegiterSeeds()
 	MapForEach("map", "SpaceElevator", function(self)

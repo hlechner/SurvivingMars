@@ -1,5 +1,5 @@
-GlobalVar("g_MapSectors", {}) -- Deprecated
-GlobalVar("g_ExplorationQueue", {}) -- Deprecated
+GlobalVar("g_MapSectors", false) -- Deprecated
+GlobalVar("g_ExplorationQueue", false) -- Deprecated
 GlobalVar("g_InitialSector", false) -- Deprecated
 GlobalVar("g_MapArea", false) -- Deprecated
 GlobalVar("g_ExplorationNotificationShown", false)
@@ -617,10 +617,11 @@ function MapSector:QueueForExploration(add_first)
 			return false
 		end
 	end
+	local realm = self:GetRealm()
 	PlayFX({
 		actionFXClass = "SectorScanInvalid",
 		actionFXMoment = "start",
-		action_pos = self.area:Center():SetTerrainZ(),
+		action_pos = realm:SnapToTerrain(self.area:Center()),
 		action_map_id = self:GetMapID(),
 	})
 	return false

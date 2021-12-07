@@ -236,7 +236,7 @@ function LayoutConstructionController:Activate(template, params)
 		if template then
 			local tech_shown, tech_enabled, tech_rollover = GetBuildingTechsStatus(template.id, template.build_category)
 			available_prefabs = prefab_counters[entry.template] or self.city:GetPrefabs(template.id)
-			local prefab_item = template.require_prefab and RocketPayload_GetMeta(template.id)
+			local prefab_item = template.require_prefab and GetResupplyItem(template.id)
 			local require_prefab = not tech_enabled and prefab_item and not prefab_item.locked
 			add = not require_prefab or (not not self.prefab)
 		end

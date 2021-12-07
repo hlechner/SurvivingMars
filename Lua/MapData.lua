@@ -46,24 +46,38 @@ end
 local orig_MapDataPresetOnEditorSetProperty = MapDataPreset.OnEditorSetProperty
 
 function MapDataPreset:OnEditorSetProperty(prop_id, old_value, ged)
-	if prop_id == "playable_height_range" then
+	if prop_id == "playable_height_range" or prop_id == "visible_height_range" then
 		local width = self.Width * guim
 		local height = self.Height * guim
 		local x = width / 2
-		local y = height / 2		
-		local z_low = self.playable_height_range.from * guim
-		local z_high = self.playable_height_range.to * guim
+		local y = height / 2
+		local prop = self[prop_id]
 		
-		local tavg, tmin, tmax = GetActiveTerrain():GetAreaHeight()
-		local low_opacity = z_low < tmin and 30 or 128
-		local high_opacity = z_high > tmax and 30 or 128
-		
-		local width_half = (width / 2) - self.PassBorder
-		local height_half = (height / 2) - self.PassBorder
-
 		DbgClearVectors()
-		DbgDrawPlane(point(x, y, z_low), width_half, height_half, RGBA(255, 100, 100, low_opacity))
-		DbgDrawPlane(point(x, y, z_high), width_half, height_half, RGBA(100, 255, 100, high_opacity))
+		
+		if prop then
+			local z_low = prop.from * guim
+			local z_high = prop.to * guim
+			
+			local terrain = GetActiveTerrain()
+			local tavg, tmin, tmax = terrain:GetAreaHeight()
+			local low_opacity = z_low < tmin and 30 or 128
+			local high_opacity = z_high > tmax and 30 or 128
+			
+			local width_half = (width / 2) - self.PassBorder
+			local height_half = (height / 2) - self.PassBorder
+
+			DbgDrawPlane(point(x, y, z_low), width_half, height_half, RGBA(255, 100, 100, low_opacity))
+			DbgDrawPlane(point(x, y, z_high), width_half, height_half, RGBA(100, 255, 100, high_opacity))
+		end
+
+		if prop_id == "playable_height_range" then
+			local passable_min = prop and prop.from * guim or min_int
+			local passable_max = prop and prop.to * guim or max_int
+			local terrain = GetActiveTerrain()
+			terrain:SetPassableHeight(passable_min, passable_max)
+			terrain:RebuildPassability()
+		end
 	else
 		orig_MapDataPresetOnEditorSetProperty(self, prop_id, old_value, ged)
 	end

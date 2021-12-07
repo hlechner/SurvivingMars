@@ -23,6 +23,7 @@ PlaceObj('StoryBit', {
 			},
 		}),
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 3600000,
@@ -32,6 +33,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(172614484358, --[[voice:narrator]] "Today you met a Colonist on the street and asked about their name."),
 	group = "Colonists",
 	id = "Fungahol_FollowUp",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637248193,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "sanity",
 		'Value', 50,

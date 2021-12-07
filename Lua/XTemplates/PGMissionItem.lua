@@ -56,7 +56,7 @@ PlaceObj('XTemplate', {
 			ObjModified(obj)
 			if change_mission_sponsor then
 				g_CurrentMapParams.rocket_name, g_CurrentMapParams.rocket_name_base = GenerateRocketName(true)
-				RocketPayload_Init() -- recalc resupply defs
+				ResupplyItemsInit() -- recalc resupply defs
 			end
 			SetBackDialogMode(self)
 		end,

@@ -64,6 +64,8 @@ DefineClass.MapDataProperties = {
 			editor = "text", default = false, read_only = true, no_edit = true, },
 		{ category = "Game", id = "playable_height_range", name = "Playable Height Range", 
 			editor = "range", default = false, },
+		{ category = "Game", id = "visible_height_range", name = "Visible Height Range", 
+			editor = "range", default = false, },
 	},
 }
 

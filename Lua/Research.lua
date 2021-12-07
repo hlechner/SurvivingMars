@@ -163,12 +163,7 @@ function Research:InitResearch()
 					end
 				end
 				local tech_id = list[j]
-				local tech = defs[tech_id]
-				self.tech_status[tech_id] = {
-					cost = cost,
-					points = 0,
-					field = field_id,
-				}
+				self:AddTech(tech_id, cost, field_id)
 				if IsGameRuleActive("EasyResearch") and discoverable then
 					self:SetTechDiscovered(list[j])
 				end
@@ -275,6 +270,8 @@ function Research:SetTechResearched(tech_id, notify)
 	local current_research = self.research_queue[1]
 	tech_id = tech_id or current_research
 	local status = self.tech_status[tech_id]
+	
+	assert(status, "Tech not found")
 	if not status then
 		return
 	end
@@ -578,6 +575,22 @@ function Research:SetTechNew(tech_id, is_new)
 	return true
 end
 
+function Research:AddTech(tech_id, cost, field_id)
+	-- nil is a valid cost parameter, so we check the field_id
+	if not field_id then
+		local def = TechDef[tech_id]
+		cost = def.cost
+		field_id = def.group
+	end
+	
+	local status = {
+		cost = cost,
+		points = 0,
+		field = field_id,
+	}
+	self.tech_status[tech_id] = status
+end
+
 function Research:ReplaceTech(tech_id, tech_id_new)
 	local status = self.tech_status[tech_id]
 	assert(status)
@@ -703,6 +716,26 @@ function Research:CheckAvailableTech()
 				return
 			end
 		end
+	end
+end
+
+function Research:UnlockBreakthroughs(count, name, map_id)
+	local breakthroughs = UIColony:GetUnregisteredBreakthroughs()
+	StableShuffle(breakthroughs, self:CreateResearchRand(name), 100)
+	local unlocked = 0
+	while unlocked < count do
+		local idx = #breakthroughs
+		local id = breakthroughs[idx]
+		if not id then
+			break
+		end
+		if self:SetTechDiscovered(id) then
+			unlocked = unlocked + 1
+		end
+		table.remove(breakthroughs, idx)
+	end
+	if unlocked > 0 then
+		AddOnScreenNotification("MultipleBreakthroughsDiscovered", OpenResearchDialog, { count = count }, nil, map_id)
 	end
 end
 
@@ -939,8 +972,8 @@ end
 
 function Research:GetUIResearchProject()
 	local research = self:GetResearchInfo()
-	if research then return TechDef[research].display_name end
-	return T(7350, "<red>No active research</red>")
+	local tech = research and TechDef[research]
+	return tech and tech.display_name or T(7350, "<red>No active research</red>")
 end
 
 ----

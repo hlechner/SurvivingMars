@@ -115,7 +115,7 @@ PlaceObj('XTemplate', {
 			'name', "OnPropUpdate(self, context, prop_meta, value)",
 			'func', function (self, context, prop_meta, value)
 				local obj = ResolvePropObj(context)
-				local item = RocketPayload_GetMeta(prop_meta.id)
+				local item = GetResupplyItem(prop_meta.id)
 				self.idAmount:SetText(tostring(obj:GetAmount(prop_meta)))
 				self.idPrice:SetText(obj:GetPrice(item))
 				self.idRemove:SetVisible(obj:CanUnload(item))

@@ -1785,12 +1785,11 @@ function Dome:RandPlaceColonist(colonist)
 	colonist:SetPos(self:PickColonistSpawnPt())
 end
 
-function Dome:CalcIntersetsFails()
+function Dome:CalcInterestsFails()
 	local interests_fails = {}
 	for _, colonist in ipairs(self.labels.Colonist) do
 		local fail = colonist.daily_interest_fail
-		if fail>0 then
-			--fail  -- 0 - not tried, 1 - not found, 2 - closed, 3 - full, 4 - CanService failed
+		if fail > 0 then
 			local interest = colonist.daily_interest
 			if interest and interest~="" then
 				local fail_table = interests_fails[fail] or {}
@@ -1818,7 +1817,7 @@ local ServiceFailTexts = {
 }
 
 function Dome:GetComfortRollover()
-	local interests_fails = self:CalcIntersetsFails()
+	local interests_fails = self:CalcInterestsFails()
 	local texts = {}
 	texts[#texts+1] = T(7893, --[[XTemplate sectionDome RolloverText]] "The average <em>Comfort</em> of all Colonists living in this Dome.")
 	if next(interests_fails) then
@@ -2597,11 +2596,13 @@ function Dome:GetService(need, colonist, starving)
 	
 	if not max_comfort_service and self.allow_service_in_connected and self.accept_colonists then
 		--try domes connected with passages.
+		local dome_service_fail = ServiceFailure.NotTried
 		for dome in pairs(self:GetConnectedDomes()) do
 			if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then --quarantine
-				max_comfort_service, fail = GetMaxComfortAvailableServiceInDome(dome, need, colonist)
+				max_comfort_service, dome_service_fail = GetMaxComfortAvailableServiceInDome(dome, need, colonist)
+				fail = Max(fail, dome_service_fail)
 				if max_comfort_service then
-					break 
+					break
 				end
 			end
 		end

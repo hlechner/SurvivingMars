@@ -147,8 +147,8 @@ ResourceDescription = {
 	{ name = "Polymers",         display_name = T(3515, "Polymers"),         display_icon = "UI/Icons/Buildings/res_polymers.tga", unit_amount = const.ResourceScale, color = RGB(163, 7, 245), entity = "ResourcePolymer", description = T(7911, "Advanced materials often used to construct and maintain Power accumulators, advanced Power generators, Domes and Spires."), },
 	{ name = "Electronics",      display_name = T(3517, "Electronics"),      display_icon = "UI/Icons/Buildings/res_electronics.tga", unit_amount = const.ResourceScale, color = RGB(63, 245, 7), entity = "ResourceElectronics", description = T(7912, "Advanced materials often used to construct and maintain scientific and infrastructure buildings."), },
 	{ name = "MachineParts",     display_name = T(3516, "Machine Parts"),    display_icon = "UI/Icons/Buildings/res_machine_parts.tga", unit_amount = const.ResourceScale, color = RGB(63, 7, 245), entity = "ResourceMachineParts", description = T(7913, "Advanced materials often used to construct and maintain Extractors and Factories."), },
-	{ name = "PreciousMetals",   display_name = T(4139, "Rare Metals"),      display_icon = "UI/Icons/Buildings/res_precious_metals.tga", unit_amount = const.ResourceScale, color = RGB(245, 163, 7), entity = "ResourcePreciousMetals" , description = T(7985, "Can be exported to Earth for Funding or processed into Electronics.")},
-	{ name = "WasteRock",        display_name = T(4518, "Waste Rock"),       display_icon = "UI/Icons/Buildings/res_waste_rock.tga", unit_amount = const.ResourceScale, color = RGB(0, 255, 0), entity = {"ResourceWasteRock_01", "ResourceWasteRock_02", "ResourceWasteRock_03"} },
+	{ name = "PreciousMetals",   display_name = T(4139, "Rare Metals"),      display_icon = "UI/Icons/Buildings/res_precious_metals.tga", unit_amount = const.ResourceScale, color = RGB(245, 163, 7), entity = "ResourcePreciousMetals", description = T(7985, "Can be exported to Earth for Funding or processed into Electronics.") },
+	{ name = "WasteRock",        display_name = T(4518, "Waste Rock"),       display_icon = "UI/Icons/Buildings/res_waste_rock.tga", unit_amount = const.ResourceScale, color = RGB(0, 255, 0), entity = {"ResourceWasteRock_01", "ResourceWasteRock_02", "ResourceWasteRock_03"}, description = T(14360, "Waste materials usually introduced as a byproduct of mining and landscaping activities.") },
 	{ name = "BlackCube",        display_name = T(4764, "Black Cubes"),      display_icon = "UI/Icons/Buildings/res_black_box.tga", unit_amount = const.ResourceScale, color = RGB(0, 0, 0), entity = "Resource", },
 	{ name = "Water",            display_name = T(681, "Water"),             display_icon = "UI/Icons/Buildings/res_water.tga", unit_amount = const.ResourceScale, color = RGB(0, 237, 255), deep_enabled = true },
 	{ name = "Food",             display_name = T(1022, "Food"),             display_icon = "UI/Icons/Buildings/res_food.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceFood", description = T(7914, "Colonists arrive with nominal Food supply, but will soon need additional provisions to survive."), },
@@ -185,7 +185,7 @@ DepositResourcesDefault = {"Concrete", "Metals", "Polymers", "Water", "PreciousM
 LifeSupportResourceList = { "Food" }
 OtherResourceList = { "WasteRock", "Fuel", "MysteryResource", "Seeds", "PreciousMinerals" }
 
-StockpileResourceList = { "Metals", "Concrete", "Food", "PreciousMetals", "Polymers", "Electronics", "MachineParts", "Fuel" }
+StockpileResourceList = { "Metals", "Concrete", "Food", "PreciousMetals", "Polymers", "Electronics", "MachineParts", "Fuel", "WasteRock" }
 function GetStockpileResourceList()
 	return table.copy(StockpileResourceList)
 end

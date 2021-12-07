@@ -308,7 +308,7 @@ PlaceObj('XTemplate', {
 				'__context_of_kind', "Building",
 				'__condition', function (parent, context) return context:CanRefab() end,
 				'__template', "InfopanelButton",
-				'RolloverText', T(608358975996, --[[XTemplate ipBuilding RolloverText]] "Refab this building."),
+				'RolloverText', T(608358975996, --[[XTemplate ipBuilding RolloverText]] "Convert this building into a Prefab that you can rebuild elsewhere. All upgrades on the building will be lost.<newline><newline>Drone Hubs also take back 6 nearby Drones."),
 				'RolloverTitle', T(578067230743, --[[XTemplate ipBuilding RolloverTitle]] "Refab"),
 				'RolloverHintGamepad', T(7657, --[[XTemplate ipBuilding RolloverHintGamepad]] "<ButtonY> Activate"),
 				'OnPressParam', "ToggleRefab",

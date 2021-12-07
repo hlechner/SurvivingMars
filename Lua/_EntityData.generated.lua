@@ -9506,7 +9506,7 @@ EntityData["StorageDepot"] = {
 		material_type = "Metal",
 	},
 }
-EntityData["StorageDepotBB"] = {
+EntityData["StorageDepotAIO"] = {
 	category_Buildings = true,
 	entity = {
 		class_parent = "BuildingEntityClass",
@@ -9514,7 +9514,7 @@ EntityData["StorageDepotBB"] = {
 		material_type = "Metal",
 	},
 }
-EntityData["StorageDepotAIO"] = {
+EntityData["StorageDepotBB"] = {
 	category_Buildings = true,
 	entity = {
 		class_parent = "BuildingEntityClass",

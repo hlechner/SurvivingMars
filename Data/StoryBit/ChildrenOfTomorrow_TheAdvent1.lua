@@ -7,6 +7,7 @@ PlaceObj('StoryBit', {
 	Enables = {
 		"ChildrenOfTomorrow_TheAdvent1_Repeatable",
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	Text = T(424262610524, --[[StoryBit ChildrenOfTomorrow_TheAdvent1 Text]] "The newly-fledged youths show remarkable new qualities, inspiring even the older Martianborn to follow into their steps and reshaping the Martian culture. The children found comfort in their unique micro-societies, helping each other and tending to the emotional and intellectual needs and challenges of their peers. We could all learn from their behavior.\n\n<effect>Martianborn will periodically gain <comfort_gain> Comfort."),
@@ -16,6 +17,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(530192779641, --[[voice:narrator]] "The Martianborn children we observed have already stepped through into the difficult and exciting period of young adulthood, making their first uneasy steps among the Martian society."),
 	group = "Breakthroughs",
 	id = "ChildrenOfTomorrow_TheAdvent1",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "comfort_gain",
 		'Value', 30,

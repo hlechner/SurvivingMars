@@ -21,6 +21,7 @@ PlaceObj('StoryBit', {
 	Enables = {
 		"ChildrenOfTomorrow_TheAdvent1_Repeatable",
 	},
+	MainMapExclusive = false,
 	NotificationText = "",
 	Prerequisites = {},
 	ScriptDone = true,
@@ -29,6 +30,14 @@ PlaceObj('StoryBit', {
 	TextsDone = true,
 	group = "Breakthroughs",
 	id = "ChildrenOfTomorrow_TheAdvent1_Repeatable",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "comfort_gain",
 		'Value', 30,

@@ -18,7 +18,7 @@ function Sanatorium:OnTrainingCompleted(unit)
 	for i=1, self.max_traits do
 		local id = self["trait"..i]
 		if id == "auto" then
-			for _, trait_id in pairs(g_SanatoriumTraits or empty_table) do				
+			for _, trait_id in pairs(self:GetSanatoriumTraits() or empty_table) do				
 				if unit.traits[trait_id] then
 					traits[#traits + 1] = trait_id
 				end
@@ -54,7 +54,7 @@ function Sanatorium:CanTrain(unit)
 	for k = 1, self.max_traits do
 		local id = self["trait"..k]
 		if id == "auto" then
-			for _, trait_id in pairs(g_SanatoriumTraits or empty_table) do
+			for _, trait_id in pairs(self:GetSanatoriumTraits() or empty_table) do
 				if unit.traits[trait_id] then
 					return true
 				end
@@ -88,3 +88,8 @@ function Sanatorium:SetTrait(idx, traitname, broadcast)
 	self:UpdateVisitors()
 	ObjModified(self)
 end
+
+function Sanatorium:GetSanatoriumTraits()
+	return g_SanatoriumTraits
+end
+

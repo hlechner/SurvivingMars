@@ -516,6 +516,44 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
+	Action = "BuildingBigPlaceInside",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Construction_PlaceBuilding",
+	Source = "ActionPos",
+	Target = "ignore",
+	Time = 10000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingBigPlaceOutside",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Construction_PlaceBuilding",
+	Source = "ActionPos",
+	Target = "ignore",
+	Time = 10000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingBigRemoveInside",
+	DetailLevel = 60,
+	Disabled = true,
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Construction_RemoveBuilding_Inside",
+	Source = "ActionPos",
+	Target = "ignore",
+	Time = 5000,
+})
+
+PlaceObj('ActionFXParticles', {
 	Action = "BuildingBigRemoveOutside",
 	DetailLevel = 60,
 	Flags = "LockedOrientation",
@@ -524,6 +562,155 @@ PlaceObj('ActionFXParticles', {
 	Source = "ActionPos",
 	Target = "ignore",
 	Time = 5000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarArray",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "close",
+		}),
+	},
+	Moment = "close_start",
+	Particles = "SolarPanel_Close",
+	Spot = "Light2",
+	SpotsPercent = 100,
+	Target = "ignore",
+	Time = 3200,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarArray",
+	Attach = true,
+	DetailLevel = 40,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "close_start",
+		}),
+	},
+	Moment = "open",
+	OrientationAxis = 3,
+	Particles = "SolarPanel_Blinks",
+	Spot = "Light",
+	SpotsPercent = 100,
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarArray",
+	Attach = true,
+	DetailLevel = 40,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "close_start",
+		}),
+	},
+	Moment = "open",
+	OrientationAxis = 3,
+	Particles = "SolarPanel_SunDust",
+	Spot = "Light",
+	SpotsPercent = 100,
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarPanel",
+	Attach = true,
+	DetailLevel = 40,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "close_start",
+		}),
+	},
+	Moment = "open",
+	OrientationAxis = 3,
+	Particles = "SolarPanel_Blinks",
+	Spot = "Light",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarPanel",
+	Attach = true,
+	DetailLevel = 40,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "close_start",
+		}),
+	},
+	Moment = "open",
+	OrientationAxis = 3,
+	Particles = "SolarPanel_SunDust",
+	Spot = "Light",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarPanelBig",
+	Attach = true,
+	DetailLevel = 40,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "close_start",
+		}),
+	},
+	Moment = "open",
+	Particles = "SolarPanelBig_Blinks",
+	Spot = "Light",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarPanelBig",
+	Attach = true,
+	DetailLevel = 40,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "close_start",
+		}),
+	},
+	Moment = "open",
+	OrientationAxis = 3,
+	Particles = "SolarPanel_SunDust",
+	Scale = 200,
+	Spot = "Light",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingInteractableComponent",
+	Actor = "SolarArray",
+	Attach = true,
+	Delay = 1000,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "open",
+		}),
+	},
+	Moment = "open_start",
+	Particles = "SolarPanel_Open",
+	Spot = "Light2",
+	SpotsPercent = 100,
+	Target = "ignore",
+	Time = 4500,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -546,6 +733,58 @@ PlaceObj('ActionFXParticles', {
 	Source = "ActionPos",
 	Target = "ignore",
 	Time = 5000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingSmallPlaceInside",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Construction_PlaceBuilding",
+	Source = "ActionPos",
+	Target = "ignore",
+	Time = 10000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingSmallPlaceInside",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Construction_PlaceBuilding_Inside",
+	Source = "ActionPos",
+	Target = "ignore",
+	Time = 10000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingSmallPlaceOutside",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Construction_PlaceBuilding",
+	Source = "ActionPos",
+	Target = "ignore",
+	Time = 10000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "BuildingSmallPlaceOutside",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Construction_PlaceBuilding_Inside",
+	Source = "ActionPos",
+	Target = "ignore",
+	Time = 10000,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -734,6 +973,49 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
+	Action = "Clean",
+	Actor = "RCRover",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = 2,
+	Particles = "RCRover_Clean",
+	Spot = "Particle1",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Clean",
+	Actor = "RCRover",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = 2,
+	Particles = "RCRover_Clean",
+	Spot = "Particle2",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ClickInteract",
+	Actor = "RCTransport",
+	DetailLevel = 80,
+	Disabled = true,
+	Moment = "start",
+	Particles = "Click",
+	Source = "Target",
+	Time = 500,
+})
+
+PlaceObj('ActionFXParticles', {
 	Action = "ClickMove",
 	Actor = "Drone",
 	EndRules = {
@@ -747,6 +1029,22 @@ PlaceObj('ActionFXParticles', {
 	Source = "ActionPos",
 	Time = 500,
 	handle = 77670855,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ClickMove",
+	Actor = "ExplorerRover",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "ClickMove",
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Click",
+	Source = "ActionPos",
+	Time = 500,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -765,6 +1063,22 @@ PlaceObj('ActionFXParticles', {
 	group = "Default",
 	handle = 53844045,
 	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ClickMove",
+	Actor = "RCRover",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "ClickMove",
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Click",
+	Source = "ActionPos",
+	Time = 500,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -833,6 +1147,23 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
+	Action = "ColdWave",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "OnGround",
+	Moment = "start",
+	Offset = point(20000, 0, 0),
+	OrientationAxis = 2,
+	Particles = "Camera_ColdWave",
+	Source = "Camera",
+})
+
+PlaceObj('ActionFXParticles', {
 	Action = "Construct",
 	Actor = "RCTerraformer",
 	AlwaysVisible = true,
@@ -898,6 +1229,39 @@ PlaceObj('ActionFXParticles', {
 	Spot = "Hand",
 	SpotsPercent = 100,
 	handle = 2076050412,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Construct",
+	Actor = "RCRover",
+	Attach = true,
+	Delay = 500,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = 2,
+	Particles = "RCRover_Construction_01",
+	Spot = "Particle1",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Construct",
+	Actor = "RCRover",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = 2,
+	Particles = "RCRover_Construction_02",
+	Spot = "Particle2",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -986,6 +1350,103 @@ PlaceObj('ActionFXParticles', {
 	Spot = "Particle",
 	SpotsPercent = 100,
 	handle = 1191098491,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ConstructionCursor",
+	Actor = "CursorBuilding",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Building_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "SensorTower",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ConstructionCursor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Building_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "DroneHub",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ConstructionCursor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "MetalsExtractor",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ConstructionCursor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "SubsurfaceHeater",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ConstructionCursor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "TriboelectricScrubber",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ConstructionCursor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "WaterExtractor",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -1925,6 +2386,51 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
+	Action = "Drop",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Drop",
+	Actor = "RCRover",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 150,
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Drop",
+	Actor = "ResourceStockpile",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
 	Action = "Dust",
 	Actor = "JumperShuttle",
 	Attach = true,
@@ -1956,6 +2462,38 @@ PlaceObj('ActionFXParticles', {
 	Particles = "Shuttle_LaunchSmoke",
 	SpotsPercent = 100,
 	handle = 1986624365,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "DustStorm",
+	AlwaysVisible = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "",
+	Particles = "DustStorm_Macro_Base",
+	Source = "ActionPos",
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "DustStorm",
+	AlwaysVisible = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "",
+	Particles = "DustStorm_Overview",
+	Source = "ActionPos",
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -2033,6 +2571,55 @@ PlaceObj('ActionFXParticles', {
 	Particles = "ElStorm_Lightning_01",
 	Source = "ActionPos",
 	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ElectrostaticStorm",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "OnGround",
+	Moment = "start",
+	Offset = point(20000, 0, 0),
+	OrientationAxis = 2,
+	Particles = "Camera_ElectrostaticStorm",
+	Source = "Camera",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ElectrostaticStorm",
+	AlwaysVisible = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "",
+	Particles = "DustStorm_Macro_Electrostatic",
+	Source = "ActionPos",
+	id = "",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ElectrostaticStorm",
+	AlwaysVisible = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "",
+	Particles = "DustStorm_Overview_Electrostatic",
+	Source = "ActionPos",
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -2966,6 +3553,53 @@ PlaceObj('ActionFXParticles', {
 	Moment = "start",
 	Particles = "RCTransport_Load",
 	handle = 1392401793,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Gather",
+	Actor = "RCTransport",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = 2,
+	Particles = "RCRover_Gather_02",
+	Spot = "Particle2",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "GreatStorm",
+	AlwaysVisible = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "",
+	Particles = "DustStorm_Macro_Base",
+	Source = "ActionPos",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "GreatStorm",
+	AlwaysVisible = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "",
+	Particles = "DustStorm_Overview_GreatStorm",
+	Source = "ActionPos",
+	id = "",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -4134,6 +4768,120 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Moving",
+	Actor = "ExplorerRover",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "move",
+	Offset = point(0, 800, 0),
+	Particles = "RCRover_Trail",
+	Scale = 150,
+	Spot = "Dust1",
+	Time = 4000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Moving",
+	Actor = "ExplorerRover",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "move",
+	Offset = point(0, 800, 0),
+	Particles = "RCRover_Trail",
+	Scale = 150,
+	Spot = "Dust2",
+	Time = 4000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Moving",
+	Actor = "RCRover",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "move",
+	Offset = point(0, 800, 0),
+	Particles = "RCRover_Trail",
+	Scale = 150,
+	Spot = "Dust1",
+	Time = 4000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Moving",
+	Actor = "RCRover",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "move",
+	Offset = point(0, 800, 0),
+	Particles = "RCRover_Trail",
+	Scale = 150,
+	Spot = "Dust2",
+	Time = 4000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Moving",
+	Actor = "RCTransport",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "move",
+	Offset = point(0, 800, 0),
+	Particles = "RCRover_Trail",
+	Scale = 150,
+	Spot = "Dust1",
+	Time = 4000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Moving",
+	Actor = "RCTransport",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "move",
+	Offset = point(0, 800, 0),
+	Particles = "RCRover_Trail",
+	Scale = 150,
+	Spot = "Dust2",
+	Time = 4000,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Moving",
 	Actor = "Rover",
 	Attach = true,
 	Comment = "Surface",
@@ -4223,6 +4971,18 @@ PlaceObj('ActionFXParticles', {
 	Moment = "start",
 	Particles = "Drone_Trail_Ground_Flying",
 	handle = 357048200,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "MysteryDream",
+	Attach = true,
+	Disabled = true,
+	Moment = "end",
+	Offset = point(0, 0, 100),
+	Particles = "Mystery_MirageHalo",
+	Scale = 10,
+	Spot = "Wound",
+	Target = "ignore",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -4622,6 +5382,42 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
+	Action = "RechargeStationPlatform",
+	Actor = "RechargeStationPlatform",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Offset = point(0, -20, 0),
+	OrientationAxis = -2,
+	Particles = "Drone_BeingCleaned",
+	Spot = "Clean1",
+	Target = "Drone",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "RechargeStationPlatform",
+	Actor = "RechargeStationPlatform",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Offset = point(0, 20, 0),
+	OrientationAxis = 2,
+	Particles = "Drone_BeingCleaned",
+	Spot = "Clean2",
+	Target = "Drone",
+})
+
+PlaceObj('ActionFXParticles', {
 	Action = "RegolithExtractorDigging",
 	Actor = "RegolithExtractorDigger",
 	Attach = true,
@@ -4772,6 +5568,125 @@ PlaceObj('ActionFXParticles', {
 	Particles = "RCRover_Repair",
 	Spot = "Particle2",
 	handle = 55311957,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Research",
+	Actor = "ResearchLab",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "Research",
+			'EndMoment', "done",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "Research",
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "50+",
+	OrientationAxis = -1,
+	Particles = "ResearchLab_Text_Atom_50",
+	Spot = "Screen",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Research",
+	Actor = "Academy",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "off",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "start",
+		}),
+	},
+	Moment = "done",
+	OrientationAxis = -1,
+	Particles = "ResearchLab_Working",
+	Spot = "Light",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Research",
+	Actor = "ResearchLab",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "off",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "start",
+		}),
+	},
+	Moment = "done",
+	OrientationAxis = -1,
+	Particles = "ResearchLab_Text_Einstein",
+	Spot = "Screen",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Research",
+	Actor = "ResearchLab",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "off",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "start",
+		}),
+	},
+	Moment = "done",
+	OrientationAxis = -1,
+	Particles = "ResearchLab_Text_Einstein_Research",
+	Spot = "Index1",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Research",
+	Actor = "ResearchLab",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "off",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "start",
+		}),
+	},
+	Moment = "done",
+	OrientationAxis = -1,
+	Particles = "ResearchLab_Text_Einstein_Research",
+	Spot = "Index2",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Research",
+	Actor = "ResearchLab",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "Research",
+			'EndMoment', "50+",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "Research",
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = -1,
+	Particles = "ResearchLab_Text_Atom",
+	Spot = "Screen",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -5441,6 +6356,23 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
+	Action = "RocketWarning",
+	Actor = "SupplyRocket",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "OnGround",
+	Moment = "start",
+	Particles = "Rocket_Pos",
+	Scale = 200,
+	Source = "ActionPos",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
 	Action = "Rotate",
 	Actor = "JumperShuttle",
 	Attach = true,
@@ -5622,6 +6554,22 @@ PlaceObj('ActionFXParticles', {
 	Scale = 55,
 	Source = "Target",
 	handle = 1880215744,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Scan",
+	Actor = "ExplorerRover",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = 2,
+	Particles = "Rover_Scan",
+	Spot = "Particle2",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -6874,6 +7822,36 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Select",
+	Actor = "DroneHub",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Building_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
+	Actor = "ElectricityGridElement",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Offset = point(0, 0, 100),
+	Particles = "Selection_Buildings_Single",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
 	Actor = "Firefly",
 	Attach = true,
 	EndRules = {
@@ -7113,6 +8091,22 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Select",
+	Actor = "MetalsExtractor",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
 	Actor = "MirrorSphere",
 	Attach = true,
 	EndRules = {
@@ -7237,6 +8231,38 @@ PlaceObj('ActionFXParticles', {
 	Particles = "Selection_Colonist",
 	Spot = "Lantern",
 	handle = 1080252883,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
+	Actor = "RCRover",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Selection_Rover",
+	Scale = 250,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
+	Actor = "RCTransport",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "Selection_Rover",
+	Scale = 250,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -7450,6 +8476,20 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Select",
+	Actor = "SubsurfaceHeater",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
 	Actor = "SupplyPod",
 	Attach = true,
 	EndRules = {
@@ -7628,6 +8668,20 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Select",
+	Actor = "TriboelectricScrubber",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_TriboelectricScrubber_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
 	Actor = "UnitLarge",
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
@@ -7670,6 +8724,37 @@ PlaceObj('ActionFXParticles', {
 })
 
 PlaceObj('ActionFXParticles', {
+	Action = "Select",
+	Actor = "WaterExtractor",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Select",
+	Actor = "Workshop",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Building_Area",
+	ScaleMember = "GetSelectionRadiusScale",
+	Spot = "Center",
+})
+
+PlaceObj('ActionFXParticles', {
 	Action = "SensorTowerMeteorPos",
 	EndRules = {
 		PlaceObj('ActionFXEndRule', {
@@ -7682,6 +8767,21 @@ PlaceObj('ActionFXParticles', {
 	Scale = 150,
 	Source = "ActionPos",
 	handle = 1519940700,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "ShowWorkRadius",
+	Actor = "RCRover",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Selection_Mine_Area",
+	ScaleMember = "GetSelectionRadiusScale",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -8028,6 +9128,380 @@ PlaceObj('ActionFXParticles', {
 	Source = "ActionPos",
 	Target = "ignore",
 	handle = 1548717185,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "Battery_WaterFuelCell",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "Battery",
+			'EndMoment', "charge50",
+		}),
+		PlaceObj('ActionFXEndRule', {
+			'EndAction', "Spawn",
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Battery_0",
+	Spot = "Light",
+	SpotsPercent = 100,
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 120,
+	Spot = "Center",
+	Target = "Battery_WaterFuelCell",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 140,
+	Spot = "Center",
+	Target = "DroneHub",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 50,
+	Target = "ElectricityGridElement",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 80,
+	Target = "LifeSupportGridElement",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn_02",
+	Spot = "Center",
+	Target = "MOXIE",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn_02",
+	Spot = "Center",
+	Target = "MetalsExtractor",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 120,
+	Spot = "Center",
+	Target = "MoistureVaporator",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Target = "RechargeStation",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn_02",
+	Target = "RegolithExtractor",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 120,
+	Target = "SensorTower",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 80,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 180,
+	Target = "SolarArray",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 200,
+	Target = "SolarArray",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Target = "SolarPanel",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 180,
+	Target = "SolarPanelBig",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Target = "StirlingGenerator",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn_02",
+	Target = "StorageDepot",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn_02",
+	Scale = 140,
+	Target = "WaterExtractor",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSite",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn",
+	Scale = 120,
+	Spot = "Center",
+	Target = "WaterTank",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSiteWithHeightSurfaces",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Orientation = "SpotX",
+	Particles = "ConstructionSite_Spawn_Dome_02",
+	Target = "DomeMedium",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSiteWithHeightSurfaces",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn_Dome",
+	Scale = 200,
+	Target = "DomeMega",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Spawn",
+	Actor = "ConstructionSiteWithHeightSurfaces",
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "ConstructionSite_Spawn_Dome",
+	Target = "DomeOval",
 })
 
 PlaceObj('ActionFXParticles', {
@@ -8805,6 +10279,20 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Working",
+	Actor = "BlackCubeStockpile",
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "end",
+	Particles = "BlackCube_End",
+	ScaleMember = "GetSelectionRadiusScale",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
 	Actor = "SolarPanel",
 	Attach = true,
 	DetailLevel = 60,
@@ -9440,6 +10928,44 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Working",
+	Actor = "FusionReactor",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OffsetDir = "",
+	Orientation = "SpotZ",
+	OrientationAxis = 3,
+	Particles = "FusionReactor_Electricity",
+	Spot = "Sparks",
+	SpotsPercent = 100,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
+	Actor = "FusionReactor",
+	Attach = true,
+	DetailLevel = 60,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Flags = "LockedOrientation",
+	Moment = "start",
+	Particles = "FusionReactor_Electricity_Center",
+	Spot = "Spark",
+	SpotsPercent = 100,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
 	Actor = "GHGFactory",
 	Attach = true,
 	DetailLevel = 40,
@@ -9663,6 +11189,22 @@ PlaceObj('ActionFXParticles', {
 	Spot = "Hole",
 	SpotsPercent = 100,
 	handle = 1833011760,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
+	Actor = "MetalsExtractor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "Mine_Metal_Lights",
+	Spot = "Lightinside",
+	SpotsPercent = 100,
 })
 
 PlaceObj('ActionFXParticles', {
@@ -9963,6 +11505,24 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Working",
+	Actor = "RechargeStation",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = -1,
+	Particles = "RechargeStation_Sign",
+	Source = "Target",
+	Spot = "Sign",
+	SpotsPercent = 100,
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
 	Actor = "RegolithExtractor",
 	Attach = true,
 	DetailLevel = 60,
@@ -10236,6 +11796,75 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Working",
+	Actor = "WaterExtractor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = -3,
+	Particles = "WaterExtractor_Bottom",
+	Spot = "Bottom",
+	SpotsPercent = 100,
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
+	Actor = "WaterExtractor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = -3,
+	Particles = "WaterExtractor_Lazer",
+	Spot = "Lazer2",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
+	Actor = "WaterExtractor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	OrientationAxis = -3,
+	Particles = "WaterExtractor_Lazer_Base",
+	Spot = "Lazer2",
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
+	Actor = "WaterExtractor",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Particles = "WaterExtractor_Sparks",
+	Spot = "Spark",
+	SpotsPercent = 100,
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
 	Actor = "WaterPump",
 	Attach = true,
 	DetailLevel = 60,
@@ -10421,6 +12050,24 @@ PlaceObj('ActionFXParticles', {
 
 PlaceObj('ActionFXParticles', {
 	Action = "Working",
+	Actor = "WaterReclamationSystem",
+	Attach = true,
+	Disabled = true,
+	EndRules = {
+		PlaceObj('ActionFXEndRule', {
+			'EndMoment', "end",
+		}),
+	},
+	Moment = "start",
+	Offset = point(0, 0, -100),
+	Particles = "WaterReclamationSystem_Fall_DarkGreen",
+	Spot = "Water8",
+	SpotsPercent = 100,
+	Target = "ignore",
+})
+
+PlaceObj('ActionFXParticles', {
+	Action = "Working",
 	Actor = "WaterTank",
 	Attach = true,
 	DetailLevel = 60,
@@ -10474,1652 +12121,5 @@ PlaceObj('ActionFXParticles', {
 	Spot = "Light",
 	SpotsPercent = 100,
 	handle = 1268132526,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingBigPlaceInside",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Construction_PlaceBuilding",
-	Source = "ActionPos",
-	Target = "ignore",
-	Time = 10000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingBigPlaceOutside",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Construction_PlaceBuilding",
-	Source = "ActionPos",
-	Target = "ignore",
-	Time = 10000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingBigRemoveInside",
-	DetailLevel = 60,
-	Disabled = true,
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Construction_RemoveBuilding_Inside",
-	Source = "ActionPos",
-	Target = "ignore",
-	Time = 5000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarArray",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "close",
-		}),
-	},
-	Moment = "close_start",
-	Particles = "SolarPanel_Close",
-	Spot = "Light2",
-	SpotsPercent = 100,
-	Target = "ignore",
-	Time = 3200,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarArray",
-	Attach = true,
-	DetailLevel = 40,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "close_start",
-		}),
-	},
-	Moment = "open",
-	OrientationAxis = 3,
-	Particles = "SolarPanel_Blinks",
-	Spot = "Light",
-	SpotsPercent = 100,
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarArray",
-	Attach = true,
-	DetailLevel = 40,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "close_start",
-		}),
-	},
-	Moment = "open",
-	OrientationAxis = 3,
-	Particles = "SolarPanel_SunDust",
-	Spot = "Light",
-	SpotsPercent = 100,
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarPanel",
-	Attach = true,
-	DetailLevel = 40,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "close_start",
-		}),
-	},
-	Moment = "open",
-	OrientationAxis = 3,
-	Particles = "SolarPanel_Blinks",
-	Spot = "Light",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarPanel",
-	Attach = true,
-	DetailLevel = 40,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "close_start",
-		}),
-	},
-	Moment = "open",
-	OrientationAxis = 3,
-	Particles = "SolarPanel_SunDust",
-	Spot = "Light",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarPanelBig",
-	Attach = true,
-	DetailLevel = 40,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "close_start",
-		}),
-	},
-	Moment = "open",
-	Particles = "SolarPanelBig_Blinks",
-	Spot = "Light",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarPanelBig",
-	Attach = true,
-	DetailLevel = 40,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "close_start",
-		}),
-	},
-	Moment = "open",
-	OrientationAxis = 3,
-	Particles = "SolarPanel_SunDust",
-	Scale = 200,
-	Spot = "Light",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingInteractableComponent",
-	Actor = "SolarArray",
-	Attach = true,
-	Delay = 1000,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "open",
-		}),
-	},
-	Moment = "open_start",
-	Particles = "SolarPanel_Open",
-	Spot = "Light2",
-	SpotsPercent = 100,
-	Target = "ignore",
-	Time = 4500,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingSmallPlaceInside",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Construction_PlaceBuilding",
-	Source = "ActionPos",
-	Target = "ignore",
-	Time = 10000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingSmallPlaceInside",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Construction_PlaceBuilding_Inside",
-	Source = "ActionPos",
-	Target = "ignore",
-	Time = 10000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingSmallPlaceOutside",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Construction_PlaceBuilding",
-	Source = "ActionPos",
-	Target = "ignore",
-	Time = 10000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "BuildingSmallPlaceOutside",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Construction_PlaceBuilding_Inside",
-	Source = "ActionPos",
-	Target = "ignore",
-	Time = 10000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Clean",
-	Actor = "RCRover",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = 2,
-	Particles = "RCRover_Clean",
-	Spot = "Particle1",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Clean",
-	Actor = "RCRover",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = 2,
-	Particles = "RCRover_Clean",
-	Spot = "Particle2",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ClickInteract",
-	Actor = "RCTransport",
-	DetailLevel = 80,
-	Disabled = true,
-	Moment = "start",
-	Particles = "Click",
-	Source = "Target",
-	Time = 500,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ClickMove",
-	Actor = "ExplorerRover",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "ClickMove",
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Click",
-	Source = "ActionPos",
-	Time = 500,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ClickMove",
-	Actor = "RCRover",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "ClickMove",
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Click",
-	Source = "ActionPos",
-	Time = 500,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ColdWave",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "OnGround",
-	Moment = "start",
-	Offset = point(20000, 0, 0),
-	OrientationAxis = 2,
-	Particles = "Camera_ColdWave",
-	Source = "Camera",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Construct",
-	Actor = "RCRover",
-	Attach = true,
-	Delay = 500,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = 2,
-	Particles = "RCRover_Construction_01",
-	Spot = "Particle1",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Construct",
-	Actor = "RCRover",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = 2,
-	Particles = "RCRover_Construction_02",
-	Spot = "Particle2",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ConstructionCursor",
-	Actor = "CursorBuilding",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Building_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "SensorTower",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ConstructionCursor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Building_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "DroneHub",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ConstructionCursor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "MetalsExtractor",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ConstructionCursor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "SubsurfaceHeater",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ConstructionCursor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "TriboelectricScrubber",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ConstructionCursor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "WaterExtractor",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Drop",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Drop",
-	Actor = "RCRover",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 150,
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Drop",
-	Actor = "ResourceStockpile",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "DustStorm",
-	AlwaysVisible = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OffsetDir = "",
-	Particles = "DustStorm_Macro_Base",
-	Source = "ActionPos",
-	id = "",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "DustStorm",
-	AlwaysVisible = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OffsetDir = "",
-	Particles = "DustStorm_Overview",
-	Source = "ActionPos",
-	id = "",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ElectrostaticStorm",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "OnGround",
-	Moment = "start",
-	Offset = point(20000, 0, 0),
-	OrientationAxis = 2,
-	Particles = "Camera_ElectrostaticStorm",
-	Source = "Camera",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ElectrostaticStorm",
-	AlwaysVisible = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OffsetDir = "",
-	Particles = "DustStorm_Macro_Electrostatic",
-	Source = "ActionPos",
-	id = "",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ElectrostaticStorm",
-	AlwaysVisible = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OffsetDir = "",
-	Particles = "DustStorm_Overview_Electrostatic",
-	Source = "ActionPos",
-	id = "",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Gather",
-	Actor = "RCTransport",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = 2,
-	Particles = "RCRover_Gather_02",
-	Spot = "Particle2",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "GreatStorm",
-	AlwaysVisible = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OffsetDir = "",
-	Particles = "DustStorm_Macro_Base",
-	Source = "ActionPos",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "GreatStorm",
-	AlwaysVisible = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OffsetDir = "",
-	Particles = "DustStorm_Overview_GreatStorm",
-	Source = "ActionPos",
-	id = "",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Moving",
-	Actor = "ExplorerRover",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "move",
-	Offset = point(0, 800, 0),
-	Particles = "RCRover_Trail",
-	Scale = 150,
-	Spot = "Dust1",
-	Time = 4000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Moving",
-	Actor = "ExplorerRover",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "move",
-	Offset = point(0, 800, 0),
-	Particles = "RCRover_Trail",
-	Scale = 150,
-	Spot = "Dust2",
-	Time = 4000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Moving",
-	Actor = "RCRover",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "move",
-	Offset = point(0, 800, 0),
-	Particles = "RCRover_Trail",
-	Scale = 150,
-	Spot = "Dust1",
-	Time = 4000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Moving",
-	Actor = "RCRover",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "move",
-	Offset = point(0, 800, 0),
-	Particles = "RCRover_Trail",
-	Scale = 150,
-	Spot = "Dust2",
-	Time = 4000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Moving",
-	Actor = "RCTransport",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "move",
-	Offset = point(0, 800, 0),
-	Particles = "RCRover_Trail",
-	Scale = 150,
-	Spot = "Dust1",
-	Time = 4000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Moving",
-	Actor = "RCTransport",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "move",
-	Offset = point(0, 800, 0),
-	Particles = "RCRover_Trail",
-	Scale = 150,
-	Spot = "Dust2",
-	Time = 4000,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "MysteryDream",
-	Attach = true,
-	Disabled = true,
-	Moment = "end",
-	Offset = point(0, 0, 100),
-	Particles = "Mystery_MirageHalo",
-	Scale = 10,
-	Spot = "Wound",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "RechargeStationPlatform",
-	Actor = "RechargeStationPlatform",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Offset = point(0, -20, 0),
-	OrientationAxis = -2,
-	Particles = "Drone_BeingCleaned",
-	Spot = "Clean1",
-	Target = "Drone",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "RechargeStationPlatform",
-	Actor = "RechargeStationPlatform",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Offset = point(0, 20, 0),
-	OrientationAxis = 2,
-	Particles = "Drone_BeingCleaned",
-	Spot = "Clean2",
-	Target = "Drone",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Research",
-	Actor = "ResearchLab",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "Research",
-			'EndMoment', "done",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "Research",
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "50+",
-	OrientationAxis = -1,
-	Particles = "ResearchLab_Text_Atom_50",
-	Spot = "Screen",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Research",
-	Actor = "Academy",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "off",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "start",
-		}),
-	},
-	Moment = "done",
-	OrientationAxis = -1,
-	Particles = "ResearchLab_Working",
-	Spot = "Light",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Research",
-	Actor = "ResearchLab",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "off",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "start",
-		}),
-	},
-	Moment = "done",
-	OrientationAxis = -1,
-	Particles = "ResearchLab_Text_Einstein",
-	Spot = "Screen",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Research",
-	Actor = "ResearchLab",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "off",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "start",
-		}),
-	},
-	Moment = "done",
-	OrientationAxis = -1,
-	Particles = "ResearchLab_Text_Einstein_Research",
-	Spot = "Index1",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Research",
-	Actor = "ResearchLab",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "off",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "start",
-		}),
-	},
-	Moment = "done",
-	OrientationAxis = -1,
-	Particles = "ResearchLab_Text_Einstein_Research",
-	Spot = "Index2",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Research",
-	Actor = "ResearchLab",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "Research",
-			'EndMoment', "50+",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "Research",
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = -1,
-	Particles = "ResearchLab_Text_Atom",
-	Spot = "Screen",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "RocketWarning",
-	Actor = "SupplyRocket",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "OnGround",
-	Moment = "start",
-	Particles = "Rocket_Pos",
-	Scale = 200,
-	Source = "ActionPos",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Scan",
-	Actor = "ExplorerRover",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = 2,
-	Particles = "Rover_Scan",
-	Spot = "Particle2",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "DroneHub",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Building_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "ElectricityGridElement",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Offset = point(0, 0, 100),
-	Particles = "Selection_Buildings_Single",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "MetalsExtractor",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "RCRover",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Selection_Rover",
-	Scale = 250,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "RCTransport",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "Selection_Rover",
-	Scale = 250,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "SubsurfaceHeater",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "TriboelectricScrubber",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_TriboelectricScrubber_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "WaterExtractor",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Select",
-	Actor = "Workshop",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Building_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-	Spot = "Center",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "ShowWorkRadius",
-	Actor = "RCRover",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Selection_Mine_Area",
-	ScaleMember = "GetSelectionRadiusScale",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "Battery_WaterFuelCell",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "Battery",
-			'EndMoment', "charge50",
-		}),
-		PlaceObj('ActionFXEndRule', {
-			'EndAction', "Spawn",
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Battery_0",
-	Spot = "Light",
-	SpotsPercent = 100,
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 120,
-	Spot = "Center",
-	Target = "Battery_WaterFuelCell",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 140,
-	Spot = "Center",
-	Target = "DroneHub",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 50,
-	Target = "ElectricityGridElement",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 80,
-	Target = "LifeSupportGridElement",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn_02",
-	Spot = "Center",
-	Target = "MOXIE",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn_02",
-	Spot = "Center",
-	Target = "MetalsExtractor",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 120,
-	Spot = "Center",
-	Target = "MoistureVaporator",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Target = "RechargeStation",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn_02",
-	Target = "RegolithExtractor",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 120,
-	Target = "SensorTower",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 80,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 180,
-	Target = "SolarArray",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 200,
-	Target = "SolarArray",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Target = "SolarPanel",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 180,
-	Target = "SolarPanelBig",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Target = "StirlingGenerator",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn_02",
-	Target = "StorageDepot",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn_02",
-	Scale = 140,
-	Target = "WaterExtractor",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSite",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn",
-	Scale = 120,
-	Spot = "Center",
-	Target = "WaterTank",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSiteWithHeightSurfaces",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Orientation = "SpotX",
-	Particles = "ConstructionSite_Spawn_Dome_02",
-	Target = "DomeMedium",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSiteWithHeightSurfaces",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn_Dome",
-	Scale = 200,
-	Target = "DomeMega",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Spawn",
-	Actor = "ConstructionSiteWithHeightSurfaces",
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "ConstructionSite_Spawn_Dome",
-	Target = "DomeOval",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "BlackCubeStockpile",
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "end",
-	Particles = "BlackCube_End",
-	ScaleMember = "GetSelectionRadiusScale",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "FusionReactor",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OffsetDir = "",
-	Orientation = "SpotZ",
-	OrientationAxis = 3,
-	Particles = "FusionReactor_Electricity",
-	Spot = "Sparks",
-	SpotsPercent = 100,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "FusionReactor",
-	Attach = true,
-	DetailLevel = 60,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Flags = "LockedOrientation",
-	Moment = "start",
-	Particles = "FusionReactor_Electricity_Center",
-	Spot = "Spark",
-	SpotsPercent = 100,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "MetalsExtractor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "Mine_Metal_Lights",
-	Spot = "Lightinside",
-	SpotsPercent = 100,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "RechargeStation",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = -1,
-	Particles = "RechargeStation_Sign",
-	Source = "Target",
-	Spot = "Sign",
-	SpotsPercent = 100,
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "WaterExtractor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = -3,
-	Particles = "WaterExtractor_Bottom",
-	Spot = "Bottom",
-	SpotsPercent = 100,
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "WaterExtractor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = -3,
-	Particles = "WaterExtractor_Lazer",
-	Spot = "Lazer2",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "WaterExtractor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	OrientationAxis = -3,
-	Particles = "WaterExtractor_Lazer_Base",
-	Spot = "Lazer2",
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "WaterExtractor",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Particles = "WaterExtractor_Sparks",
-	Spot = "Spark",
-	SpotsPercent = 100,
-	Target = "ignore",
-})
-
-PlaceObj('ActionFXParticles', {
-	Action = "Working",
-	Actor = "WaterReclamationSystem",
-	Attach = true,
-	Disabled = true,
-	EndRules = {
-		PlaceObj('ActionFXEndRule', {
-			'EndMoment', "end",
-		}),
-	},
-	Moment = "start",
-	Offset = point(0, 0, -100),
-	Particles = "WaterReclamationSystem_Fall_DarkGreen",
-	Spot = "Water8",
-	SpotsPercent = 100,
-	Target = "ignore",
 })
 

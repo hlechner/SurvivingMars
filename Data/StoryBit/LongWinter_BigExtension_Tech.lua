@@ -23,6 +23,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(486621856457, --[[voice:narrator]] "A team of Scientists argues over the satellite data as you quietly ponder the situation. It’s going to be a long winter."),
 	group = "Disasters",
 	id = "LongWinter_BigExtension_Tech",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamFunding', {
 		'Name', "sponsor_help",
 		'Value', 500000000,
@@ -79,12 +87,14 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "Dome",
+				'InColony', false,
 				'Prop', "electricity_consumption",
 				'Percent', "<consumption_reduction>",
 				'ModifyId', "LongWinter",
 			}),
 			PlaceObj('ModifyLabel', {
 				'Label', "Dome",
+				'InColony', false,
 				'Prop', "water_consumption",
 				'Percent', "<consumption_reduction>",
 				'ModifyId', "LongWinter",

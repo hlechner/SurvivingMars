@@ -36,7 +36,7 @@ function BuildableGrid:Build(realm, width, height, map_data)
 	local buildable_z = NewGrid(width, height, 16, UnbuildableZ)
 
 	local border = map_data.PassBorder
-	local range = map_data.playable_height_range
+	local range = map_data.visible_height_range
 
 	local st = GetPreciseTicks()
 	realm:InitBuildableGrid{

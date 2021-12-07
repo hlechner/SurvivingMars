@@ -27,7 +27,7 @@ DefineClass.SubsurfaceAnomalyMarker = {
 	__parents = { "DepositMarker", "SafariSight" },
 	properties = {
 		{ category = "Anomaly", name = T(4, "Tech Action"),             id = "tech_action",              editor = "dropdownlist", default = false, items = anomaly_tech_actions },
-		{ category = "Anomaly", name = T(5, "Sequence"),                id = "sequence",                 editor = "dropdownlist", default = "",    items = function() return table.map(DataInstances.Scenario.Anomalies, "name") end, help = "Sequence to start when the anomaly is scanned" },
+		{ category = "Anomaly", name = T(5, "Sequence"),                id = "sequence",                 editor = "dropdownlist", default = "",    items = function(marker) return table.map(DataInstances.Scenario[marker.sequence_list], "name") end, help = "Sequence to start when the anomaly is scanned" },
 		{ category = "Anomaly", name = T(3775, "Sequence List"),        id = "sequence_list",            editor = "dropdownlist", default = "Anomalies",     items = function() return table.map(DataInstances.Scenario, "name") end, },
 		{ category = "Anomaly", name = T(6, "Depth Layer"),             id = "depth_layer",              editor = "number",       default = 1,     min = 1, max = const.DepositDeepestLayer}, --depth layer
 		{ category = "Anomaly", name = T(7, "Is Revealed"),             id = "revealed",                 editor = "bool",         default = false },
@@ -100,6 +100,7 @@ DefineClass.SubsurfaceSpecialAnomalyMarker = {
 		{ category = "Anomaly", name = T(1000067, "Display Name"), id = "display_name", editor = "text", default = "", translate = true},
 		{ category = "Anomaly", name = T(1000017, "Description"), id = "description", editor = "text", default = "", translate = true},
 	},
+	rare = false,
 }
 
 function SubsurfaceSpecialAnomalyMarker:PlaceAnomaly(sequence)
@@ -112,13 +113,29 @@ function SubsurfaceSpecialAnomalyMarker:PlaceAnomaly(sequence)
 		sequence = sequence,
 		sequence_list = self.sequence_list,
 		breakthrough_tech = self.breakthrough_tech,
+		rare = self.rare,
 	}, self:GetMapID())
 end
 
+function SubsurfaceSpecialAnomalyMarker:EditorGetText()
+	local prefix = self.rare and "Rare anomaly " or "Special Anomaly " 
+	return prefix .. (self.tech_action or self.sequence)
+end
+
+DefineClass.SubsurfaceRareAnomalyMarker = {
+	__parents = { "SubsurfaceSpecialAnomalyMarker" },
+	display_name = T(14309, "Rare anomaly"),
+	description = T(14310, "Our scans have picked up a trace of something potentially revolutionary. We should investigate this as soon as possible.<newline><newline>Send an RC Explorer to analyze the Anomaly."),
+	sequence_list = "UndergroundAnomalies_Rare",
+	rare = true,
+}
+
 DefineClass.SubsurfaceAnomaly = {
-	__parents = { "SubsurfaceDeposit", "PinnableObject", "UngridedObstacle", "InfopanelObj" },
+	__parents = { "SubsurfaceDeposit", "PinnableObject", "UngridedObstacle", "InfopanelObj", "Shapeshifter" },
 	flags = { gofRealTimeAnim = true },
 	
+	rare = false,
+
 	entity = "Anomaly_01",
 	
 	properties =
@@ -194,7 +211,11 @@ function SubsurfaceAnomaly:Init()
 	self.scanning_progress = 0
 end
 
-function SubsurfaceAnomaly:GameInit()
+function SubsurfaceAnomaly:GameInit()	
+	if self.rare then
+		self:ChangeEntity("Rare" .. self.entity)
+	end
+	
 	if self.expiration_time > 0 then
 		self.spawn_time = GameTime()
 		self.expiration_thread = CreateGameTimeThread(function()
@@ -221,7 +242,10 @@ function SubsurfaceAnomaly:StartSequence(sequence, scanner, pos)
 	
 	local expect_instance = list.singleton and sequence_index > 1
 	local player, created = CreateSequenceListPlayer(list, self:GetMapID())
-	assert(expect_instance ~= created, "Expected an existing singleton instance. Created a new player instead for \"" .. sequence .. "\" in \"" .. self.sequence_list .. "\"")
+	if expect_instance and created then
+		print("Not starting", sequence, "because the sequence that spawned this anomaly was restarted.")
+		return 
+	end
 
 	local state = player:StartSequence(sequence)
 	if not state then
@@ -369,6 +393,9 @@ function SubsurfaceAnomaly:OnReveal()
 	RequestNewObjsNotif(g_RecentlyRevAnomalies, self, self:GetMapID())
 	--@@@msg AnomalyRevealed,anomaly- fired when an anomaly has been releaved.
 	Msg("AnomalyRevealed", self)
+	if self.rare then
+		PlayFX("Revealed", "start", self)
+	end
 	--[[
 	print("--ANOMALY REVEALED--")
 	print("")
@@ -532,6 +559,10 @@ end
 
 function OnMsg.GatherFXTargets(list)
 	list[#list + 1] = "SubsurfaceAnomaly"
+end
+
+function OnMsg.GatherFXActions(list) 
+    list[#list + 1] = "Revealed"
 end
 
 GlobalVar("BreakthroughOrder", {})

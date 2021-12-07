@@ -207,11 +207,11 @@ function City:SelectDome(dome, trigger)
 				
 				local should_break = true
 				if trigger:GetPos() ~= InvalidPos() then
-					if trigger:HasMember("holder") and
-						IsValid(trigger.holder) and
-						self.selected_dome[IsObjInDome(trigger.holder)][trigger]
-					then
-						should_break = false
+					if trigger:HasMember("holder") and IsValid(trigger.holder) then
+						local holder_dome = IsObjInDome(trigger.holder)
+						if holder_dome and self.selected_dome[holder_dome] and self.selected_dome[holder_dome][trigger] then
+							should_break = false
+						end
 					end
 				end
 				if IsObjInDome(trigger) == dome then should_break = false end
@@ -361,10 +361,10 @@ function City:GetWorkshopWorkersPercent()
 	return MulDivRound(workers, 100, col_count)
 end
 
-CargoCapacityLabels = {}
+g_CargoWeightCapacityLabels = {}
 
-function City:GetCargoCapacity()
-	local label = CargoCapacityLabels[self.launch_mode]
+function City:GetCargoWeightCapacity()
+	local label = g_CargoWeightCapacityLabels[self.launch_mode]
 	if label then
 		local obj = (self.labels[label] or empty_table)[1]
 		return obj and obj.cargo_capacity or 0

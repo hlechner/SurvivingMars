@@ -227,7 +227,9 @@ end
 function Colony:GrantTechFromProperties(source)
 	for i=1, 5 do
 		local tech_name = source["tech"..i]
-		self:SetTechResearched(tech_name)
+		if tech_name and tech_name ~= "" then
+			self:SetTechResearched(tech_name)
+		end
 	end
 end
 

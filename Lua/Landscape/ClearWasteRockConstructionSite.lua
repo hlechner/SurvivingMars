@@ -410,9 +410,15 @@ function ClearWasteRockConstructionSite:AddResource(amount, resource)
 	self:UpdateLSProgress(amount)
 end
 
-function ClearWasteRockConstructionSite:ConnectToCommandCenters()
+function ClearWasteRockConstructionSite:FindCommandCenters()
 	local b =  self:GetBBox(const.CommandCenterMaxRadius * const.GridSpacing)
-	GetRealm(self):MapForEach(b, "DroneControl", DroneControl.ConnectLandscapeConstructions)
+	local centers = GetRealm(self):MapGet(b, "DroneControl")
+	local additional_centers = FindAdditionalCommandCenters(self)
+	return table.union(centers, additional_centers)
+end
+
+function ClearWasteRockConstructionSite:ConnectToCommandCenters()
+	table.map(self:FindCommandCenters(), DroneControl.ConnectLandscapeConstructions)
 end
 
 local max_t = 10

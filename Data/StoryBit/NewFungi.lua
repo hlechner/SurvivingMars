@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 	Effects = {},
 	Enabled = true,
 	Image = "UI/Messages/Events/14_fungal_farm.tga",
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
 			'Label', "FungalFarm",
@@ -24,6 +25,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(689726450611, --[[voice:narrator]] "A new species of fungi has been observed to grow amidst the regulated one we cultivate for food in our Fungal Farms."),
 	group = "Buildings",
 	id = "NewFungi",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(320109030450, --[[StoryBit NewFungi Text]] "Clear it out and check that no contamination has spread."),
 		'OutcomeText', "custom",

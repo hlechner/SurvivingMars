@@ -825,13 +825,17 @@ function DroneControl:OnSelected()
 	SelectionArrowAdd(drones)
 end
 
+function DroneControl:Abandon(drone)
+	drone:SetCommandCenter(false)
+	if not drone:IsDisabled() then
+		drone:SetCommand("WaitingCommand")
+	end
+end
+
 function DroneControl:AbandonAllDrones()
 	for i = #self.drones, 1, -1 do
 		local drone = self.drones[i]
-		drone:SetCommandCenter(false)
-		if not drone:IsDisabled() then
-			drone:SetCommand("WaitingCommand")
-		end
+		self:Abandon(drone)
 		SelectionArrowRemove(drone)
 	end
 end
@@ -892,8 +896,8 @@ function DroneControl:ConvertDroneToPrefab(bulk)
 	end
 end
 
-function DroneControl:ProvidesBatteryCharging()
-	return true
+function DroneControl:ProvidesRemoteBatteryCharging()
+	return false
 end
 
 function DroneControl:SetWaitingDronesIdle()

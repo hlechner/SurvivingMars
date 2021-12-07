@@ -8,6 +8,7 @@ PlaceObj('StoryBit', {
 		}),
 	},
 	Effects = {},
+	MainMapExclusive = false,
 	NotificationText = T(11055, --[[StoryBit ViolentDelights_FollowRecovery NotificationText]] "<DisplayName> can work again."),
 	Prerequisites = {},
 	ScriptDone = true,
@@ -16,5 +17,13 @@ PlaceObj('StoryBit', {
 	TextsDone = true,
 	group = "Sanity Breakdown",
 	id = "ViolentDelights_FollowRecovery",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637249020,
+			},
+		},
+	}),
 })
 

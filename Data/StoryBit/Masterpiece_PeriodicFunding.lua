@@ -10,6 +10,7 @@ PlaceObj('StoryBit', {
 	Enables = {
 		"Masterpiece_PeriodicFunding",
 	},
+	MainMapExclusive = false,
 	NotificationText = T(11042, --[[StoryBit Masterpiece_PeriodicFunding NotificationText]] "Received <funds> from art sales"),
 	Prerequisites = {},
 	ScriptDone = true,
@@ -18,6 +19,14 @@ PlaceObj('StoryBit', {
 	TextsDone = true,
 	group = "Buildings",
 	id = "Masterpiece_PeriodicFunding",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamFunding', {
 		'Name', "funds",
 		'Value', 250000000,

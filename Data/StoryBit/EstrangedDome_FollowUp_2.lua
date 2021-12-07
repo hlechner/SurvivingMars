@@ -28,6 +28,7 @@ PlaceObj('StoryBit', {
 			},
 		}),
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 7200000,
@@ -37,6 +38,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(352728298711, --[[voice:narrator]] "The rogue Dome is begging us to rejoin the colony."),
 	group = "Renegades",
 	id = "EstrangedDome_FollowUp_2",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637250330,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(535842221844, --[[StoryBit EstrangedDome_FollowUp_2 Text]] "Welcome back!"),
 	}),

@@ -454,7 +454,7 @@ function AttackRover:CanInteractWithObject(obj, interaction_mode)
 		return false, false, true
 	end
 
-	if self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move" then --the 3 move modes..
+	if IsMoveInteractionMode(self.interaction_mode) then
 		if IsKindOf(obj, "Tunnel") and obj.working then
 			return true,  T{9627, "<UnitMoveControl('ButtonA',interaction_mode)>: Use Tunnel",self}--UseTunnel
 		end

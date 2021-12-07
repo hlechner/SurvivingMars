@@ -47,7 +47,7 @@ function TheExcavator:GameInit()
 	self.belt = self:GetAttach("ExcavatorBelt")
 	self.belt:SetFrameAnimationSpeed(0)
 	
-	self.rope = PlaceObjIn("ExcavatorRope", self:GetMapID())
+	self.rope = PlaceObjectIn("ExcavatorRope", self:GetMapID())
 	self.tower:Attach(self.rope, self.tower:GetSpotBeginIndex("Rope2"))
 	self.rope:SetAxis(axis_y)
 	

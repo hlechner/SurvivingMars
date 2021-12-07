@@ -7,6 +7,7 @@ PlaceObj('StoryBit', {
 			'Amount', "<granted_research>",
 		}),
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 2160000,
@@ -16,6 +17,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(298226207810, --[[voice:narrator]] "Our prodigy's talents proved to reach far beyond art masterpieces. "),
 	group = "Buildings",
 	id = "Masterpiece_Research",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamResearchPoints', {
 		'Name', "granted_research",
 		'Value', 8000,

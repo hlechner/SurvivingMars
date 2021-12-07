@@ -13,11 +13,13 @@ PlaceObj('StoryBit', {
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "MOXIE",
+			'InColony', false,
 			'Prop', "maintenance_threshold_base",
 			'ModifyId', "BadMoxie_ColdWave",
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "MOXIE",
+			'InColony', false,
 			'Prop', "electricity_consumption",
 			'ModifyId', "BadMoxie_ColdWave",
 		}),
@@ -28,6 +30,7 @@ PlaceObj('StoryBit', {
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "MOXIE",
+			'InColony', false,
 			'Prop', "maintenance_resource_amount",
 			'ModifyId', "BadMoxie_ExtraMaintenance",
 		}),
@@ -50,5 +53,13 @@ PlaceObj('StoryBit', {
 	Trigger = "TechResearchedTrigger",
 	group = "Disasters",
 	id = "BadMoxie_Finale",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
+		},
+	}),
 })
 

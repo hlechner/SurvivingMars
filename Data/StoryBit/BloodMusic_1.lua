@@ -4,6 +4,7 @@ PlaceObj('StoryBit', {
 	ActivationEffects = {},
 	Effects = {},
 	InheritsObject = false,
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('CheckTechStatus', {
 			'Field', "Storybits",
@@ -19,6 +20,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(233176780135, --[[voice:narrator]] "We have discovered the reason behind the changes that affected our Colonist. Our Construction Nanites!"),
 	group = "Breakthroughs",
 	id = "BloodMusic_1",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "changed_amount",
 		'Value', 30,

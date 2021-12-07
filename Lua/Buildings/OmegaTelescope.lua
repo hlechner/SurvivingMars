@@ -23,26 +23,6 @@ function OmegaTelescope:Done()
 	DeleteThread(self.antenna_anim_thread)
 end
 
-function OmegaTelescope:UnlockBreakthroughs(count)
-	local breakthroughs = UIColony:GetUnregisteredBreakthroughs()
-	StableShuffle(breakthroughs, UIColony:CreateResearchRand("OmegaTelescope"), 100)
-	local unlocked = 0
-	while unlocked < count do
-		local idx = #breakthroughs
-		local id = breakthroughs[idx]
-		if not id then
-			break
-		end
-		if self.city.colony:SetTechDiscovered(id) then
-			unlocked = unlocked + 1
-		end
-		table.remove(breakthroughs, idx)
-	end
-	if unlocked > 0 then
-		AddOnScreenNotification("MultipleBreakthroughsDiscovered", OpenResearchDialog, { count = count }, nil, self:GetMapID())
-	end
-end
-
 function OmegaTelescope:RaiseLowerAnim()
 	local antenna = self.antenna
 
@@ -72,7 +52,7 @@ function OmegaTelescope:OnSetWorking(working)
 
 	if working and not g_OmegaTelescopeBonusGiven then
 		g_OmegaTelescopeBonusGiven = true
-		self:UnlockBreakthroughs(const.OmegaTelescopeBreakthroughsCount)
+		UIColony:UnlockBreakthroughs(const.OmegaTelescopeBreakthroughsCount, "OmegaTelescope", self:GetMapID())
 	end
 	
 	--The animation is as follows: rotate at random angle; raise; wait; lower; repeat...

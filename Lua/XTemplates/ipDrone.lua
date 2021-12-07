@@ -107,6 +107,7 @@ PlaceObj('XTemplate', {
 			'TitleHAlign', "stretch",
 		}),
 		PlaceObj('XTemplateTemplate', {
+			'__condition', function (parent, context) return (not context.command_center) or (not context.command_center:ProvidesRemoteBatteryCharging()) end,
 			'__template', "InfopanelSection",
 			'RolloverText', T(4445, --[[XTemplate ipDrone RolloverText]] "Drones will seek a recharge station on low battery. Powered down Drones can be recharged by maintenance Drones or RC Commanders."),
 			'RolloverTitle', T(7608, --[[XTemplate ipDrone RolloverTitle]] "Battery  <percent(battery,battery_max)>"),

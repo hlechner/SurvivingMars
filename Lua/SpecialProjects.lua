@@ -70,7 +70,7 @@ function MarsSpecialProject:GetOutcomeText()
 		end
 	end
 	local idx = g_SpecialProjectCompleted and g_SpecialProjectCompleted[self.project_id] and g_SpecialProjectCompleted[self.project_id]  + 1 or 1
-	local add_text = project.GetOutcomeText(project, self, UICity, idx)
+	local add_text = project.GetOutcomeText(project, self, MainCity, idx)
 	if add_text and add_text~="" then
 		outcome[#outcome+1] = add_text
 	end
@@ -83,7 +83,7 @@ function MarsSpecialProject:ShowOutcomeText()
 		return true 
 	end
 	local idx = g_SpecialProjectCompleted and g_SpecialProjectCompleted[self.project_id] and g_SpecialProjectCompleted[self.project_id] + 1 or 1
-	local add_text = project.GetOutcomeText(project, self, UICity, idx)
+	local add_text = project.GetOutcomeText(project, self, MainCity, idx)
 	if add_text and add_text~="" then
 		return true
 	end	
@@ -91,7 +91,7 @@ end
 function MarsSpecialProject:PrerequisiteToStart()
 	local project = Presets.POI.Default[self.project_id]
 	if not project then return false end
-	return project.PrerequisiteToStart(project, self, UICity)
+	return project.PrerequisiteToStart(project, self, MainCity)
 end
 
 function MarsSpecialProject:GetRocketResources()
@@ -176,7 +176,7 @@ end
 
 function CalcNextSpawnProject(poi_id, city)
 	local project = Presets.POI.Default[poi_id]
-	local city = city or UICity
+	local city = city or MainCity
 	local min = project.spawn_period.from
 	local max = project.spawn_period.to	
 	if min>0 and max>0 then
@@ -315,7 +315,7 @@ DefineClass.Effect_UnlockSpecialProject = {
 
 function Effect_UnlockSpecialProject:OnApplyEffect(colony)
 	local poi = Presets.POI.Default[self.SpecialProject]
-	local city = UICity
+	local city = MainCity
 	if poi.PrerequisiteToCreate(poi, city) then
 		SpawnSpecialProject(poi.id, city, "init")
 	end
@@ -323,7 +323,7 @@ end
 
 function CheatSpawnSpecialProjects(project_id)
 	local projects = Presets.POI.Default
-	local city = UICity
+	local city = MainCity
 	if project_id then
 		local project = Presets.POI.Default[project_id]
 		local init = not g_SpecialProjectSpawnNextIdx[project_id]

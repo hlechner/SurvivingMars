@@ -42,8 +42,8 @@ function Modifiable:UpdateModifier(action, modifier, amount, percent)
 	if amount == 0 and percent == 0 then return end
 	local prop = modifier.prop
 	local base_prop = "base_" .. prop
+	
 	if not self:HasMember(base_prop) then
-		-- this property isn't modifiable
 		return
 	end
 	local modifications = self.modifications

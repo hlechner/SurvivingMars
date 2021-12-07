@@ -16,6 +16,7 @@ PlaceObj('StoryBit', {
 			},
 		}),
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 3600000,
@@ -25,6 +26,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(399533889705, --[[voice:narrator]] "Our Scientists have failed to construct a working Fusion Reactor prototype."),
 	group = "Buildings",
 	id = "Prototype_Reactor_Fail",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "morale_boost",
 		'Value', 20,

@@ -6,6 +6,7 @@ PlaceObj('StoryBit', {
 		"RenegateVigilante_KillRenegades",
 	},
 	Effects = {},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 9000000,
@@ -13,5 +14,13 @@ PlaceObj('StoryBit', {
 	TextsDone = true,
 	group = "Renegades",
 	id = "RenegateVigilante_Disable",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637250330,
+			},
+		},
+	}),
 })
 

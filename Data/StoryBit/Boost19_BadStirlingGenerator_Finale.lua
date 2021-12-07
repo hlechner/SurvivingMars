@@ -13,6 +13,7 @@ PlaceObj('StoryBit', {
 			'ModifyId', "BadStirlingGenerator",
 		}),
 	},
+	MainMapExclusive = false,
 	Prerequisites = {
 		PlaceObj('IsTechId', {
 			'Field', "Storybits",
@@ -48,6 +49,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1550494090,
 				user = "Blizzard",
+			},
+			{
+				action = "Modified",
+				time = 1637250706,
 			},
 		},
 	}),

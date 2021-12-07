@@ -10,6 +10,7 @@ PlaceObj('StoryBit', {
 		}),
 	},
 	Effects = {},
+	MainMapExclusive = false,
 	NotificationText = T(11730, --[[StoryBit NewFungi_Aftermath NotificationText]] "Fungal Farms production increased"),
 	Prerequisites = {},
 	ScriptDone = true,
@@ -18,5 +19,13 @@ PlaceObj('StoryBit', {
 	TextsDone = true,
 	group = "Buildings",
 	id = "NewFungi_Aftermath",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 })
 

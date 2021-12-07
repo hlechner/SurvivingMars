@@ -380,7 +380,7 @@ function Colonist:UICommandCenterStatUpdate(win, stat)
 	win.idLabel:SetText(tv)
 end
 
-function Colonist:GetOverviewInfo()
+function Colonist:GetUIOverviewInfo()
 	local rows = {}
 	rows[#rows + 1] = T(4358, "Age Group<right><Age>")
 	rows[#rows + 1] = T(4359, "Specialization<right><Specialization>")
@@ -736,6 +736,11 @@ function Building:GetOverviewInfo()
 			rows[#rows + 1] = T(11843, "Seeds") .. Untranslated("<right><seeds(Stored_Seeds, MaxAmount_Seeds)>")
 		end
 	end
+	return rows
+end
+
+function Building:GetUIOverviewInfo()
+	local rows = self:GetOverviewInfo()
 	local warning = self:GetUIWarning()
 	if warning then
 		rows[#rows + 1] = "<center>" .. T(47, "<red>Warning</red>")
@@ -1134,12 +1139,7 @@ function Dome:GetOverviewInfo()
 			rows[#rows + 1] = dome:GetDisplayName()
 		end
 	end
-	local warning = self:GetUIWarning()
-	if warning then
-		rows[#rows + 1] = "<center>" .. T(47, "<red>Warning</red>")
-		rows[#rows + 1] = warning
-	end
-	return #rows > 0 and table.concat(rows, "<newline><left>") or ""
+	return rows
 end
 
 function Community:UICommandCenterStatUpdate(win, stat)

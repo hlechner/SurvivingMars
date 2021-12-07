@@ -120,7 +120,7 @@ function GetPlayableAreaNearby(game_map, position, max_radius, min_radius, filte
 		local range = map_data.playable_height_range
 		if range and range.from < range.to then
 			local z = terrain:GetHeight(x, y)
-			return z >= range.from * guim and z <= range.to * guim
+			return z >= range.from * guim and z <= range.to * guim and filter(x, y)
 		else
 			return filter(x, y)
 		end

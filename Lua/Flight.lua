@@ -818,7 +818,8 @@ end
 function FlyingObject:GetLogicalPos()
 	local pos = self:GetVisualPos()
 	if self:IsValidPos() then
-		pos = pos:SetTerrainZ()
+		local realm = GetRealm(self)
+		pos = realm:SnapToTerrain(pos)
 	end
 	return pos
 end
@@ -885,7 +886,8 @@ function FlyingObject:FollowPathCmd(path)
 	local last_pos = path[#path][4]
 	if not IsCloser2D(first_pos, last_pos, 30000 * guim) then
 		assert(false, "Flying path too long!")
-		self:SetPos(last_pos:SetTerrainZ(hover_height), 1000)
+		local realm = GetRealm(self)
+		self:SetPos(realm:SnapToTerrain(last_pos, self.hover_height), 1000)
 		Sleep(1000)
 		return
 	end
@@ -893,10 +895,8 @@ function FlyingObject:FollowPathCmd(path)
 	flight_system.flying_objects[self] = CurrentThread()
 	self:RegisterFlight(true)
 	self.current_path = path
-
-	local flight_cache = GetFlightCache(self)
-
-	local Flight_GetHeight = function(x, y) return flight_cache:GetHeight(x, y) end
+	
+	local Flight_GetHeight = function(x, y) return GetFlightCache(self):GetHeight(x, y) end
 	local hover_height = self.hover_height
 	local spline = path[1]
 	local spline_idx = 1
@@ -906,7 +906,7 @@ function FlyingObject:FollowPathCmd(path)
 	if not IsValidPos(self) then
 		assert(false, "Invalid flying object pos!")
 		local x, y = first_pos:xy()
-		local z = flight_cache:GetHeight(x, y) + hover_height
+		local z = GetFlightCache(self):GetHeight(x, y) + hover_height
 		self:SetPos(x, y, z)
 		self:SetAngle(angle)
 	else
@@ -978,6 +978,7 @@ function FlyingObject:FollowPathCmd(path)
 				local new_spline = new_spline_idx ~= spline_idx and path[new_spline_idx] or spline
 				local dirx, diry
 				x1, y1, dirx, diry = BS3_GetSplinePosDir2D(new_spline, new_spline_coef)
+				local flight_cache = GetFlightCache(self)
 				ground_height = get_height(flight_cache, x1, y1, ground_ref)
 				x0, y0, z0 = self:GetVisualPosXYZ()
 				local ground_denivelation = ground_height - get_height(flight_cache, x0, y0, ground_ref)
@@ -1033,6 +1034,7 @@ function FlyingObject:FollowPathCmd(path)
 					ground_ref = false
 				end
 			end
+			local flight_cache = GetFlightCache(self)
 			if spline_change then
 				spline_change = false
 				local next_spline = path[spline_idx + 1]

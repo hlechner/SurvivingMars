@@ -3,6 +3,7 @@
 PlaceObj('StoryBit', {
 	ActivationEffects = {},
 	Effects = {},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SelectObject = false,
@@ -14,6 +15,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(683492349841, --[[voice:narrator]] "The effects of the mutated nanites have become too widespread and people begin to worry."),
 	group = "Breakthroughs",
 	id = "BloodMusic_2",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitReply', {
 		'Text', T(757460357516, --[[StoryBit BloodMusic_2 Text]] "Maybe it’s time we stop..."),
 		'OutcomeText', "custom",

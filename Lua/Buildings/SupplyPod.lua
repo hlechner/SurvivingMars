@@ -170,4 +170,4 @@ function CreateRefundablePod(class, label, pod_price)
 	pod:SetCommand("OnEarth")
 end
 
-CargoCapacityLabels.pod = "SupplyPod"
+g_CargoWeightCapacityLabels.pod = "SupplyPod"

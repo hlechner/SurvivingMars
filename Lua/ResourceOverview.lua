@@ -24,7 +24,7 @@ function ResourceOverviewThreadBody()
 		local resource_overview = GetCityResourceOverview(city)
 		resource_overview.estimated_maintenance_time = RealTime() -- avoid performing estimation on a regular basis
 		pcall(GatherResourceOverviewData, resource_overview.data, city)
-		resource_overview:GatherPerDomeInfo()
+		resource_overview:GatherPerCommunityInfo()
 		resource_overview:ProcessDomelessColonists()
 		resource_overview:CalcColonistsTraits()
 		resource_overview:CalcConsumptionProduction()
@@ -220,9 +220,9 @@ function ResourceOverview:GetTotalExportFunding()
 	return (UIColony.funds.funding_gain_total or empty_table)["Export"] or 0
 end
 
-function ResourceOverview:GatherPerDomeInfo()
+function ResourceOverview:GatherPerCommunityInfo()
 	if not self.city then return end
-	local domes = self.city.labels.Dome or {}
+	local domes = self.city.labels.Community or {}
 	local celebrity_count, renegades, martianborn, earthborn, tourists = 0, 0, 0, 0, 0
 	local children, adults, youths, middleageds, seniors = 0,0,0,0,0
 	for _, dome in ipairs(domes) do
@@ -272,6 +272,7 @@ function ResourceOverview:ProcessDomelessColonists()
 		if domeless_colonist.traits.Martianborn then self.data.martianborn = self.data.martianborn + 1 end
 		if domeless_colonist.traits.Tourist then self.data.tourists = self.data.tourists + 1 end
 	end
+	self.data.earthborn = self.data.colonists - self.data.martianborn
 end
 
 function ResourceOverview:GatherDronesInfo()
@@ -591,8 +592,9 @@ function ResourceOverview:GetPrefabRollover()
 
 	local prefabs = self.city.available_prefabs or empty_table
 	for prefab, count in pairs(prefabs) do
-		if count > 0 then
-			local display_name = BuildingTemplates[prefab].display_name
+		local prefab_building = BuildingTemplates[prefab]
+		if prefab_building and count > 0 then
+			local display_name = prefab_building.display_name
 			ret[#ret + 1] = T{13656, "<u(prefab)><right><prefab(count)>", prefab = display_name, count = count}
 		end
 	end
@@ -1129,11 +1131,13 @@ function ResourceOverview:GetExcessOtherSideConsumption(grid_type)
 	local other_side_consumption = 0
 	local stored_other_side_grid = false
 	for _, building in ipairs(buildings) do
-		local building_other_side_grid = building.other.grids[grid_type].grid
-		if building_other_side_grid and stored_other_side_grid ~= building_other_side_grid then
-			other_side_consumption = other_side_consumption + building:GetOtherSideConsumption(grid_type)
+		if building.other then
+			local building_other_side_grid = building.other.grids[grid_type].grid
+			if building_other_side_grid and stored_other_side_grid ~= building_other_side_grid then
+				other_side_consumption = other_side_consumption + building:GetOtherSideConsumption(grid_type)
+			end
+			stored_other_side_grid = building_other_side_grid
 		end
-		stored_other_side_grid = building_other_side_grid
 	end
 	return other_side_consumption
 end

@@ -62,8 +62,9 @@ SavegameFixups.DropBrokenDronesAgain = SavegameFixups.DropBrokenDrones
 
 -- msg / status updates
 
-local function UpdateFlightPermissions()
-	local rockets = UICity.labels.AllRockets or empty_table
+local function UpdateFlightPermissions(map_id)
+	local city = Cities[map_id] or MainCity
+	local rockets = city.labels.AllRockets or empty_table
 	for _, rocket in ipairs(rockets) do		
 		if rocket.command == "WaitInOrbit" then -- update status/trigger land for rockets in orbit
 			rocket:UpdateStatus(rocket:IsFlightPermitted() and (rocket.landing_disabled and "landing disabled" or "in orbit") or "suspended in orbit")

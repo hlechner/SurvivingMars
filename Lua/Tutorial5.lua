@@ -257,7 +257,7 @@ g_TutorialScenarios.Tutorial5 = function()
 					local dlg = GetDialog("DomeTraits")
 					if not dlg then return false end
 					local specialization = table.find_value(dlg.idList, "Id", "Specialization")
-					if dlg.Mode == "traitCategories" then
+					if dlg.Mode == "categories" then
 						return specialization
 					else
 						local prop_meta = GetDialogModeParam(dlg)
@@ -274,7 +274,7 @@ g_TutorialScenarios.Tutorial5 = function()
 				local dlg = GetDialog("DomeTraits")
 				if not dlg then break end
 				
-				if dlg.Mode ~= "traitCategories" then
+				if dlg.Mode ~= "categories" then
 					local prop_meta = GetDialogModeParam(dlg)
 					local category = prop_meta and prop_meta.id 
 					if category == "Specialization" then

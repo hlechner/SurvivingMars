@@ -28,6 +28,10 @@ PlaceObj('StoryBit', {
 				time = 1550844439,
 				user = "Radomir",
 			},
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
 		},
 	}),
 	PlaceObj('StoryBitReply', {
@@ -77,6 +81,7 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "MOXIE",
+				'InColony', false,
 				'Prop', "air_production",
 				'Percent', "<o2_production_reduction>",
 				'ModifyId', "BadMoxie_AirProduction",
@@ -98,6 +103,7 @@ PlaceObj('StoryBit', {
 		'Effects', {
 			PlaceObj('ModifyLabel', {
 				'Label', "MOXIE",
+				'InColony', false,
 				'Prop', "maintenance_resource_amount",
 				'Amount', 2,
 				'ModifyId', "BadMoxie_ExtraMaintenance",

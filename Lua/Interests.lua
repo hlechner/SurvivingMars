@@ -63,11 +63,12 @@ Interests = {
 	},
 }
 
+-- Based on ServiceFailure
 InterestFailMessages = {
 	[1] = T(1024, "<red>No available service building (<interest>) </red>"),
-	[2] = T(1025, "<red>Service building was closed (<interest>) </red>"),
-	[3] = T(1026, "<red>Service building was full (<interest>) </red>"),
-	[4] = T(1027, "<red>Could not get service (<interest>) </red>"),
+	[2] = T(1027, "<red>Could not get serviced (<interest>) </red>"),
+	[3] = T(1025, "<red>Service building was closed (<interest>) </red>"),
+	[4] = T(1026, "<red>Service building was full (<interest>) </red>"),
 }
 
 function GetInterestFailMessage(interest, level)
@@ -155,6 +156,7 @@ ColonistStatReasons =
 	["StatusEffect_StressedOut"] = T(1040, "<green>Regained composure after Sanity breakdown <amount></green>"),
 	["insane"] 						= T(7368, "Rebooting in safe mode <amount>"),
 	["lack of light"]         = T(13614, "<red>Lack of sunlight<amount></red>"),
+	["at home underground"]   = T(14319, "<green>At home underground<amount></green>"),
 	-- ["rest"] - same as health
 	-- ["comfort food"] - same as comfort
 	["dome"]                  = T(1041, "<green>Dome, sweet Dome <amount></green>"),

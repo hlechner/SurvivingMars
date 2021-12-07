@@ -19,6 +19,7 @@ PlaceObj('StoryBit', {
 	Enables = {
 		"RenegateVigilante_KillRenegades",
 	},
+	MainMapExclusive = false,
 	NotificationText = T(11384, --[[StoryBit RenegateVigilante_KillRenegades NotificationText]] "The vigilante strikes again"),
 	Prerequisites = {
 		PlaceObj('CheckObjectCount', {
@@ -45,6 +46,10 @@ PlaceObj('StoryBit', {
 				action = "Modified",
 				time = 1552918144,
 				user = "Lina",
+			},
+			{
+				action = "Modified",
+				time = 1637250330,
 			},
 		},
 	}),

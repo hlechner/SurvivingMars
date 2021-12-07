@@ -259,7 +259,7 @@ function SendRocketToMarsPoint(obj, spot, dialog)
 	dialog:Close()
 	CreateRealTimeThread(function()
 		WaitMsg("PlanetCameraSet")
-		ViewAndSelectObject(IsValid(obj) and obj or spot.rocket)
+		ViewAndSelectObject(IsValid(obj) and ActiveMapID == obj:GetMapID() and obj or spot.rocket)
 	end)
 end
 

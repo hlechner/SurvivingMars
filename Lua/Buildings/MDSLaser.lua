@@ -248,7 +248,9 @@ end
 
 local function SeekAndDestroy(obj)
 	assert(IsKindOf(obj, "BaseMeteor"), "Invalid object to track!")
-	local lasers = UICity.labels.MDSLaser or empty_table
+	local map_id = obj:GetMapID()
+	local city = Cities[map_id] or MainCity
+	local lasers = city.labels.MDSLaser or empty_table
 	local soonest_laser, min_rot_time = nil, max_int
 	for _, laser in ipairs(lasers) do
 		if laser:CanHit(obj) then
@@ -263,7 +265,7 @@ local function SeekAndDestroy(obj)
 	end
 	
 	if not soonest_laser then
-		local towers = UICity.labels.DefenceTower or empty_table
+		local towers = city.labels.DefenceTower or empty_table
 		for _, tower in ipairs(towers) do
 			if tower:CanHit(obj) then
 				soonest_laser = tower
@@ -273,7 +275,7 @@ local function SeekAndDestroy(obj)
 	end
 
 	if not soonest_laser then
-		local rovers = UICity.labels.Rover or empty_table
+		local rovers = city.labels.Rover or empty_table
 		for _, rover in ipairs(rovers) do
 			if IsKindOf(rover, "AttackRover") and rover.reclaimed and rover:CanHit(obj) then
 				soonest_laser = rover

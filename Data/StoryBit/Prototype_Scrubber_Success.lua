@@ -13,6 +13,7 @@ PlaceObj('StoryBit', {
 			'Amount', 10,
 		}),
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 3600000,
@@ -22,6 +23,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(846305562522, --[[voice:narrator]] "Our Scientists have succeeded in building the prototype Triboelectric Scrubber."),
 	group = "Buildings",
 	id = "Prototype_Scrubber_Success",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamPercent', {
 		'Name', "tech_boost",
 		'Value', 10,

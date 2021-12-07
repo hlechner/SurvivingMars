@@ -291,6 +291,7 @@ GamepadCheatsList = {
 	{ display_name = T(12276, "Increase all Terraforming Parameters by 10%"),	   func = function() for param in pairs(Terraforming) do SetTerraformParamPct(param, 10 + GetTerraformParamPct(param))  end end },
 	{ display_name = T(12277, "Decrease all Terraforming Parameters by 10%"),	   func = function() for param in pairs(Terraforming) do SetTerraformParamPct(param, -10 + GetTerraformParamPct(param)) end end },
 	{ display_name = T(13829, "Trigger Underground Marsquake"),	   				func = function() CheatTriggerUndergroundMarsquake() end },
+	{ display_name = T(13949, "Trigger Underground Cave In"),	   							func = function() CheatTriggerUndergroundCaveIn() end },
 	{ display_name = T(13830, "Reveal Deposits"),	   								func = function() CheatMapExplore("scanned") end },
 	{ display_name = T(12280, "Deep Scan Map"),		   								func = function() CheatMapExplore("deep scanned") end },
 	{ display_name = T(13831, "Scan Queued Sectors"),	  								func = function() CheatMapExplore("scan queued") end },

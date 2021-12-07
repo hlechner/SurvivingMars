@@ -376,7 +376,7 @@ function BaseRover:CanInteractWithObject(obj, interaction_mode)
 		return can_interact, action
 	end
 	
-	if self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move" then --the 3 move modes..
+	if IsMoveInteractionMode(self.interaction_mode) then
 		if IsKindOf(obj, "Tunnel") and obj.working then
 			return true, T{9616, "<UnitMoveControl('ButtonA',interaction_mode)>: Use Tunnel",self} --UseTunnel
 		end
@@ -391,7 +391,7 @@ function BaseRover:InteractWithObject(obj, interaction_mode)
 	
 	local interacted = DroneBase.InteractWithObject(self, obj, interaction_mode)
 	
-	if not interacted and (self.interaction_mode == false or self.interaction_mode == "default" or self.interaction_mode == "move") then --the 3 move modes..
+	if not interacted and IsMoveInteractionMode(self.interaction_mode) then
 		if IsKindOf(obj, "Tunnel") and obj.working then
 			GetCommandFunc(self)(self, "UseTunnel", obj)
 			SetUnitControlInteractionMode(self, false) --toggle button
@@ -509,6 +509,7 @@ RoverCommands = {
 	GotoAndEmbark =  T(11216, "Boarding Rocket"),
 	Landscaping = T(12424, "Landscaping"),
 	UseElevator = T(13878, "Going to an elevator"),
+	ClearRubble = T(13948, "Clearing Rubble"),
 }
 
 function BaseRover:Getui_command(for_cmd)

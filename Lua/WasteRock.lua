@@ -160,7 +160,7 @@ function WasteRockObstructor:Activate(prio, activator)
 	self.work_req:AddAmount(amount)
 	self.auto_connect = true
 	self:ConnectToCommandCenters()
-	self:ConnectToOtherBuildingCommandCenters(activator)
+	self:ConnectToBuildingCommandCenters(activator)
 end
 
 function WasteRockObstructor:Deactivate(activator)

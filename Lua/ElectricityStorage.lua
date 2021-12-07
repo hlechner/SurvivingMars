@@ -158,7 +158,7 @@ function ElectricityStorage:PlayFXHooks(cur_phase, next_phase, dur)
 end
 
 function ElectricityStorage:BuildingUpdate(delta, day, hour)
-	if not self.working or self.deflate_on_constructed and GameTime() <= self.deflate_on_constructed then return end
+	if not self.working or (is_number(self.deflate_on_constructed) and GameTime() <= self.deflate_on_constructed) then return end
 	if self.play_fx_on_next_update then
 		self:MyPlayFX("Battery", self.play_fx_on_next_update, self)
 		self.play_fx_on_next_update = false

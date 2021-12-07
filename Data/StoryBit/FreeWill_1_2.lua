@@ -29,6 +29,7 @@ PlaceObj('StoryBit', {
 	Enables = {
 		"FreeWill_2",
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	Text = T(822198918905, --[[StoryBit FreeWill_1_2 Text]] "<DisplayName> isn’t among the perpetrators, but the pattern remains the same – complete lack of any personal or professional relation between the victims and the attackers. The situation might be getting out of hand.\n\n<effect><injured_colonists> Colonists had lost <injure_damage> Health."),
@@ -38,6 +39,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(145449575602, --[[voice:narrator]] "Another worrying assault has happened and this time it involves several Arcology residents jumping with their bare fists at unsuspecting Colonists."),
 	group = "Breakthroughs",
 	id = "FreeWill_1_2",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "injured_colonists",
 		'Value', 5,

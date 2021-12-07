@@ -966,8 +966,8 @@ DefineClass.MalfunctionRocket = {
 	},
 	Description = Untranslated("Malfunction rocket and require <Amount> <Resource> to be able to launch"),
 	RequiredObjClasses = {
-		"RocketBase",
-	},
+	"RocketBase",
+},
 	Documentation = "Malfunction the associated rocket.",
 }
 
@@ -1023,7 +1023,7 @@ function ModifyCargoPrice:Execute(map_id, obj, context)
 		context:ShowError(self, "No such cargo preset", cargo)
 		return
 	end
-	if not RocketPayload_GetMeta(cargo) then
+	if not GetResupplyItem(cargo) then
 		context:ShowError(self, "The specified cargo isn't registered as a supply:", cargo)
 		return
 	end
@@ -1102,7 +1102,9 @@ DefineClass.ModifyLabel = {
 	properties = {
 		{ id = "Label", help = "The label to be affected; labels specify certain specific subsets of objects", 
 			editor = "combo", default = "", items = function (self) return LabelsCombo() end, },
-		{ id = "InDome", help = "It true, apply to a label within the Dome passed as a parameter to this effect instead", 
+		{ id = "InColony", help = "If true, apply to a label for the entire Colony. if false, apply to a label for the current city.", 
+			editor = "bool", default = true, },
+		{ id = "InDome", help = "If true, apply to a label within the Dome passed as a parameter to this effect instead.", 
 			editor = "bool", default = false, },
 		{ id = "Prop", name = "Property", help = "Name of a numeric property to modify", 
 			editor = "combo", default = "", items = function (self) return ModifiablePropsCombo() end, },
@@ -1126,11 +1128,16 @@ DefineClass.ModifyLabel = {
 }
 
 function ModifyLabel:Execute(map_id, obj, context)
-	local ctrl = MainCity
+	local ctrl = false
+	assert(not (self.InDome and self.InColony)) -- Choose either InDome or InColony
 	if self.InDome and obj then
 		ctrl = obj
 	elseif IsKindOf(obj, "CityObject") then
 		ctrl = obj.city or ctrl
+	elseif self.InColony then
+		ctrl = UIColony.city_labels
+	else
+		ctrl = Cities[map_id] or MainCity
 	end
 	assert(IsKindOf(ctrl, "LabelContainer"))
 	
@@ -1651,12 +1658,17 @@ end
 UndefineClass('RewardNewRocket')
 DefineClass.RewardNewRocket = {
 	__parents = { "Effect", },
+	properties = {
+		{ id = "rocket_class", name = "Rocket Class", help = "The rocket class to reward", 
+			editor = "text", default = false, },
+	},
 	Description = T(239752697318, --[[EffectDef Effects RewardNewRocket value]] "New rocket"),
 	Documentation = "Grant a new rocket.",
 }
 
 function RewardNewRocket:Execute(map_id, obj, context)
-	PlaceBuildingIn(GetRocketClass(), MainMapID)
+	local rocket_class = self.rocket_class ~= "" and self.rocket_class or GetRocketClass()
+	PlaceBuildingIn(rocket_class, MainMapID)
 end
 
 UndefineClass('RewardPrefab')
@@ -1792,9 +1804,11 @@ function RewardTech:Execute(map_id, obj, context)
 	end
 	local research = self.Research
 	if research == "random" then
-		research = GetRandomResearchableTech(field) or ""
+		research = GetRandomResearchableTech(field)
 	end
-	UIColony:SetTechResearched(research, "notify")
+	if research then
+		UIColony:SetTechResearched(research, "notify")
+	end
 end
 
 function RewardTech:GetResearchText(map_id, obj, context)
@@ -2645,68 +2659,68 @@ Marsquake.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1789, Marsqua
 ModifyCargoPrice.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1848, ModifyCargoPrice.Execute)
 ModifyColonistStat.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1911, ModifyColonistStat.Execute)
 ModifyConst.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 1979, ModifyConst.Execute)
-ModifyLabel.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2069, ModifyLabel.Execute)
-ModifyLabel.GetDomeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2114, ModifyLabel.GetDomeText)
-ModifyObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2188, ModifyObject.Execute)
-ModifyStatus.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2234, ModifyStatus.Execute)
-PauseExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2277, PauseExpedition.Execute)
-PauseResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2299, PauseResearch.Execute)
-PauseResearch.GetResearchTypeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2313, PauseResearch.GetResearchTypeText)
-PayFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2363, PayFunding.Execute)
-PickCargo.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2386, PickCargo.Execute)
-PickCargo.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2396, PickCargo.GetDescription)
-PickFromLabelEffect.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2436, PickFromLabelEffect.ConditionsFormat)
-PickFromLabelEffect.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2447, PickFromLabelEffect.GetObjName)
-PickFromLabelEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2455, PickFromLabelEffect.Execute)
-RemoveAllTraits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2517, RemoveAllTraits.Execute)
-RemoveTrait.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2554, RemoveTrait.Execute)
-RenameAssociatedObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2587, RenameAssociatedObject.Execute)
-RenameObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2625, RenameObject.Execute)
-ResetBuildingExtraCost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2682, ResetBuildingExtraCost.Execute)
-ResidenceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2720, ResidenceExecuteEffect.Execute)
-ResidenceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2729, ResidenceExecuteEffect.EffectsList)
-ResumeExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2771, ResumeExpedition.Execute)
-RevealNextTechInField.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2794, RevealNextTechInField.Execute)
-RewardApplicants.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2845, RewardApplicants.Execute)
-RewardExportPrice.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2878, RewardExportPrice.Execute)
-RewardFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2923, RewardFunding.Execute)
-RewardNewRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2945, RewardNewRocket.Execute)
-RewardPrefab.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2984, RewardPrefab.Execute)
-RewardPrefab.GetDrone = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2998, RewardPrefab.GetDrone)
-RewardPrefab.GetBuilding = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3010, RewardPrefab.GetBuilding)
-RewardPrefab.GetPrefabText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3022, RewardPrefab.GetPrefabText)
-RewardResearchPoints.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3061, RewardResearchPoints.Execute)
-RewardResearchPoints.GetResearchPoints = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3068, RewardResearchPoints.GetResearchPoints)
-RewardSponsorResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3096, RewardSponsorResearch.Execute)
-RewardSupplyPods.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3135, RewardSupplyPods.Execute)
-RewardTech.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3160, RewardTech.Execute)
-RewardTech.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3187, RewardTech.GetResearchText)
-RewardTech.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3196, RewardTech.GetFieldText)
-RewardTechBoost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3239, RewardTechBoost.Execute)
-RewardTechBoost.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3259, RewardTechBoost.GetResearchText)
-RewardTechBoost.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3269, RewardTechBoost.GetFieldText)
-RewardWonder.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3294, RewardWonder.Execute)
-SetBuildingBreakdownState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3350, SetBuildingBreakdownState.Execute)
-SetBuildingEnabledState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3400, SetBuildingEnabledState.Execute)
-SetBuildingRogueState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3447, SetBuildingRogueState.Execute)
-SetConstructionSiteState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3490, SetConstructionSiteState.Execute)
-SetEnabledSpecialProject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3521, SetEnabledSpecialProject.Execute)
-SetEnabledSpecialProject.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3536, SetEnabledSpecialProject.GetEditorView)
-SetEnabledSpecialProject.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3552, SetEnabledSpecialProject.GetWarning)
-SpawnColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3619, SpawnColonist.Execute)
-SpawnColonist.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3676, SpawnColonist.GetWarning)
-SpawnEffectDeposit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3715, SpawnEffectDeposit.Execute)
-SpawnEffectDeposit.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3792, SpawnEffectDeposit.ConditionsFormat)
-SpawnRefugeeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3905, SpawnRefugeeRocket.Execute)
-SpawnRefugeeRocket.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3960, SpawnRefugeeRocket.GetWarning)
-SpawnRocketInOrbit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4005, SpawnRocketInOrbit.Execute)
-SpawnSubsurfaceDeposits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4059, SpawnSubsurfaceDeposits.Execute)
-SpawnSubsurfaceDeposits.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4152, SpawnSubsurfaceDeposits.ConditionsFormat)
-StartDisaster.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4202, StartDisaster.GetDescription)
-StartDisaster.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4225, StartDisaster.Execute)
-UnfreezeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4319, UnfreezeBuilding.Execute)
-UnitAppear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4355, UnitAppear.Execute)
-UnitAppear.GetLocationText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4362, UnitAppear.GetLocationText)
-UnitDisappear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4394, UnitDisappear.Execute)
-WorkplaceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4421, WorkplaceExecuteEffect.Execute)
-WorkplaceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4430, WorkplaceExecuteEffect.EffectsList)
+ModifyLabel.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2074, ModifyLabel.Execute)
+ModifyLabel.GetDomeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2124, ModifyLabel.GetDomeText)
+ModifyObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2198, ModifyObject.Execute)
+ModifyStatus.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2244, ModifyStatus.Execute)
+PauseExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2287, PauseExpedition.Execute)
+PauseResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2309, PauseResearch.Execute)
+PauseResearch.GetResearchTypeText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2323, PauseResearch.GetResearchTypeText)
+PayFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2373, PayFunding.Execute)
+PickCargo.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2396, PickCargo.Execute)
+PickCargo.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2406, PickCargo.GetDescription)
+PickFromLabelEffect.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2446, PickFromLabelEffect.ConditionsFormat)
+PickFromLabelEffect.GetObjName = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2457, PickFromLabelEffect.GetObjName)
+PickFromLabelEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2465, PickFromLabelEffect.Execute)
+RemoveAllTraits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2527, RemoveAllTraits.Execute)
+RemoveTrait.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2564, RemoveTrait.Execute)
+RenameAssociatedObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2597, RenameAssociatedObject.Execute)
+RenameObject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2635, RenameObject.Execute)
+ResetBuildingExtraCost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2692, ResetBuildingExtraCost.Execute)
+ResidenceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2730, ResidenceExecuteEffect.Execute)
+ResidenceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2739, ResidenceExecuteEffect.EffectsList)
+ResumeExpedition.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2781, ResumeExpedition.Execute)
+RevealNextTechInField.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2804, RevealNextTechInField.Execute)
+RewardApplicants.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2855, RewardApplicants.Execute)
+RewardExportPrice.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2888, RewardExportPrice.Execute)
+RewardFunding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2933, RewardFunding.Execute)
+RewardNewRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 2955, RewardNewRocket.Execute)
+RewardPrefab.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3001, RewardPrefab.Execute)
+RewardPrefab.GetDrone = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3015, RewardPrefab.GetDrone)
+RewardPrefab.GetBuilding = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3027, RewardPrefab.GetBuilding)
+RewardPrefab.GetPrefabText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3039, RewardPrefab.GetPrefabText)
+RewardResearchPoints.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3078, RewardResearchPoints.Execute)
+RewardResearchPoints.GetResearchPoints = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3085, RewardResearchPoints.GetResearchPoints)
+RewardSponsorResearch.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3113, RewardSponsorResearch.Execute)
+RewardSupplyPods.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3152, RewardSupplyPods.Execute)
+RewardTech.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3177, RewardTech.Execute)
+RewardTech.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3206, RewardTech.GetResearchText)
+RewardTech.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3215, RewardTech.GetFieldText)
+RewardTechBoost.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3258, RewardTechBoost.Execute)
+RewardTechBoost.GetResearchText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3278, RewardTechBoost.GetResearchText)
+RewardTechBoost.GetFieldText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3288, RewardTechBoost.GetFieldText)
+RewardWonder.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3313, RewardWonder.Execute)
+SetBuildingBreakdownState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3369, SetBuildingBreakdownState.Execute)
+SetBuildingEnabledState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3419, SetBuildingEnabledState.Execute)
+SetBuildingRogueState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3466, SetBuildingRogueState.Execute)
+SetConstructionSiteState.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3509, SetConstructionSiteState.Execute)
+SetEnabledSpecialProject.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3540, SetEnabledSpecialProject.Execute)
+SetEnabledSpecialProject.GetEditorView = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3555, SetEnabledSpecialProject.GetEditorView)
+SetEnabledSpecialProject.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3571, SetEnabledSpecialProject.GetWarning)
+SpawnColonist.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3638, SpawnColonist.Execute)
+SpawnColonist.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3695, SpawnColonist.GetWarning)
+SpawnEffectDeposit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3734, SpawnEffectDeposit.Execute)
+SpawnEffectDeposit.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3811, SpawnEffectDeposit.ConditionsFormat)
+SpawnRefugeeRocket.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3924, SpawnRefugeeRocket.Execute)
+SpawnRefugeeRocket.GetWarning = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 3979, SpawnRefugeeRocket.GetWarning)
+SpawnRocketInOrbit.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4024, SpawnRocketInOrbit.Execute)
+SpawnSubsurfaceDeposits.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4078, SpawnSubsurfaceDeposits.Execute)
+SpawnSubsurfaceDeposits.ConditionsFormat = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4171, SpawnSubsurfaceDeposits.ConditionsFormat)
+StartDisaster.GetDescription = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4221, StartDisaster.GetDescription)
+StartDisaster.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4244, StartDisaster.Execute)
+UnfreezeBuilding.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4338, UnfreezeBuilding.Execute)
+UnitAppear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4374, UnitAppear.Execute)
+UnitAppear.GetLocationText = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4381, UnitAppear.GetLocationText)
+UnitDisappear.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4413, UnitDisappear.Execute)
+WorkplaceExecuteEffect.Execute = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4440, WorkplaceExecuteEffect.Execute)
+WorkplaceExecuteEffect.EffectsList = SetFuncDebugInfo("@Data/ClassDef-Effects.lua", 4449, WorkplaceExecuteEffect.EffectsList)

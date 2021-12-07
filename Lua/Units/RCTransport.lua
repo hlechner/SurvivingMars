@@ -87,11 +87,13 @@ function RCTransport:GossipName()return Unit.GossipName(self)end
 
 function RCTransport:AddToLabels()
 	self.city:AddToLabel("RCTransportAndChildren", self)
+	SharedStorageBaseVisualOnly.AddToCityLabels(self)
 	BaseRover.AddToLabels(self)
 end
 
 function RCTransport:RemoveFromLabels()
 	self.city:RemoveFromLabel("RCTransportAndChildren", self)
+	SharedStorageBaseVisualOnly.RemoveFromCityLabels(self)
 	BaseRover.RemoveFromLabels(self)
 end
 
@@ -122,6 +124,10 @@ end
 
 function RCTransport:IsStorageEmpty()
 	return self:GetStoredAmount() == 0
+end
+
+function RCTransport:IsIdle()
+	return self.command == "LoadingComplete" or BaseRover.IsIdle(self)
 end
 
 function RCTransport:OnContinuousTaskTick(amount, total_amount)
@@ -754,6 +760,17 @@ local function create_stockpile(self, resource, value, ignore_z_delta)
 	end
 	
 	return stock
+end
+
+function SavegameFixups.CorrectRCTransportLabelOnRealm()
+	MapsForEach("map", "RCTransport", function(o)
+		for _, city in ipairs(Cities) do
+			if city ~= Cities[o:GetMapID()] then 
+				city:RemoveFromLabel("ResourceStockpile", o)
+			end
+		end
+		o.city:AddToLabel("ResourceStockpile", o)
+	end)
 end
 
 function SavegameFixups.ResetTransportRoutes()

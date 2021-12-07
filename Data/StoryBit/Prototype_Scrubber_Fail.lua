@@ -16,6 +16,7 @@ PlaceObj('StoryBit', {
 			},
 		}),
 	},
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SuppressTime = 3600000,
@@ -25,6 +26,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(118187514798, --[[voice:narrator]] "Our Scientists have failed to construct a working Triboelectric Scrubber prototype."),
 	group = "Buildings",
 	id = "Prototype_Scrubber_Fail",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637247374,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "morale_boost",
 		'Value', 20,

@@ -73,6 +73,8 @@ Tom Jansen
 Vlad Gapchych
 Eric Troost
 Anton Novoselov
+Jose Esteve
+Rowan Ramsey
 
 
 
@@ -99,6 +101,7 @@ Cannelle Nouvet
 Mathis Nowak
 Inken Starosta
 Sylvain Maupetit
+Sisilia Nedyalkova
 
 
 
@@ -114,6 +117,7 @@ Keith Russell
 Victor Danila
 Matthijs Nahon
 Elaine Verhaaf
+Richard van Beersum
 
 
 
@@ -131,7 +135,13 @@ Martin Hall
 
 BELOW AND BEYOND SFX
 
-Dan Bewick]],
+Dan Bewick
+
+
+
+SPECIAL THANKS TO
+
+Below and Beyond closed beta participants]],
 },
 
 {
@@ -1097,12 +1107,12 @@ Dmitry Klimov
 QA LEAD
 
 Daniil Tsoev
+Sana Miller
 
 
 
 QA TESTERS
 
-Sana Miller
 Anastasia Khudikova
 Polina Sharikova
 Anna Abaeva
@@ -1118,6 +1128,9 @@ Artem Zabrodskyi
 Konstantin Maslov
 Ekaterina Podsevalova
 Andrei Antonov
+Elizaveta Ishmulkina
+Kristina Belyakova
+Margarita Mirnaya
 ]],
 },
 

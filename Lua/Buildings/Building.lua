@@ -59,10 +59,25 @@ function BuildingFromGotoTarget(target)
 	return target
 end
 
-function IsBuildingAllowedIn(id, environments)
-	local props = GetPropertiesArray(BuildingTemplates[id], "disabled_in_environment")
+GlobalVar("DisabledInEnvironment", {})
+local function GetDisabledEnvironments(building_id)
+	return DisabledInEnvironment[building_id] or table.filter(GetPropertiesArray(BuildingTemplates[building_id], "disabled_in_environment"), function(environment) return environment ~= "" end)
+end
+
+function EnableInEnvironment(building_id, environment)
+	DisabledInEnvironment[building_id] = GetDisabledEnvironments(building_id)
+	table.remove_entry(DisabledInEnvironment[building_id], environment)
+end
+
+function DisableInEnvironment(building_id, environment)
+	DisabledInEnvironment[building_id] = GetDisabledEnvironments(building_id)
+	table.insert_unique(DisabledInEnvironment[building_id], environment)
+end
+
+function IsBuildingAllowedIn(building_id, environments)
+	DisabledInEnvironment[building_id] = GetDisabledEnvironments(building_id)
 	for _,environment in pairs(environments or empty_table) do
-		if table.find(props, environment) ~= nil then
+		if table.find(DisabledInEnvironment[building_id], environment) ~= nil then
 			return false
 		end
 	end
@@ -98,7 +113,8 @@ function GetAccessiblePrefabs(cities, environments)
 			local building_allowed = IsBuildingAllowedIn(template.id, environments)
 			if building_allowed then
 				local building_researched = IsBuildingTechResearched(template.template_class)
-				local building_unlocked = not def.locked or not IsCargoLocked(def) -- Remove function once Cargo is configured properly
+				local prerequisites_overridden = BuildMenuPrerequisiteOverrides[template.template_class] == true
+				local building_unlocked = not def.locked or not IsCargoLocked(def) or prerequisites_overridden -- Remove function once Cargo is configured properly
 				local building_available = (building_unlocked and building_researched) or CitiesHavePrefab(cities, template.id)
 				if building_available then
 					table.insert(prefabs, def)
@@ -1022,6 +1038,8 @@ function Building:ApplyUpgrade(tier, force)
 			local meta
 			if targetname == "self" then
 				meta = self:GetPropertyMetadata(prop)
+			elseif targetname == "colony" then
+				meta = g_Consts:GetPropertyMetadata(prop)
 			elseif g_Classes[label] then
 				meta = g_Classes[label]:GetPropertyMetadata(prop)
 			elseif ClassTemplates[label] and g_Classes[ClassTemplates[label]] then
@@ -1040,7 +1058,7 @@ function Building:ApplyUpgrade(tier, force)
 					percent = percent + (m_mods.percent or 0),
 				}
 			else
-				local target = self[targetname]
+				local target = targetname == "colony" and UIColony.city_labels or self[targetname]
 				if target then
 					local mod_id = string.format("%s_upgrade%d_mod_%d", self.handle, tier, i)
 					modifier = LabelModifier:new{
@@ -1095,7 +1113,7 @@ for i = 1, 3 do
 end
 
 function Building:ToggleUpgradeOnOff(upgrade_id)
-	if not self:HasUpgrade(upgrade_id) then 
+	if not self:HasUpgrade(upgrade_id) or not self:CanDisableUpgrade(upgrade_id) then 
 		return 
 	end
 	
@@ -1166,6 +1184,20 @@ end
 
 function Building:HasUpgrade(upgrade)
 	return self.upgrades_built[upgrade]
+end
+
+function Building:GetUpgradeValue(upgrade_id, field)
+	for i = 1, 3 do
+		local id = self[string.format("upgrade%d_id", i)]
+		if id == upgrade_id then
+			return self[string.format("upgrade%d_%s", i, field)]
+		end
+	end
+	assert(not "Trying to retrieve field from invalid upgrade: " .. upgrade_id)
+end
+
+function Building:CanDisableUpgrade(upgrade_id)
+	return self:GetUpgradeValue(upgrade_id, "can_disable") or false
 end
 
 function Building:IsUpgradeOn(upgrade)
@@ -1585,11 +1617,16 @@ end
 function Building:Refabricate()
 	self:OnRefabricate()
 	
-	PlayFX("Deconstruct", "end", self, nil, self:GetPos())
+	PlayFX("Refabbing", "end", self, nil, self:GetPos())
 	self.city:AddPrefabs(self.template_name, 1)
 	
 	PlayFXAroundBuilding(self, "Remove")
-	self:RestoreTerrain()
+	if IsKindOf(self, "Dome") then
+		self:RestoreTerrain(nil, true)
+	else
+		self:RestoreTerrain()
+	end
+
 	DoneObject(self)
 end
 
@@ -1614,7 +1651,7 @@ function Building:DroneWork(drone, request, resource, amount)
 					self:Refabricate()
 				end
 			end)
-
+			
 			PlayFX("Deconstruct", "start", self)
 			drone:ContinuousTask(request, amount, g_Consts.DroneDeconstructBatteryUse, "constructStart", "constructIdle", "constructEnd", "Deconstruct")
 			drone:PopAndCallDestructor()

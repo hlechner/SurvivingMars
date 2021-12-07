@@ -234,13 +234,6 @@ DefineConst{
 }
 DefineConst{
 	group = "Colonist",
-	help = T(4756, --[[ConstDef Colonist cloning_points help]] "Cloning points at full performance per hour"),
-	id = "cloning_points",
-	name = T(4757, --[[ConstDef Colonist cloning_points name]] "Cloning points"),
-	value = 20,
-}
-DefineConst{
-	group = "Colonist",
 	help = T(4752, --[[ConstDef Colonist eat_food_per_visit help]] "Food eaten per visit to building, Farm or stockpile"),
 	id = "eat_food_per_visit",
 	name = T(4753, --[[ConstDef Colonist eat_food_per_visit name]] "Food used per visit"),

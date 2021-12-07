@@ -422,15 +422,25 @@ function OnMsg.GatherFXTargets(list)
 end
 
 function OnMsg.ConstValueChanged(prop, old_value, new_value)
-	if prop == "IsDeepMetalsExploitable" or prop == "IsDeepWaterExploitable" or prop == "IsDeepPreciousMetalsExploitable" then
+	local deposit = GetPropDeposit(prop)
+	if deposit then
 		old_value = old_value == 0 and 0 or 1
 		new_value = new_value == 0 and 0 or 1
 		if old_value ~= new_value then
-			MapsForEach("map",
-				"SubsurfaceDeposit",
+			MapsForEach("map", deposit,
 				function(obj)
 					obj:UpdateEntity()
 				end)
 		end
 	end
+end
+
+function GetPropDeposit(prop)
+	local prop_deposits = {
+		IsDeepMetalsExploitable = "SubsurfaceDepositMetals",
+		IsDeepWaterExploitable = "SubsurfaceDepositWater",
+		IsDeepPreciousMetalsExploitable = "SubsurfaceDepositPreciousMetals"
+	}
+	
+	return prop_deposits[prop]
 end

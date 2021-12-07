@@ -4,21 +4,25 @@ PlaceObj('StoryBit', {
 	ActivationEffects = {
 		PlaceObj('ModifyLabel', {
 			'Label', "WaterExtractor",
+			'InColony', false,
 			'Prop', "water_production",
 			'ModifyId', "LongWinter",
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "MoistureVaporator",
+			'InColony', false,
 			'Prop', "water_production",
 			'ModifyId', "LongWinter",
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "Dome",
+			'InColony', false,
 			'Prop', "water_consumption",
 			'ModifyId', "LongWinter",
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "Dome",
+			'InColony', false,
 			'Prop', "electricity_consumption",
 			'ModifyId', "LongWinter",
 		}),
@@ -32,16 +36,19 @@ PlaceObj('StoryBit', {
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "MedicalBuilding",
+			'InColony', false,
 			'Prop', "sanity_change",
 			'ModifyId', "LongWinter",
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "Spacebar",
+			'InColony', false,
 			'Prop', "sanity_change",
 			'ModifyId', "LongWinter",
 		}),
 		PlaceObj('ModifyLabel', {
 			'Label', "CasinoComplex",
+			'InColony', false,
 			'Prop', "sanity_change",
 			'ModifyId', "LongWinter",
 		}),
@@ -74,6 +81,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(936109222821, --[[voice:narrator]] "You never thought that you’d be so happy to see the red dust of Mars again. The long winter is over."),
 	group = "Disasters",
 	id = "LongWinter_End",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637252007,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamNumber', {
 		'Name', "morale_bonus",
 		'Value', 15,

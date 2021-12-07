@@ -186,8 +186,9 @@ function RocketBase:GameInit()
 	if not self.show_logo then
 		self:DestroyAttaches("Logo")
 	end
-	
+
 	self:SetPalette(DecodePalette(self:GetRocketPalette(), self:GetColorScheme()))
+	self:RefreshNightLightsState()
 end
 
 function RocketBase:Done()
@@ -326,6 +327,10 @@ end
 
 function RocketBase:GetDestination()
 	return T(1233, "Mars")
+end
+
+function RocketBase:GetPassengerCapacity()
+	return g_Consts.MaxColonistsPerRocket
 end
 
 function RocketBase:WaitInOrbit(arrive_time)
@@ -618,8 +623,10 @@ function RocketBase:WaitMaintenance(resource, amount)
 	while not self:MaintenanceDone() do
 		assert(self.maintenance_request and self.maintenance_request:GetActualAmount() > 0)
 		assert(self.auto_connect)
+		self:AttachSign(true, "SignMalfunction")
 		WaitMsg("RocketMaintenanceDone", 10000)
 	end
+	self:AttachSign(false, "SignMalfunction")
 	self:SetCommand("WaitLaunchOrder")
 end
 
@@ -1979,17 +1986,29 @@ function RocketBase:IsLaunchValid()
 	return self.launch_valid_cmd[self.command]
 end
 
+RocketLaunchIssues = {
+	missions_suspended = T(14312, "Missions suspended"),
+	dust_storm = T(14313, "Dust storm active"),
+	not_landed = T(14314, "Rocket has not landed"),
+	fuel = T(13852, "Not enough fuel"),
+	maintenance = T(14315, "Rocket requires maintenance"),
+	disabled = T(14316, "Launch disabled"),
+	no_target = T(13850, "No destination set"),
+	unloading = T(11409, "Unloading cargo"),
+	loading = T(13851, "Loading requested resources")
+}
+
 function RocketBase:GetLaunchIssue(skip_flight_ban)
 	if not skip_flight_ban and g_Consts.SupplyMissionsEnabled ~= 1 then
-		return "missions suspended"
+		return "missions_suspended"
 	end
 
 	if HasDustStorm(self:GetMapID()) and self.affected_by_dust_storm then
-		return "dust storm"
+		return "dust_storm"
 	end
 	
 	if not self.landed then
-		return "not landed"
+		return "not_landed"
 	end
 	
 	if not self:HasEnoughFuelToLaunch() then
@@ -2018,47 +2037,45 @@ function RocketBase:IsUnloadingCargo()
 	return self:GetStoredAmount() > 0
 end
 
+local function CargoLaunchIssue(rocket, host)
+	CreateRealTimeThread(function(rocket)
+		local res = WaitPopupNotification("LaunchIssue_Cargo", {
+			choice1 = T(8013, "Launch anyway (resources will be lost)."), 
+			choice2 = T(8014, "Abort the launch sequence."),
+		}, false, host)
+		
+		if res and res == 1 then
+			rocket:SetCommand("Countdown")
+			Msg("RocketManualLaunch", rocket)
+		end			
+	end, rocket)
+end
+
+launch_issue_popups = { ["missions_suspended"] = function(rocket, host) ShowPopupNotification("LaunchIssue_MissionSuspended", false, false, host) end,
+	["dust_storm"] = function(rocket, host) ShowPopupNotification("LaunchIssue_DustStorm", false, false, host) end,
+	["not_landed"] = function(rocket, host) ShowPopupNotification("LaunchIssue_NotLanded", false, false, host) end,
+	["fuel"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Fuel", false, false, host) end,
+	["maintenance"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Maintenance", false, false, host) end,
+	["disabled"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Disabled", false, false, host) end,
+	["cargo"] = function(rocket, host) CargoLaunchIssue(rocket, host) end,
+}
+
+function RocketBase:PromptLaunchIssue()
+	local issue = self:GetLaunchIssue()
+	if issue and launch_issue_popups[issue] then
+		launch_issue_popups[issue](self, GetInGameInterface())
+		return true
+	end
+	return false
+end
+
 function RocketBase:UILaunch() -- blizzard promised no broadcast	
 	if self:IsDemolishing() then
 		self:ToggleDemolish()
 	end
 	
-	local host = GetInGameInterface()
-	local issue = self:GetLaunchIssue()
-	
-	if issue then
-		if issue == "missions suspended" then
-			ShowPopupNotification("LaunchIssue_MissionSuspended", false, false, host)
-			return
-		elseif issue == "dust storm" then
-			ShowPopupNotification("LaunchIssue_DustStorm", false, false, host)
-			return
-		elseif issue == "not landed" then
-			ShowPopupNotification("LaunchIssue_NotLanded", false, false, host)
-			return
-		elseif issue == "fuel" then
-			ShowPopupNotification("LaunchIssue_Fuel", false, false, host)
-			return
-		elseif issue == "maintenance" then
-			ShowPopupNotification("LaunchIssue_Maintenance", false, false, host)--new notification for maintenance
-			return	
-		elseif issue == "disabled" then
-			ShowPopupNotification("LaunchIssue_Disabled", false, false, host)--new notification for disabled
-			return
-		elseif issue == "cargo" then	
-			CreateRealTimeThread(function(rocket)
-				local res = WaitPopupNotification("LaunchIssue_Cargo", {
-						choice1 = T(8013, "Launch anyway (resources will be lost)."), 
-						choice2 = T(8014, "Abort the launch sequence."),
-					}, false, host)
-					
-				if res and res == 1 then
-					self:SetCommand("Countdown")
-					Msg("RocketManualLaunch", self)
-				end			
-			end, self)
-			return
-		end
+	if self:PromptLaunchIssue() then
+		return
 	end
 	
 	-- all ok
@@ -2091,7 +2108,7 @@ function RocketBase:IsBoardingAllowed()
 end
 
 function RocketBase:IsRocketLanded()
-	return self.command == "Refuel" or self.command == "WaitLaunchOrder"
+	return self.command == "Refuel" or self.command == "WaitLaunchOrder" or self.command == "Idle"
 end
 
 function RocketBase:IsCargoRampInUse()
@@ -2175,6 +2192,7 @@ function FormatCargoManifest(cargo)
 	end
 	
 	if #resources > 0 then
+		table.sortby_field(resources, "res")
 		texts[#texts + 1] = table.concat(resources, " ")
 	end
 	
@@ -2334,4 +2352,8 @@ function RocketBase:IsRocketStatus(status)
 		return self.command == "Countdown" or self.command == "Takeoff"
 	end
 	if status == "departing" then return self.command == "FlyToEarth" end
+end
+
+function RocketBase:AreNightLightsAllowed()
+	return true
 end

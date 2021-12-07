@@ -1,5 +1,8 @@
 DefineClass.CloningVats = {
 	__parents = { "ElectricityConsumer", "Workplace" },
+	properties = {
+		{  template = true, modifiable = true, id = "cloning_speed", name = T(14311, "Cloning speed"), default = 20, editor = "number", },
+	},
 	progress = false,
 }
 
@@ -9,7 +12,7 @@ end
 
 function CloningVats:BuildingUpdate(dt, ...)
 	if self.working then
-		local points = MulDivRound(self.performance,g_Consts.cloning_points, 100)
+		local points = MulDivRound(self.performance,self.cloning_speed, 100)
 		self.progress = self.progress + points
 		if self.progress >= 1000 then
 			local colonist_table = GenerateColonistData(self.city, "Child", "martianborn")

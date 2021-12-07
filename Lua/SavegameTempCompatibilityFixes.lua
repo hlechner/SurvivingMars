@@ -362,7 +362,7 @@ function SavegameFixups.pre_fixup(metadata, lua_revision)
 			excavator.belt:SetFrameAnimationSpeed(excavator.working and 1000 or 0)
 		end
 		if not excavator.rope then
-			excavator.rope = PlaceObjIn("ExcavatorRope", excavator:GetMapID())
+			excavator.rope = PlaceObjectIn("ExcavatorRope", excavator:GetMapID())
 			excavator.tower:Attach(excavator.rope, excavator.tower:GetSpotBeginIndex("Rope2"))
 			excavator.rope:SetAxis(axis_y)
 			excavator:UpdateRopeVisuals()
@@ -875,32 +875,6 @@ function SavegameFixups.SponsorGoalInit()
 	if g_Tutorial or ActiveMapID == "Mod" then return end
 	
 	UICity:SetGoals()
-end
-
-function SavegameFixups.ResupplyItemDefinitions()
-	local sponsor = g_CurrentMissionParams and g_CurrentMissionParams.idMissionSponsor or ""
-	local mods = GetSponsorModifiers(sponsor)
-	local locks = GetSponsorLocks(sponsor)
-	local idx = 0
-	ForEachPreset("Cargo", function(item, group, self, props)
-		local find = table.find(ResupplyItemDefinitions, "id", item.id)
-		if not find then
-			local def = setmetatable({}, {__index = item})		
-			local mod = mods[def.id] or 0
-			if mod ~= 0 then
-				ModifyResupplyDef(def, "price", mod)
-			end
-			local lock = locks[def.id]
-			if lock ~= nil then
-				def.locked = lock
-			end
-			if type(def.verifier) == "function" then 
-				def.locked = def.locked or not def.verifier(def, sponsor)
-			end
-			idx =  idx +1
-			table.insert(ResupplyItemDefinitions, idx, def)
-		end
-	end)
 end
 
 function SavegameFixups.SposorGoals()

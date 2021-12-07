@@ -12,6 +12,7 @@ PlaceObj('StoryBit', {
 	},
 	Effects = {},
 	Image = "UI/Messages/Events/20_crashed_rocket.tga",
+	MainMapExclusive = false,
 	Prerequisites = {},
 	ScriptDone = true,
 	SelectObject = false,
@@ -21,6 +22,14 @@ PlaceObj('StoryBit', {
 	VoicedText = T(590394667104, --[[voice:narrator]] "The improvised aircraft lifts off with the Flat Mars Society leader onboard, rapidly loses speed and then quite expectedly comes down crashing."),
 	group = "Colonists",
 	id = "FlatMars_Outcome2",
+	qa_info = PlaceObj('PresetQAInfo', {
+		data = {
+			{
+				action = "Modified",
+				time = 1637248193,
+			},
+		},
+	}),
 	PlaceObj('StoryBitParamSols', {
 		'Name', "morale_penalty_sols",
 		'Value', 14400000,

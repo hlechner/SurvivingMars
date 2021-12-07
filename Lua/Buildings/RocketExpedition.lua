@@ -258,7 +258,9 @@ function RocketExpedition:RefurbishRocket(orig_rocket, target_rocket, connect_cc
 		local amount
 		local res = req:GetResource()
 		if IsKindOf(orig_rocket, "RocketExpedition") then
-			amount = orig_rocket["GetExportAmount_"..res](orig_rocket, "export_only")
+			local get_exported_amount = orig_rocket["GetExportAmount_"..res]
+			assert(get_exported_amount)
+			amount = get_exported_amount and get_exported_amount(orig_rocket, "export_only") or 0
 		else
 			amount = orig_rocket.max_export_storage - req:GetActualAmount()
 		end

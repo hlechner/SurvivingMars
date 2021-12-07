@@ -154,42 +154,35 @@ end
 
 local command_center_search = function (node, building, dist_obj)
 	local center = node:GetCommandCenter()
-	if center and center.accept_requester_connects and node.work_radius >= HexAxialDistance((dist_obj or building), node) then
-		building:AddCommandCenter(center)
-	end
+	return center and center.accept_requester_connects and node.work_radius >= HexAxialDistance((dist_obj or building), node)
+end
+
+function FindAdditionalCommandCenters(requester)
+	return {}
+end
+
+function TaskRequester:FindCommandCenters()
+	local nodes = GetRealm(self):MapGet(self, "hex", const.CommandCenterMaxRadius, "DroneNode", command_center_search, self)
+	local centers = {}
+	table.foreach_value(nodes, function(node)
+	 	table.insert_unique(centers, node:GetCommandCenter())
+	end)
+	
+	local additional_centers = FindAdditionalCommandCenters(self)
+	return table.union(centers, additional_centers)
 end
 
 function TaskRequester:ConnectToCommandCenters()
-	local dome = IsObjInDome(self)
-	if dome then
-		for i = 1, #(dome.command_centers or "") do
-			local cc = dome.command_centers[i]
-			self:AddCommandCenter(cc)
-		end
-	else
-		GetRealm(self):MapForEach(self, "hex", const.CommandCenterMaxRadius, "DroneNode", command_center_search, self)
-		if #(self.command_centers or "") == 0 then
-			for _, drone_control in ipairs(UICity.labels.DroneControl or empty_table) do 
-				if not drone_control:IsRestrictingDroneWorkRadius() then
-					self:AddCommandCenter(drone_control)
-					return
-				end
-			end
-		end
-	end
+	self:ConnectToBuildingCommandCenters(self)
 end
 
-function TaskRequester:ConnectToOtherBuildingCommandCenters(other_building)
-	local dome = IsObjInDome(other_building) --if other bld is in dome connect to dome's cc's instead.
-	
-	if dome then
-		for i = 1, #(dome.command_centers or "") do
-			local cc = dome.command_centers[i]
-			self:AddCommandCenter(cc)
-		end
-	else
-		GetRealm(self):MapForEach(other_building, "hex", const.CommandCenterMaxRadius, "DroneNode", command_center_search, self, other_building)
-	end
+function TaskRequester:ConnectToBuildingCommandCenters(building)
+	local query_building = IsObjInDome(building) or building --if other bld is in dome connect to dome's cc's instead.
+
+	local centers = query_building and query_building:FindCommandCenters() or empty_table
+	table.map(centers, function(center)
+		self:AddCommandCenter(center)
+	end)
 end
 
 local function fallback_functor(o)

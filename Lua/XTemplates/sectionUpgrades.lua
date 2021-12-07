@@ -30,7 +30,7 @@ PlaceObj('XTemplate', {
 				end
 				local id = context:GetUpgradeID(self.context.i)
 				if context:HasUpgrade(id) then
-					if context:IsUpgradeOn(id) then
+					if not context:CanDisableUpgrade(id) or context:IsUpgradeOn(id) then
 						self:SetIcon(icon .. "02.tga")
 						on = true
 					else

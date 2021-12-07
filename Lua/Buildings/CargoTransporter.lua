@@ -1,146 +1,3 @@
-if FirstLoad then
-	local cargo_types = {
-		Resource = "Resource",
-		Drone = "Drone",
-		Rover = "Rover",
-		Colonist = "Colonist",
-		Prefab = "Prefab",
-		Unknown = "Unknown",
-	}
-	CargoType = setmetatable(cargo_types, immutable_meta)
-end
-
-function GetCargoType(class)
-	if GetResourceInfo(class) then
-		return CargoType.Resource
-	elseif BuildingTemplates[class] then
-		return CargoType.Prefab
-	elseif table.find(GetSortedColonistSpecializationTable(), class) then
-		return CargoType.Colonist
-	else
-		local def = g_Classes[class]
-		if def then
-			return class == "Drone" and CargoType.Drone or CargoType.Rover
-		end
-	end
-	assert(false, "cannot determine cargo type")
-	return CargoType.Unknown
-end
-
-function GetObjectCargoType(object)
-	if IsKindOf(object, "Colonist") then
-		return CargoType.Colonist
-	elseif IsKindOf(object, "BaseRover") then
-		return CargoType.Rover
-	elseif IsKindOf(object, "Drone") then
-		return CargoType.Drone
-	else
-		assert(false, "cannot determine object cargo type")
-		return CargoType.Unknown
-	end
-end
-
-function GetObjectCargoIDs(object)
-	if IsKindOf(object, "Colonist") then
-		local colonist = object
-		local specializations = {}
-		for _,specialization in ipairs(GetSortedColonistSpecializationTable()) do
-			if colonist.traits[specialization] then
-				table.insert(specializations, specialization)
-			end
-		end
-		return #specializations > 0 and specializations or { "none" }
-	else
-		return { object.class }
-	end
-end
-
-function GetTotalCargoPending(city, class)
-	local remaining_func = CargoTransporter.GetCargoRemaining
-	local total = 0
-	for _,transporter in ipairs(city.labels.LanderRocketBase or empty_table) do
-		local pending = remaining_func(transporter, class)
-		total = total + pending
-	end
-
-	for _,transporter in ipairs(city.labels.Elevator or empty_table) do
-		local pending = remaining_func(transporter, class)
-		total = total + pending
-	end
-	return total
-end
-
-function GetTotalCargoAvailable(city, cargo_type, class)
-	if cargo_type == CargoType.Resource then
-		local resources = GetCityResourceOverview(city)
-		return resources:GetAvailable(class) / const.ResourceScale
-	elseif cargo_type == CargoType.Prefab then
-		return city:GetPrefabs(class)
-	elseif cargo_type == CargoType.Colonist then
-		if class == "Tourist" then
-			local tourists = 0
-			local colonists = city.labels.Colonist or empty_table
-			for _,colonist in pairs(colonists) do
-				if colonist.traits.Tourist then
-					tourists = tourists + 1
-				end
-			end
-			return tourists
-		else
-			return #(city.labels[class] or empty_table)
-		end
-	else
-		return #(city.labels[class] or empty_table)
-	end
-end
-
-function GetTotalAvailableInColony(class) -- Deprecated
-	local available = 0
-	local cities_to_check = Cities
-	local cargo_type = GetCargoType(class)
-	for _,city in ipairs(cities_to_check) do
-		available = available + GetTotalCargoAvailable(city, cargo_type, class)
-	end
-	return available
-end
-
-AvailabilityStatus = {
-	None = 0,
-	Restricted = 1,
-	NotEnough = 2,
-	Limited = 3,
-	Ready = 4,
-	Loaded = 5,
-}
-
-local AvailabilityStatusDescription = {
-	T(13941, "<red>Below minimum</red>"),
-	T(13775, "<red>Not enough</red>"),
-	T(13776, "<yellow>Limited</yellow>"),
-	T(13777, "<green>Ready</green>"),
-	T(13805, "<green>Loaded</green>"),
-}
-
-local function GetHighestAvailabilityStatus(status, other_status)
-	return Min(status, other_status)
-end
-
-function GetAvailabilityStatus(remaining, total_pending, available, restricted)
-	local result = AvailabilityStatus.None
-	if remaining == 0 then
-		result = AvailabilityStatus.Loaded
-	elseif (restricted and available > restricted) and remaining > restricted then
-		result = AvailabilityStatus.Restricted
-	elseif remaining > available then
-		result = AvailabilityStatus.NotEnough
-	elseif total_pending > available then
-		result = AvailabilityStatus.Limited
-	else
-		result = AvailabilityStatus.Ready
-	end
-	return result
-end
-
 DefineClass.CargoTransporter = {
 	__parents = { "Object", "TaskRequester" },
 	
@@ -160,6 +17,10 @@ function CargoTransporter:GameInit()
 	self.cargo = self.cargo or {}
 	self.drones_entering = {}
 	self.drones_exiting = {}
+end
+
+function CargoTransporter:HasAutoMode()
+	return false
 end
 
 function CreateEmptyManifest()
@@ -265,17 +126,16 @@ function CargoTransporter:Load(manifest, quick_load, transfer_available)
 		end
 	end
 	
-	-- Finaly, load found cargo
+	self:ExpeditionLoadDrones(drones)
+	self:AddCargoAmount("Drone", #drones)
+	
 	for _,rover in pairs(rovers) do
 		if self:UnitDropCargoOnLoad() and IsKindOf(rover, "RCTransport") then
 			rover:ReturnStockpiledResources()
 		end
-		self:ExpeditionLoadRover(rover)
+		rover:SetCommand("EnterTransporter", self)
 		self:AddCargoAmount(rover.class, 1)
 	end
-	
-	self:ExpeditionLoadDrones(drones)
-	self:AddCargoAmount("Drone", #drones)
 	
 	self:ExpeditionLoadCrew(crew)
 	for _,member in pairs(crew) do
@@ -293,6 +153,9 @@ function CargoTransporter:Load(manifest, quick_load, transfer_available)
 	
 	return rovers, drones, crew, prefabs
 end
+
+-- This is an alias for a function that was renamed
+function CargoTransporter:Find(...) return self:GatherAvailableCargo(...) end
 
 function CargoTransporter:GatherAvailableCargo(manifest, quick_load, transfer_available)
 	-- find vehicles
@@ -358,7 +221,11 @@ end
 
 function CargoTransporter:GatherAvailableColonists(amount, label, quick_load, transfer_available)
 	label = label or "Colonist"
-	local list = FilterColonists(self.city.labels.Colonist or empty_table, label, amount)
+
+	local colonists = self.city.labels.Colonist or empty_table
+	colonists = quick_load and colonists or table.ifilter(colonists, function(_, unit) return not unit.thread_running_destructors and table.find({"Idle", "Abandoned"}, unit.command) end)
+
+	local list = FilterColonists(colonists, label, amount)
 	
 	if #list >= amount or quick_load or transfer_available then
 		local crew = {}
@@ -375,16 +242,7 @@ end
 
 function CargoTransporter:ExpeditionLoadCrew(crew)
 	for _,unit in pairs(crew) do
-		if unit == SelectedObj then
-			SelectObj()
-		end
-		unit:SetDome(false)
-		if not unit:IsValidPos() then
-			-- About to be transfered anyway, force a valid position here
-			unit:SetPos(self:GetPos())
-		end
-		unit:SetHolder(self)
-		unit:SetCommand("Disappear", "keep in holder", self.keep_cargo_in_labels and "keep_in_labels")
+		unit:SetCommand("EnterTransporter", self)
 	end
 end
 
@@ -465,7 +323,8 @@ local function DroneApproachingRocket(drone)
 end
 
 local function GetAvailableDronesFilter(drone)
-	local available = not drone.resource and drone.command ~= "Deliver" and not drone.holder
+	local available = not drone.resource and drone.command ~= "Deliver" and not drone.holder and not drone.thread_running_destructors
+	available = available and drone.command ~= "Charge"
 	available = available and not DroneApproachingRocket(drone)
 	return available
 end
@@ -485,6 +344,10 @@ function CargoTransporter:GatherAvailableDrones(amount, quick_load)
 	end
 
 	return found_drones
+end
+
+function CargoTransporter:ExpeditionLoadRover(rover) -- backwards compatibility
+	rover:SetCommand("EnterTransporter", self)
 end
 
 function CargoTransporter:ExpeditionLoadDrones(found_drones)
@@ -507,22 +370,15 @@ function CargoTransporter:ExpeditionLoadDrones(found_drones)
 	end
 	
 	for _, drone in ipairs(found_drones) do
-		if drone == SelectedObj then
-			SelectObj()
-		end
-		drone:SetCommandCenter(false, "do not orphan!")
-		drone:SetHolder(self)
-		drone:SetCommand("Disappear", "keep in holder", self.keep_cargo_in_labels and "keep_in_labels")
+		drone:SetCommand("EnterTransporter", self)
 	end
 end
 
 function CargoTransporter:GatherAvailableRovers(class, amount, quick_load, transfer_available)
-	local filter = function(unit) return unit.class == class and unit:CanBeControlled() and not unit.holder and (quick_load or unit.command == "Idle") end
-	local realm = GetRealm(self)
-	local list = realm:MapGet("map", class, filter) or empty_table
+	local list = self:ListAvailableRovers(class, quick_load)
 	
 	if #list < amount then
-		return (quick_load or transfer_available) and list or nil
+		return (quick_load or transfer_available) and list or empty_table
 	end
 
 	local candidates = {}
@@ -542,18 +398,15 @@ function CargoTransporter:GatherAvailableRovers(class, amount, quick_load, trans
 	return rovers
 end
 
-function CargoTransporter:ExpeditionLoadRover(rover)
-	if rover then
-		if rover == SelectedObj then
-			SelectObj()
-		end
-		
-		if rover.class == "RCRover" then
-			rover.sieged_state = false
-		end
-		rover:SetHolder(self)
-		rover:SetCommand("Disappear", "keep in holder", self.keep_cargo_in_labels and "keep_in_labels")
+function CargoTransporter:ListAvailableRovers(class, quick_load)
+	local filter = function(index, unit)
+		return unit.class == class and unit:CanBeControlled() and not unit.holder and (quick_load or unit:IsIdle())
 	end
+	
+	local rovers_list = self.city.labels[class] or empty_table
+	local available_list = table.ifilter(rovers_list, filter)
+	
+	return available_list
 end
 
 function CargoTransporter:AttachRovers(rovers)
@@ -578,6 +431,7 @@ function CargoTransporter:SpawnRovers()
 		if IsKindOf(g_Classes[item.class], "BaseRover") and item.amount > 0 then
 			while item.amount > 0 do
 				local rover = PlaceObjectIn(item.class, map_id, {city = self.city, override_ui_status = "Disembarking"})
+				rover:SetHolder(self)
 				rovers[#rovers + 1] = rover
 				item.amount = item.amount - 1
 				
@@ -1008,7 +862,7 @@ local function AddPayloadToCargo(payload_request, cargo)
 		local entry = cargo[class]
 		local amount = entry and Max(0, entry.amount) or 0
 		local requested = payload_request[class] and Max(0, payload_request[class].amount) or 0
-		if entry or requested > 0 then
+		if amount > 0 or requested > 0 then
 			new_cargo[class] = {
 				class = class,
 				amount = amount,
@@ -1068,7 +922,7 @@ function CargoTransporter:GetCargoLoadingStatus()
 end
 
 function CargoTransporter:GetRollover(id)
-	local item = RocketPayload_GetMeta(id)
+	local item = GetResupplyItem(id)
 	if not item then
 		return
 	end
@@ -1138,7 +992,7 @@ function CargoTransporter:UpdateCargoResourceRequests(resources)
 	self:DisconnectFromCommandCenters()
 	for _,entry in pairs(resources) do
 		if not self.demand[entry.class] then
-			local unit_count = self:GetRequestUnitCount(entry.requested)
+			local unit_count = g_Consts.CargoRequestDroneAmount
 			self:AddCargoDemandRequest(entry.class, 0, self.demand_r_flags, unit_count)
 			self:AddCargoSupplyRequest(entry.class, 0, self.supply_r_flags, unit_count)
 		end
@@ -1461,16 +1315,10 @@ function CargoTransporter:CanRequestPayload()
 	return true
 end
 
-function CargoTransporter:OpenPayloadDialog(name, object, context)
-	if IsObjectSelected(object) then
-		context.object = SelectedObj
-	else
-		context.object = object
-	end
-
+function CargoTransporter:OpenPayloadDialog(name, context)
 	local dlg = GetDialog(name)
 	if dlg then
-		if not dlg.context or dlg.context.object ~= context.object then
+		if not dlg.context or dlg.context.transporter ~= context.transporter then
 			CloseDialog(name)
 		else
 			return
@@ -1481,7 +1329,7 @@ end
 
 function CargoTransporter:UIEditPayloadRequest()
 	if self:CanRequestPayload() then
-		self:OpenPayloadDialog("PayloadRequest", self, {meta_key = const.vkControl, close_on_rmb = true })
+		self:OpenPayloadDialog("PayloadRequest", CargoRequest:new{transporter = self})
 	end
 end
 
@@ -1493,13 +1341,8 @@ function CargoTransporter:GetLaunchIssue(skip_flight_ban)
 	return self:GetCargoLoadingStatus()
 end
 
-function CargoTransporter:UICanTransport(payload, item)
-	return (not item.filter or item.filter()) and 
-		not payload:IsBlacklisted(item) and 
-		not payload:IsLocked(item.id) and
-		not BuildingTemplates[item.id] and 
-		not IsKindOf(g_Classes[item.id], "BaseRover") and
-		not IsKindOf(g_Classes[item.id], "OrbitalProbe")
+function CargoTransporter:CanTransportCargoType(cargo_type)
+	return true
 end
 
 function CargoTransporter:RestorePayloadRequest(payload)
@@ -1521,8 +1364,12 @@ end
 function CargoTransporter:SetDefaultPayload(payload)
 end
 
-function CargoTransporter:GetCapacity()
+function CargoTransporter:GetCargoWeightCapacity()
 	return self.cargo_capacity
+end
+
+function CargoTransporter:GetPassengerCapacity()
+	return -1
 end
 
 function CargoTransporter:GetPayloadWarning()
@@ -1530,8 +1377,15 @@ function CargoTransporter:GetPayloadWarning()
 	local drones_missing = false
 	local rovers_missing = false
 	local prefabs_missing = false
+	local busy_rovers = false
+	
 	for _,item in pairs(self.cargo) do
 		if item.requested and item.requested > 0 then
+			if GetCargoType(item.class) == CargoType.Rover then
+				local available_rovers_list = self:ListAvailableRovers(item.class)
+				local total_rovers_list = self.city.labels[item.class] or empty_table
+				if item.requested <= #total_rovers_list and item.requested > #available_rovers_list then busy_rovers = true end
+			end
 			local status = self:GetCargoItemStatus(item)
 			if status ~= AvailabilityStatus.Ready then
 				if not colonists_missing and table.find(GetSortedColonistSpecializationTable(), item.class) then
@@ -1554,22 +1408,22 @@ function CargoTransporter:GetPayloadWarning()
 	if drones_missing then return T(11472, "Not enough Drones") end
 	if rovers_missing then return T(13882, "Not enough Rovers") end
 	if prefabs_missing then return T(13883, "Not enough Prefabs") end
+	if busy_rovers then return T(14355, "Rovers are busy") end
 end
 
 function CargoTransporter:GetCargoEnvironments()
 	return empty_table
 end
 
-function CargoTransporter:UIGetTransportableVehicles(excluded)
+function CargoTransporter:GetTransportableVehicles(excluded)
 	local vehicles = {}
 	for _,def in ipairs(ResupplyItemDefinitions) do
 		local class = g_Classes[def.id]
-		local item = RocketPayload_GetMeta(def.id)
-		if IsKindOf(class, "BaseRover") and not IsKindOfClasses(class, excluded) and not item.locked then
+		local item = GetResupplyItem(def.id)
+		if IsKindOf(class, "BaseRover") and not IsKindOfClasses(class, excluded) and IsResupplyItemAvailable(item.id) then
 			table.insert(vehicles, def)
 		end
 	end
-	table.sort(vehicles, PresetSortLessCb)
 	return vehicles
 end
 
@@ -1577,14 +1431,8 @@ function CargoTransporter:GetTransportablePrefabs(environments)
 	return GetAccessiblePrefabs({ self.city }, self:GetCargoEnvironments())
 end
 
-function CargoTransporter:UIGetTransportablePrefabs()
-	local prefabs = self:GetTransportablePrefabs()
-	table.sort(prefabs, PresetSortLessCb)
-	return prefabs
-end
-
 function SavegameFixups.AddMissingResupplyItemDefs()
 	if IsDlcAccessible("picard") then
-		RocketPayload_Init(true)
+		ResupplyItemsInit(true)
 	end
 end
