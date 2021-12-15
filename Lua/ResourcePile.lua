@@ -94,7 +94,8 @@ local function ResourceFilter(pile, resource)
 end
 
 function PlaceResourcePile(pos, resource, amount, map_id)
-	local game_map = GameMaps[map_id or MainMapID]
+	map_id = map_id or MainMapID
+	local game_map = GameMaps[map_id]
 	local pile = game_map.realm:MapFindNearest(pos, pos, const.HexSize, "ResourcePile", ResourceFilter, resource)
 	if pile then
 		pile:AddAmount(amount)

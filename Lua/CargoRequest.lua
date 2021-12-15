@@ -105,7 +105,7 @@ function CargoRequest:GetPassengersLimit()
 	return self.passenger_limit
 end
 
-function GetTransportableCargo(transporter)
+function CargoRequest:GetTransportableCargo(transporter)
 	local cargo_items = {}
 	local cargo_type_items = {}
 
@@ -184,7 +184,7 @@ function CargoRequest:Init()
 	self.has_auto_mode = transporter:HasAutoMode()
 	self.auto_mode = transporter:IsAutoModeEnabled()
 
-	self.cargo_items, self.cargo_type_items = GetTransportableCargo(transporter)
+	self.cargo_items, self.cargo_type_items = self:GetTransportableCargo(transporter)
 	
 	self.cargo_type_totals = {}
 	local cargo_type_totals = self.cargo_type_totals

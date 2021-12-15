@@ -790,7 +790,7 @@ function Colonist:Die(reason)
 		local pt = realm:GetPassablePointNearby(self) or self:GetNavigationPos()
 		Sleep(Random(const.HourDuration, const.DayDuration))
 		if is_infected then
-			DiscardNewObjsNotif(g_InfectedDeadCitizens, self, self:GetMapID())
+			DiscardNewObjsNotif(g_InfectedDeadCitizens, self, map_id)
 		end
 		if self.city.colony:IsTechResearched("SoylentGreen") then
 			PlaceResourcePile(pt, "Food", 1*const.ResourceScale, map_id)

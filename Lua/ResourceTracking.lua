@@ -131,8 +131,7 @@ function ResourceTracking:UpdateTimeSeries()
 	self.constructions_completed_today = 0
 
 	local resource_overview_obj = GetCityResourceOverview(self)
-	for _, resource in ipairs(GetStockpileResourceList()) do
-		local ts_resource = self.ts_resources[resource]
+	for resource, ts_resource in pairs(self.ts_resources) do
 		ts_resource.stockpile:AddValue(resource_overview_obj:GetAvailable(resource))
 		ts_resource.produced:AddValue(resource_overview_obj:GetProducedYesterday(resource))
 		ts_resource.consumed:AddValue(resource_overview_obj:GetConsumedByConsumptionYesterday(resource) + resource_overview_obj:GetConsumedByMaintenanceYesterday(resource))
@@ -237,3 +236,16 @@ GlobalVar("g_InsufficientMaintenanceResources", {})
 GlobalGameTimeThread("InsufficientMaintenanceResourcesNotif", function()
 	HandleNewObjsNotif(g_InsufficientMaintenanceResources, "InsufficientMaintenanceResources", nil, CalcInsufficientResourcesNotifParams, false, nil, true)
 end)
+
+function SavegameFixups.MissingWasteRockResourceTimeSeries()
+	for _, city in ipairs(Cities) do
+		local ts_resources = city.ts_resources
+		if not ts_resources["WasteRock"] then
+			ts_resources["WasteRock"] = {
+				stockpile = TimeSeries:new(),
+				produced = TimeSeries:new(),
+				consumed = TimeSeries:new(),
+			}
+		end
+	end
+end

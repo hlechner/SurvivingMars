@@ -28,7 +28,7 @@ function SpawnsAnomalyOnGameInit:SpawnAnomaly()
 	marker:SetPos(pos)
 
 	local x, y, unobstructed, obstructed = FindUnobstructedDepositPos(marker)
-	if obstructed and not unobstructed then
+	if not obstructed and unobstructed then
 		marker:SetPos(x, y, const.InvalidZ)
 	end
 
@@ -36,7 +36,12 @@ function SpawnsAnomalyOnGameInit:SpawnAnomaly()
 	local sector = GetMapSectorXY(city, x, y)
 
 	if sector then
-		sector:RegisterDeposit(marker)
+		local status = sector.blocked_status or sector.status
+		if status == "unexplored" then
+			sector:RegisterDeposit(marker)
+		else
+			RevealDeposits({marker})
+		end
 	end
 end
 

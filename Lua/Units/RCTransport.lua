@@ -47,6 +47,7 @@ DefineClass.RCTransport = {
 	GetModifiedBSphereRadius = UngridedObstacle.GetModifiedBSphereRadius,
 	priority = 3,
 	DroneApproach = BaseRover.DroneApproach,
+	DroneCanApproach = BaseRover.DroneCanApproach,
 	
 	--ui
 	display_name = T(1683, "RC Transport"),

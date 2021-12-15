@@ -234,6 +234,10 @@ function SurfaceDeposit:IsDepleted()
 	return self:GetAmount() <= 0
 end
 
+function SurfaceDeposit:DroneCanApproach(drone, resource)
+	return drone:CanReachBuildingSpot(self, drone.work_spot_deposit)
+end
+
 function SurfaceDeposit:DroneApproach(drone, resource)
 	return drone:GotoBuildingSpot(self, drone.work_spot_deposit)
 end

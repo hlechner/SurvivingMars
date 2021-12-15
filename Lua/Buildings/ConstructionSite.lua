@@ -1243,6 +1243,28 @@ function ConstructionSite:IsConstructed()
 	return self.construction_started and self.construct_request:GetActualAmount() <= 0
 end
 
+function ConstructionSite:DroneCanApproach(drone, resource, is_closest)
+	if self.construction_group and not is_closest then
+		local ldr = self.construction_group[1]
+		if ldr.use_group_goto then
+			return drone:CanReachBuildingsSpot({table.unpack(self.construction_group, 2)}, drone.work_spot_task)
+		else
+			local closest_obj = FindNearestObject(ldr.drop_offs or self.construction_group, drone:GetPos():SetInvalidZ(), function(obj)
+				return obj ~= self.construction_group[1]
+			end)
+			assert(closest_obj, "leaked constr grp leader?")
+			return closest_obj and closest_obj:DroneCanApproach(drone, resource, true) or false
+		end
+	end
+	
+	local class = self.building_class_proto
+	if class:HasMember("DroneCanApproach") then
+		return class.DroneCanApproach(self, drone, resource)
+	else
+		--Fallback to default approach, specifically for classes that do not implement this, like GridElements.
+		return TaskRequester.DroneCanApproach(self, drone, resource)
+	end
+end
 
 function ConstructionSite:DroneApproach(drone, resource, is_closest)
 	if self.construction_group and not is_closest then
@@ -1262,7 +1284,7 @@ function ConstructionSite:DroneApproach(drone, resource, is_closest)
 	if class:HasMember("DroneApproach") then
 		return class.DroneApproach(self, drone, resource)
 	else
-		--falback to default approach, specifically for classes that do not implement this, like GridElements.
+		--Fallback to default approach, specifically for classes that do not implement this, like GridElements.
 		return TaskRequester.DroneApproach(self, drone, resource)
 	end
 end
@@ -1281,8 +1303,8 @@ function ConstructionSite:DroneWork(drone, request, resource, amount)
 	drone:PopAndCallDestructor()
 end
 
-local construction_site_auto_construct_tick = ConstructionSite.building_update_time
-local construction_site_auto_construct_amount = 167
+construction_site_auto_construct_tick = ConstructionSite.building_update_time
+construction_site_auto_construct_amount = 167
 
 function ConstructionSite:BuildingUpdate(delta, day, hour)
 	if self.construction_group and self.construction_group[1] ~= self then return end
@@ -1395,23 +1417,27 @@ function ConstructionSite:MoveStockpilesUnderneathOutside(interval)
 		local game_map = GetGameMap(self)
 		for i = #stockpiles_underneath, 1, -1 do
 			local stockpile = stockpiles_underneath[i]
-			local q, r = WorldToHex(self:GetPos())
-			local result
-			result, q, r = TryFindStockpileDumpSpotIn(game_map, q, r, self:GetAngle(), GetEntityPeripheralHexShape(self:GetEntity()))
-			if result then
-				local x, y = HexToWorld(q, r)
-				if interval then
-					Sleep(interval)
-				end
-				stockpile:SetPos(point(x, y))
-				self:OnBlockingStockpileCleared(stockpile)
-				for _, p_c in ipairs(stockpile.parent_construction or empty_table) do
-					if p_c ~= self then
-						p_c:OnBlockingStockpileCleared()
+			if stockpile then
+				local q, r = WorldToHex(self:GetPos())
+				local result
+				result, q, r = TryFindStockpileDumpSpotIn(game_map, q, r, self:GetAngle(), GetEntityPeripheralHexShape(self:GetEntity()))
+				if result then
+					if interval then
+						Sleep(interval)
+					end
+					local x, y = HexToWorld(q, r)
+					if IsValid(stockpile) then
+						stockpile:SetPos(point(x, y))
+						self:OnBlockingStockpileCleared(stockpile)
+						for _, p_c in ipairs(stockpile.parent_construction or empty_table) do
+							if p_c ~= self then
+								p_c:OnBlockingStockpileCleared()
+							end
+						end
+						stockpile.parent_construction = false
+						stockpile:OnConstructionCanceled()
 					end
 				end
-				stockpile.parent_construction = false
-				stockpile:OnConstructionCanceled()
 			end
 		end
 	end

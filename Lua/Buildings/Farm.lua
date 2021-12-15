@@ -1,3 +1,7 @@
+function GetFarmProductionText(production_props)
+	return T(12186, "Base production: <icon_Food> <if_all(has_dlc('armstrong'),has_researched('MartianVegetation'))>or <icon_Seeds></if> based on crop")
+end
+
 DefineClass.Farm = {
 	__parents = { "ResourceProducer", "ElectricityConsumer", "LifeSupportConsumer" ,"Workplace", "InteriorAmbientLife" }, --"AirProducer" },
 	
@@ -52,6 +56,8 @@ DefineClass.Farm = {
 		max_y  = 2,
 	},
 	amount_stored = 0,
+	
+	GetBuildMenuProductionText = GetFarmProductionText,
 }
 
 GlobalVar("g_FarmId", 0)

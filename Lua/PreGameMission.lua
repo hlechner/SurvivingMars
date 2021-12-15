@@ -328,7 +328,7 @@ function ResolveDisplayName(id)
 		return template.display_name, template.description
 	end
 	local def = g_Classes[id]
-	if def and def:HasMember("display_name") then
+	if def and def:HasMember("display_name") and def.display_name and def.display_name ~= "" then
 		return def.display_name, def.description
 	end
 	local article

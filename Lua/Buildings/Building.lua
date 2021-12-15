@@ -112,8 +112,8 @@ function GetAccessiblePrefabs(cities, environments)
 		if template and template.can_refab then
 			local building_allowed = IsBuildingAllowedIn(template.id, environments)
 			if building_allowed then
-				local building_researched = IsBuildingTechResearched(template.template_class)
-				local prerequisites_overridden = BuildMenuPrerequisiteOverrides[template.template_class] == true
+				local building_researched = IsBuildingTechResearched(template.id)
+				local prerequisites_overridden = BuildMenuPrerequisiteOverrides[template.id] == true
 				local building_unlocked = not def.locked or not IsCargoLocked(def) or prerequisites_overridden -- Remove function once Cargo is configured properly
 				local building_available = (building_unlocked and building_researched) or CitiesHavePrefab(cities, template.id)
 				if building_available then
@@ -1985,6 +1985,11 @@ function Building:IsUpgradeBeingConstructed(id)
 	return self.upgrades_under_construction and self.upgrades_under_construction[id] and not self.upgrades_under_construction[id].canceled or false
 end
 
+function Building:ClearOwnRubble()
+	Shroudable.ClearOwnRubble(self)
+	self:UpdateWorking()
+end
+
 function Building:UpdateUpgradeConstructionSupplyRequests(data)
 	assert(#self.command_centers == 0)
 	local reqs = data.reqs
@@ -2680,6 +2685,28 @@ function Building:GetUISectionConsumptionRollover()
 	end
 
 	return table.concat(items, Untranslated("<newline><left>"))
+end
+
+function Building:GetBuildMenuProductionText(production_props)
+	local production = {}
+	for i = 1, #production_props do
+		local prop = table.find_value(self.properties, "id", production_props[i][1])
+		if prop and self[prop.id] ~= 0 then
+			local resource_name = production_props[i][2]
+			if not resource_name then
+				local resource_id = self[production_props[i][3]]
+				if resource_id and resource_id ~= "" and resource_id ~= "WasteRock" then
+					resource_name = GetResourceInfo(resource_id).id
+				end
+			end
+			if resource_name then
+				production[#production + 1] = FormatResource(empty_table, self[prop.id], resource_name)
+			end
+		end
+	end
+	if next(production) then
+		return T(3967, "Base production: ") .. table.concat(production, " ")
+	end
 end
 
 function Building:GetBroadcastLabel()

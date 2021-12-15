@@ -63,6 +63,7 @@ g_TutorialScenarios.Tutorial1 = function()
 
 	rocket.launch_fuel = 5*const.ResourceScale
 	rocket.can_demolish = false -- just in case
+	rocket.name = GenerateRocketName(nil, "SupplyRocket")
 	rocket:SetCommand("FlyToMars", cargo, 0, nil, true)
 
 	-- show hint

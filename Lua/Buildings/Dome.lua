@@ -1118,7 +1118,11 @@ end
 function Dome:CreateLifeSupportElements()
 	self.water = NewSupplyGridConsumer(self)
 	self.air = NewSupplyGridConsumer(self)
-end	
+end
+
+function Dome:DroneCanApproach(drone, resource)
+	return drone:CanReachBuildingSpot(self, drone.work_spot_task)
+end
 
 function Dome:DroneApproach(drone, resource)
 	return drone:GotoBuildingSpot(self, drone.work_spot_task)

@@ -197,6 +197,17 @@ function RCRover:LeadOut(drone)
 	drone.force_go_home = true --make drone move away if there is nothing else to do
 end
 
+function RCRover:DroneCanApproach(drone, reason)
+	if reason == "charge" then
+		local go_to_pos = self:GetSpotLoc(self:GetSpotBeginIndex("Charge"))
+		local drone_rad = drone:GetRadius()
+		local ret = drone:HasPath(go_to_pos, drone_rad * 3, drone_rad * 1) --get near
+		return ret
+	else
+		return BaseRover.DroneCanApproach(self, drone, reason)
+	end
+end
+
 function RCRover:DroneApproach(drone, reason)
 	if reason == "charge" then
 		drone:ExitHolder(self)

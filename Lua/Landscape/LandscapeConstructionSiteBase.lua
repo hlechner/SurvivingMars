@@ -167,14 +167,24 @@ function LandscapeConstructionSiteBase:GetIPStatus()
 	return self:GetResourceProgress()
 end
 
+local function IsAtLandscapeConstruction(construction, drone)
+	local q, r = WorldToHex(drone)
+	local landscape_grid = IsValid(construction) and GetLandscapeGrid(construction) or GetLandscapeGrid(drone)
+	return construction.mark and construction.mark == LandscapeCheck(landscape_grid, q, r, true)
+end
+
+function LandscapeConstructionSiteBase:DroneCanApproach(drone, resource, is_closest)
+	if not IsValid(self) or not IsValid(drone) then return end
+	if IsAtLandscapeConstruction(self, drone) then return true end
+	assert(self.drone_dests_cache)
+	return drone:HasPath(self.drone_dests_cache)
+end
+
 function LandscapeConstructionSiteBase:DroneApproach(drone, resource, is_closest)
 	if not IsValid(self) or not IsValid(drone) then return end
-	local q, r = WorldToHex(drone)
-	local landscape_grid = IsValid(self) and GetLandscapeGrid(self) or GetLandscapeGrid(drone)
-	if self.mark and self.mark == LandscapeCheck(landscape_grid, q, r, true) then
-		--already there
-		return true
-	end
+	
+	-- already there
+	if IsAtLandscapeConstruction(self, drone) then return true end	
 	if not drone:ExitHolder() then return end
 	if not IsValid(self) or not IsValid(drone) then return end
 	assert(self.drone_dests_cache)

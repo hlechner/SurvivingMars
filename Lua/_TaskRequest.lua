@@ -135,6 +135,10 @@ function TaskRequester:GetUIStatusOverrideForWorkCommand(request, drone)
 end
 ----- Drone and Rover functions
 
+function TaskRequester:DroneCanApproach(drone, resource)
+	return drone:CanReachBuildingSpot(self, drone.work_spot_task)
+end
+
 function TaskRequester:DroneApproach(drone, resource)
 	return drone:GotoBuildingSpot(self, drone.work_spot_task)
 end
@@ -152,20 +156,27 @@ end
 function TaskRequester:RoverWork(rover, request, resource, amount)
 end
 
-local command_center_search = function (node, building, dist_obj)
-	local center = node:GetCommandCenter()
-	return center and center.accept_requester_connects and node.work_radius >= HexAxialDistance((dist_obj or building), node)
-end
 
 function FindAdditionalCommandCenters(requester)
 	return {}
 end
 
+function TaskRequester:FindDroneNodes()
+	local filter = function (node, building, dist_obj)
+		return node.work_radius >= HexAxialDistance((dist_obj or building), node)
+	end
+	
+	return GetRealm(self):MapGet(self, "hex", const.CommandCenterMaxRadius, "DroneNode", filter, self)
+end
+
 function TaskRequester:FindCommandCenters()
-	local nodes = GetRealm(self):MapGet(self, "hex", const.CommandCenterMaxRadius, "DroneNode", command_center_search, self)
+	local nodes = self:FindDroneNodes()
 	local centers = {}
 	table.foreach_value(nodes, function(node)
-	 	table.insert_unique(centers, node:GetCommandCenter())
+		local center = node:GetCommandCenter()
+		if center and center.accept_requester_connects then
+			table.insert_unique(centers, node:GetCommandCenter())
+		end
 	end)
 	
 	local additional_centers = FindAdditionalCommandCenters(self)
@@ -177,9 +188,8 @@ function TaskRequester:ConnectToCommandCenters()
 end
 
 function TaskRequester:ConnectToBuildingCommandCenters(building)
-	local query_building = IsObjInDome(building) or building --if other bld is in dome connect to dome's cc's instead.
-
-	local centers = query_building and query_building:FindCommandCenters() or empty_table
+	local dome = IsObjInDome(building)
+	local centers = dome and dome.command_centers or building:FindCommandCenters()
 	table.map(centers, function(center)
 		self:AddCommandCenter(center)
 	end)

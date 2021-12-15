@@ -243,6 +243,9 @@ function MultiSelectionWrapper:GetObjectsCount()
 end
 
 --Multiple selection
+function CanControlAs(obj, class)
+	return IsKindOf(obj, "MultiSelectionWrapper") and obj:IsClassSupported(class) or IsKindOf(obj, class)
+end
 
 function MultiSelectionWrapper:IsClassSupported(classname)
 	return IsKindOf(g_Classes[self.selection_class], classname)

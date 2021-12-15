@@ -751,7 +751,8 @@ function ConstructionController:GetMapID()
 	return city.map_id
 end
 
-function ConstructionController:CreateCursorObj(alternative_entity_t, template_obj, override_palette, map_id)
+function ConstructionController:CreateCursorObj(alternative_entity_t, template_obj, override_palette)
+	local map_id = self:GetMapID()
 	local o
 	if template_obj or self.is_template then
 		template_obj = template_obj or self.template_obj
@@ -1888,7 +1889,7 @@ function ConstructionController:Place(external_template_name, pos, angle, param_
 
 	local template_name = external_template_name or self.template
 	local template_obj = not is_external and self.template_obj or ClassTemplates.Building[template_name]
-	local cursor_obj = not is_external and self.cursor_obj or self:CreateCursorObj(nil, template_obj, nil, map_id)
+	local cursor_obj = not is_external and self.cursor_obj or self:CreateCursorObj(nil, template_obj, nil)
 	local game_map = GameMaps[map_id]
 	local realm = game_map.realm
 	local terrain = game_map.terrain

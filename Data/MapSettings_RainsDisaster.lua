@@ -11,7 +11,7 @@ local MapSettings_RainsDisaster ={
 		'max_duration', 360000,
 		'pools_low', 1,
 		'pools_high', 3,
-		'veg_growth_percent', -50,
+		'veg_growth_percent', 50,
 		'pool_expand_chance', 10,
 	}),
 	PlaceObj('MapSettings_RainsDisaster', {
@@ -25,7 +25,7 @@ local MapSettings_RainsDisaster ={
 		'max_duration', 720000,
 		'pools_low', 2,
 		'pools_high', 5,
-		'veg_growth_percent', -50,
+		'veg_growth_percent', 50,
 		'pool_expand_chance', 25,
 	}),
 	PlaceObj('MapSettings_RainsDisaster', {
@@ -39,7 +39,7 @@ local MapSettings_RainsDisaster ={
 		'max_duration', 900000,
 		'pools_low', 2,
 		'pools_high', 6,
-		'veg_growth_percent', -50,
+		'veg_growth_percent', 50,
 		'pool_expand_chance', 50,
 	}),
 	PlaceObj('MapSettings_RainsDisaster', {

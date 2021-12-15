@@ -19,7 +19,7 @@ local IsFlagSet    = IsFlagSet
 local rfRestrictorRocket = const.rfRestrictorRocket
 local rfRestrictorWasteRockDump = const.rfRestrictorWasteRockDump
 
-local function FindClosest(list, pt)
+function FindClosest(list, pt)
 	if not list then return end
 
 	local dist_func = "GetDist2D"
@@ -366,12 +366,13 @@ local function HexConnectLandscapeConstructions(q, r, self, passed, qq, rr, land
 	passed[mark] = true
 	local ls = Landscapes[mark]
 	local cs = ls and ls.site
-	if cs and cs.auto_connect and not table.find(cs.command_centers, self) then
-		cs:AddCommandCenter(self)
+	local command_center = self:GetCommandCenter()
+	if cs and cs.auto_connect and not table.find(cs.command_centers, command_center) then
+		cs:AddCommandCenter(command_center)
 	end
 end
 
-function DroneControl:ConnectLandscapeConstructions()
+function DroneNode:ConnectLandscapeConstructions()
 	if not self.accept_requester_connects then return false end
 	local passed = {}
 	local x, y = self:GetVisualPosXYZ()

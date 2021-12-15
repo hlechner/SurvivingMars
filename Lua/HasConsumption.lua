@@ -493,6 +493,10 @@ function UpgradeConsumption:DroneUnloadResource(drone, req, resource, amount)
 	HasConsumption.ConsumptionDroneUnload(self, drone, req, resource, amount)
 end
 
+function UpgradeConsumption:DroneCanApproach(...)
+	return self.building:DroneCanApproach(...)
+end
+
 function UpgradeConsumption:DroneApproach(...)
 	return self.building:DroneApproach(...)
 end

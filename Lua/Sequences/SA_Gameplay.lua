@@ -991,7 +991,8 @@ DefineClass.SA_CustomNotification = {
 		{ id = "expiration", name = T(3729, "Countdown Hours"), editor = "number", default = 0, scale = const.HourDuration, help = "Expiration" },
 		{ id = "exp_reg",	  name = T(3730, "Countdown Register"),editor = "text", default = "", help = "Sequence register holding the expiration to replace the default expiration" },
 		{ id = "pos_reg",	  name = T(3731, "Position Register"),editor = "text", default = "", help = "Sequence register holding the position the camera will move to if notif is clicked" },
-		{ id = "dismissable", name = T(4101, "Dismissable"), editor = "dropdownlist", items = { "dismissable", "not dismissable", "no change" }, default = "no change", }
+		{ id = "dismissable", name = T(4101, "Dismissable"), editor = "dropdownlist", items = { "dismissable", "not dismissable", "no change" }, default = "no change", },
+		{ id = "multimap", name = T("Show on all maps"), editor = "bool", default = false, help = "Determines if the notification is persistent between maps", }
 	},
 	
 	Menu = "Gameplay",
@@ -1042,7 +1043,7 @@ function SA_CustomNotification:UpdateNotification(seq_player, ip, seq, registers
 	
 	local pos = self.pos_reg ~= "" and registers[self.pos_reg] or nil
 	expiration = expiration ~= 0 and expiration or nil
-	local map_id = seq_player.map_id
+	local map_id = (not self.multimap) and seq_player.map_id
 	local dismissable = GetOnScreenNotificationDismissable(self.id, map_id)
 	if self.dismissable ~= "no change" then
 		dismissable = self.dismissable == "dismissable"
@@ -1071,7 +1072,7 @@ function SA_CustomNotification:Exec(seq_player, ip, seq, registers)
 				--Update notification
 				self:UpdateNotification(seq_player, ip, seq, registers)
 			end
-		end	)
+		end)
 	end
 end
 
@@ -1924,8 +1925,11 @@ local function obj_label_combo()
 	return t
 end
 
-function IsInRangeOfLabel(city, obj, label_name, radius, ...)
-	local label = IsValid(obj) and city.labels[label_name] or empty_table
+function IsInRangeOfLabel(obj, label_name, radius, ...)
+	if not IsValid(obj) then return false end
+	
+	local city = obj.city or MainCity
+	local label = city.labels[label_name] or empty_table
 	if type(radius) == "string" then
 		for j = 1, #label do
 			local el = label[j]

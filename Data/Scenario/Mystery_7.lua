@@ -430,6 +430,7 @@ PlaceObj('Scenario', {
 			'interval', 5,
 			'text', T(8219, --[[Scenario Mystery 7 text]] "War Tension: <reg_param1>%"),
 			'reg_param1', "_WarTension",
+			'multimap', true,
 		}),
 		PlaceObj('SA_Repeat', {
 			'sa_id', 1,
@@ -441,6 +442,9 @@ PlaceObj('Scenario', {
 		}),
 		PlaceObj('SA_Exec', {
 			'expression', "_WarTension = _WarTension + 1",
+		}),
+		PlaceObj('SA_Log', {
+			'Text', "_WarTension",
 		}),
 		PlaceObj('SA_Block', {
 			'sa_id', 2,
@@ -715,7 +719,7 @@ PlaceObj('Scenario', {
 		}),
 	PlaceObj('ScenarioSequence', {
 		'name', "Check Deaths",
-		'loc_section', T{--[[section:Wait for the number of unnatural deaths to exceed 5.]] "Wait for the number of unnatural deaths to exceed 5."},
+		'loc_section', T(--[[section:Wait for the number of unnatural deaths to exceed 5.]] "Wait for the number of unnatural deaths to exceed 5."),
 	}, {
 		PlaceObj('SA_Comment', {
 			'comment', "Wait until the number of unnatural deaths is 10 or more",

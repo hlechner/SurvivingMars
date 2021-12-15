@@ -36,7 +36,7 @@ function ResourceOverviewThreadBody()
 end
 
 function GetResourceOverviewTotal()
-	g_ResourceOverviewTotal = g_ResourceOverviewTotal or ResourceOverviewTotal:new()
+	g_ResourceOverviewTotal = g_ResourceOverviewTotal or ResourceOverviewTotal:new({}, MainMapID)
 	return g_ResourceOverviewTotal 
 end
 
@@ -44,7 +44,7 @@ function GetCityResourceOverview(city)
 	assert(city ~= nil)
 	local map_id = city.map_id
 	if g_ResourceOverviewCity[map_id] == nil then
-		g_ResourceOverviewCity[map_id] = ResourceOverview:new()
+		g_ResourceOverviewCity[map_id] = ResourceOverview:new({}, map_id)
 		g_ResourceOverviewCity[map_id].city = city
 		pcall(GatherResourceOverviewData, g_ResourceOverviewCity[map_id].data, city)
 	end

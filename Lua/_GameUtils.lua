@@ -87,7 +87,6 @@ local ForcedIntegerResources = {
 	["Research"] = true,
 	["Tourist"] = true,
 	["Prefab"] = true,
-	["Recon"] = true,
 }
 
 -- FormatResourceValueMaxResource(context_obj, value ) -> value/const.ResourceScale

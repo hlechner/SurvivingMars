@@ -223,9 +223,17 @@ function CargoTransporter:GatherAvailableColonists(amount, label, quick_load, tr
 	label = label or "Colonist"
 
 	local colonists = self.city.labels.Colonist or empty_table
-	colonists = quick_load and colonists or table.ifilter(colonists, function(_, unit) return not unit.thread_running_destructors and table.find({"Idle", "Abandoned"}, unit.command) end)
-
-	local list = FilterColonists(colonists, label, amount)
+	colonists = quick_load and colonists or table.ifilter(colonists, function(_, unit) return not unit.thread_running_destructors end)
+	
+	local idle_colonists = table.ifilter(colonists, function(_, unit) return table.find({"Idle", "Abandoned"}, unit.command) end)
+	local list = FilterColonists(idle_colonists, label, amount)
+	
+	if #list < amount then
+		local busy_colonists = table.ifilter(colonists, function(_, unit) return not table.find(idle_colonists, unit) end)
+		local remaining = amount - #list
+		local remainder = FilterColonists(busy_colonists, label, amount)
+		for i = 1, #remainder do list[#list + 1] = remainder[i] end
+	end
 	
 	if #list >= amount or quick_load or transfer_available then
 		local crew = {}
@@ -308,8 +316,23 @@ local function GatherAvailableDronesWithFilter(drones, amount, obj, filter)
 		table.insert(drones, drone)
 	end
 	
+	-- pick orphaned drones
+	GatherAvailableOrphanedDrones(drones, amount, obj, filter)
+	
 	-- pick from other drone controllers
 	GatherBestAvailableDrones(drones, amount, obj.city, filter)
+end
+
+function GatherAvailableOrphanedDrones(drones, amount, obj, filter)
+	local available_orphaned_drones = table.copy(g_OrphanedDrones[obj:GetMapID()] or empty_table)
+	while #drones < amount do
+		local drone = FindClosest(available_orphaned_drones, obj)
+		if not drone then return end
+		if (not filter or filter(drone)) then
+			table.insert(drones, drone)
+			table.remove_value(available_orphaned_drones, drone)
+		end
+	end
 end
 
 local function DroneApproachingRocket(drone)
@@ -774,7 +797,7 @@ function CargoTransporter:UnloadDrones(drones)
 					pt = self:PickArrivalPos(drone:GetPos(), point(guim, 0, 0), 30*guim, 10*guim, 180*60, -180*60)
 				end
 				Movable.Goto(drone, pt) -- Unit.Goto is a command, use this instead for direct control
-				drone:SetCommand(IsValid(self) and "GoHome" or "Idle")
+				drone:SetCommand("Idle")
 			end
 		end, self, i)
 	end
@@ -1378,6 +1401,7 @@ function CargoTransporter:GetPayloadWarning()
 	local rovers_missing = false
 	local prefabs_missing = false
 	local busy_rovers = false
+	local busy_drones = false
 	
 	for _,item in pairs(self.cargo) do
 		if item.requested and item.requested > 0 then
@@ -1385,6 +1409,11 @@ function CargoTransporter:GetPayloadWarning()
 				local available_rovers_list = self:ListAvailableRovers(item.class)
 				local total_rovers_list = self.city.labels[item.class] or empty_table
 				if item.requested <= #total_rovers_list and item.requested > #available_rovers_list then busy_rovers = true end
+			end
+			if GetCargoType(item.class) == CargoType.Drone then
+				local available_drones_list = self:GatherAvailableDrones(item.requested)
+				local total_drones_list = self.city.labels.Drone or empty_table
+				if item.requested <= #total_drones_list and item.requested > #available_drones_list then busy_drones = true end
 			end
 			local status = self:GetCargoItemStatus(item)
 			if status ~= AvailabilityStatus.Ready then
@@ -1409,6 +1438,7 @@ function CargoTransporter:GetPayloadWarning()
 	if rovers_missing then return T(13882, "Not enough Rovers") end
 	if prefabs_missing then return T(13883, "Not enough Prefabs") end
 	if busy_rovers then return T(14355, "Rovers are busy") end
+	if busy_drones then return T(14363, "Drones are busy") end
 end
 
 function CargoTransporter:GetCargoEnvironments()

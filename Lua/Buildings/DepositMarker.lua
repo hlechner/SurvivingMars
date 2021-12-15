@@ -56,7 +56,8 @@ function FindUnobstructedDepositPos(marker, dont_move_if_obstruct)
 	end
 
 	-- check for buildings on the required position, don't place surface deposits if buildings are in the way
-	local mx, my = marker:GetVisualPosXYZ()
+	local orig_x, orig_y = marker:GetVisualPosXYZ()
+	local mx, my = orig_x, orig_y
 	local radius = marker:GetObstructionRadius()
 	local IsDepositObstructed = IsDepositObstructed	
 	local map_id = marker:GetMapID()
@@ -96,7 +97,11 @@ function FindUnobstructedDepositPos(marker, dont_move_if_obstruct)
 					local new_pos = GetPlayableAreaNearby(game_map, point(x, y), const.HexSize * 4, const.HexSize * 2, function(dx, dy)
 						return #GetDepositsAtPos(realm, dx, dy)
 					end)
-					mx, my =  new_pos:x(),  new_pos:y()
+					if new_pos then
+						mx, my = new_pos:x(), new_pos:y()
+					else
+						break
+					end
 				else
 					obstructed = false
 					unobstructed = true
@@ -104,9 +109,17 @@ function FindUnobstructedDepositPos(marker, dont_move_if_obstruct)
 				end
 			else
 				mx, my = sx, sy
+				if not mx or not my then
+					break
+				end
 			end
 		end
 	end
+	
+	if not mx or not my then
+		mx, my = orig_x, orig_y
+	end
+
 	return mx, my, unobstructed, obstructed
 end
 

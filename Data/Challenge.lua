@@ -362,7 +362,7 @@ end
 
 while true do
 	WaitMsg("ChallengeUpdate")
-	if anomalies_explored() and GetRealmByID(MainMapId):MapCount("map", "SubsurfaceAnomaly") == 0 then
+	if anomalies_explored() and GetRealmByID(MainMapID):MapCount("map", "SubsurfaceAnomaly") == 0 then
 		return
 	end
 end

@@ -145,6 +145,7 @@ function City:GetColonyStatsButtons()
 		},
 	}
 	for i, id in ipairs(GetStockpileResourceList()) do
+		local ts_resource = self.ts_resources[id]
 		local resource_name = FormatResourceName(id)
 		t[#t + 1] = {
 			button_caption = T{9647, "<resource>", resource = resource_name},
@@ -158,7 +159,7 @@ function City:GetColonyStatsButtons()
 						amount = resource_overview_obj["GetAvailable" .. id](resource_overview_obj) / const.ResourceScale,
 					}
 				end,
-				data = { self.ts_resources[id].stockpile, scale = const.ResourceScale}
+				data = { ts_resource.stockpile, scale = const.ResourceScale}
 			},
 			{
 				caption = function()
@@ -167,7 +168,7 @@ function City:GetColonyStatsButtons()
 						consumed = resource_overview_obj["Get" .. id .. "ConsumedByConsumptionYesterday"](resource_overview_obj) / const.ResourceScale,
 					}
 				end,
-				data = { self.ts_resources[id].produced, self.ts_resources[id].consumed, scale = const.ResourceScale}
+				data = { ts_resource.produced, ts_resource.consumed, scale = const.ResourceScale}
 			},
 			margin_right = (i % 4 == 0 and i ~= #GetStockpileResourceList() ) and 40 or nil,
 			id = id,

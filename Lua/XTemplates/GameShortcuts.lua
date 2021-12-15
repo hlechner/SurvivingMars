@@ -1014,7 +1014,7 @@ PlaceObj('XTemplate', {
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if SelectedObj and IsKindOf(SelectedObj, "Demolishable") and not (g_Tutorial and IsKindOf(SelectedObj, "ConstructionSite")) then
+				if SelectedObj and CanControlAs(SelectedObj, "Demolishable") and not (g_Tutorial and CanControlAs(SelectedObj, "ConstructionSite")) then
 					SelectedObj:ToggleDemolish()
 					if SelectedObj then
 						RebuildInfopanel(SelectedObj)
@@ -1048,13 +1048,13 @@ PlaceObj('XTemplate', {
 			'ActionToolbar', "SelectedObj",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return SelectedObj and IsKindOf(SelectedObj, "PinnableObject") or "disabled"
+				return SelectedObj and CanControlAs(SelectedObj, "PinnableObject") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if SelectedObj and IsKindOf(SelectedObj, "PinnableObject") then
+				if SelectedObj and CanControlAs(SelectedObj, "PinnableObject") then
 					SelectedObj:TogglePin()
 					RebuildInfopanel(SelectedObj)
 				end
@@ -1080,13 +1080,13 @@ PlaceObj('XTemplate', {
 			'ActionToolbar', "SelectedObj",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return SelectedObj and IsKindOf(SelectedObj, "Renamable") or "disabled"
+				return SelectedObj and CanControlAs(SelectedObj, "Renamable") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 					FocusInfopanel = false
-				if SelectedObj and IsKindOf(SelectedObj, "Renamable") and SelectedObj.rename_allowed
+				if SelectedObj and CanControlAs(SelectedObj, "Renamable") and SelectedObj.rename_allowed
 					and (not SelectedObj:IsKindOf("BaseBuilding") or SelectedObj:GetUIInteractionState()) 
 				then
 					SelectedObj:ShowRenameUI(source == "gamepad")
@@ -1101,13 +1101,13 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonA",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return SelectedObj and IsKindOf(SelectedObj, "DroneBase") or "disabled"
+				return SelectedObj and CanControlAs(SelectedObj, "DroneBase") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not SelectedObj or not IsKindOf(SelectedObj, "DroneBase") then return end
+				if not SelectedObj or not CanControlAs(SelectedObj, "DroneBase") then return end
 				local igi = GetInGameInterface()
 				if igi and igi:GetVisible() then
 					SelectedObj:ToggleControlMode()
@@ -1124,12 +1124,12 @@ PlaceObj('XTemplate', {
 			'ActionToolbar', "SelectedObj",
 			'ActionGamepad', "RightTrigger-ButtonX",
 			'ActionState', function (self, host)
-				return SelectedObj and IsKindOf(SelectedObj, "SupplyRocket") or "disabled"
+				return SelectedObj and CanControlAs(SelectedObj, "SupplyRocket") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
-				if SelectedObj and IsKindOf(SelectedObj, "SupplyRocket") then
+				if SelectedObj and CanControlAs(SelectedObj, "SupplyRocket") then
 					SelectedObj:UILaunch()
 				end
 			end,
@@ -1141,13 +1141,13 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonX",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return SelectedObj and IsKindOf(SelectedObj, "RCTransport") or "disabled"
+				return SelectedObj and CanControlAs(SelectedObj, "RCTransport") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not SelectedObj or not IsKindOf(SelectedObj, "RCTransport") then return end
+				if not SelectedObj or not CanControlAs(SelectedObj, "RCTransport") then return end
 				local igi = GetInGameInterface()
 				if igi and igi:GetVisible() then
 					SelectedObj:LoadResource()
@@ -1165,13 +1165,13 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonY",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return SelectedObj and IsKindOf(SelectedObj, "RCTransport") or "disabled"
+				return SelectedObj and CanControlAs(SelectedObj, "RCTransport") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not SelectedObj or not IsKindOf(SelectedObj, "RCTransport") then return end
+				if not SelectedObj or not CanControlAs(SelectedObj, "RCTransport") then return end
 				local igi = GetInGameInterface()
 				if igi and igi:GetVisible() then
 					SelectedObj:UnloadResource()
@@ -1189,13 +1189,13 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonY",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return SelectedObj and IsKindOf(SelectedObj, "Drone") or "disabled"
+				return SelectedObj and CanControlAs(SelectedObj, "Drone") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not SelectedObj or not IsKindOf(SelectedObj, "Drone") then return end
+				if not SelectedObj or not CanControlAs(SelectedObj, "Drone") then return end
 				local igi = GetInGameInterface()
 				if igi and igi:GetVisible() then
 					SelectedObj:ToggleReassignInteractionMode()
@@ -1213,13 +1213,13 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonA",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return IsKindOf(SelectedObj, "Colonist") or "disabled"
+				return CanControlAs(SelectedObj, "Colonist") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not IsKindOf(SelectedObj, "Colonist") or SelectedObj.traits.Renegade then return end
+				if not CanControlAs(SelectedObj, "Colonist") or SelectedObj.traits.Renegade then return end
 				local igi = GetInGameInterface()
 				if igi and igi:GetVisible() then
 					SelectedObj:ToggleInteraction()
@@ -1237,13 +1237,13 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonA",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return IsKindOf(SelectedObj, "Building") and SelectedObj.prio_button or "disabled"
+				return CanControlAs(SelectedObj, "Building") and SelectedObj.prio_button or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not IsKindOf(SelectedObj, "Building") or not SelectedObj.prio_button or not SelectedObj:GetUIInteractionState()  then return end
+				if not CanControlAs(SelectedObj, "Building") or not SelectedObj.prio_button or not SelectedObj:GetUIInteractionState()  then return end
 				SelectedObj:TogglePriority(1)
 				RebuildInfopanel(SelectedObj)
 			end,
@@ -1255,8 +1255,8 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonY",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				if IsKindOf(SelectedObj, "Building") and SelectedObj.on_off_button and SelectedObj:GetUIInteractionState() then
-						if not (IsKindOf(SelectedObj, "ConstructionSite") and SelectedObj.building_class == "BlackCubeMonolith") then
+				if CanControlAs(SelectedObj, "Building") and SelectedObj.on_off_button and SelectedObj:GetUIInteractionState() then
+						if not (CanControlAs(SelectedObj, "ConstructionSite") and SelectedObj.building_class == "BlackCubeMonolith") then
 							return SelectedObj.on_off_button
 						end			
 					end
@@ -1266,7 +1266,7 @@ PlaceObj('XTemplate', {
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not IsKindOf(SelectedObj, "Building") or not SelectedObj.on_off_button or (IsKindOf(SelectedObj, "ConstructionSite") and SelectedObj.building_class== "BlackCubeMonolith") or not SelectedObj:GetUIInteractionState() then return end
+				if not CanControlAs(SelectedObj, "Building") or not SelectedObj.on_off_button or (CanControlAs(SelectedObj, "ConstructionSite") and SelectedObj.building_class== "BlackCubeMonolith") or not SelectedObj:GetUIInteractionState() then return end
 				SelectedObj:ToggleWorking()
 				RebuildInfopanel(SelectedObj)
 			end,
@@ -1279,13 +1279,13 @@ PlaceObj('XTemplate', {
 			'ActionGamepad', "RightTrigger-ButtonX",
 			'ActionBindable', true,
 			'ActionState', function (self, host)
-				return IsKindOf(SelectedObj, "Dome") or "disabled"
+				return CanControlAs(SelectedObj, "Dome") or "disabled"
 			end,
 			'OnAction', function (self, host, source)
 				local dlg = GetHUD()
 				if not dlg or not dlg:GetVisible() then return end
 				FocusInfopanel = false
-				if not IsKindOf(SelectedObj, "Dome") or not SelectedObj:GetUIInteractionState() then return end
+				if not CanControlAs(SelectedObj, "Dome") or not SelectedObj:GetUIInteractionState() then return end
 				SelectedObj:OpenFilterTraits()
 			end,
 			'IgnoreRepeated', true,

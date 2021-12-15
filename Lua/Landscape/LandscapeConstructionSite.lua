@@ -477,8 +477,6 @@ function LandscapeConstructionSite:UpdateLSProgress(amount, request)
 	self:TryGoToNextState()
 end
 
-local construction_site_auto_construct_tick = ConstructionSite.building_update_time --wont go faster, but doesn't do much else
-local construction_site_auto_construct_amount = 167
 function LandscapeConstructionSite:BuildingUpdateNanites(current_time)
 	if not self.auto_construct_ts_ls then self.auto_construct_ts_ls = current_time end 
 

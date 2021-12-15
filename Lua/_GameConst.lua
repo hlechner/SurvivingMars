@@ -119,6 +119,8 @@ const.ColonistMaxDepartureRocketDist = 1200 * guim --when leaving, a rocket cant
 const.ColonistMaxDomeWalkDist = 400 * guim -- distance between two domes to consider them in walk range
 const.ColonistMinDistToIgnorePassage = 1200 * guim -- distance between two domes to provoke colos to request a shuttle, even if connected with passage.
 
+const.CargoRequestItemMax = 9999 -- maximum quantity per cargo item request
+
 -- OverviewCamera
 const.OverviewCamLookAt = point(48, 48, 0) -- percent of map size
 const.OverviewCamPos = point(-48, -48, 135) -- percent of map size

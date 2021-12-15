@@ -135,6 +135,10 @@ function RechargeStation:GameInit()
 	self.force_fx_work_target = self.platform
 end
 
+function RechargeStation:DroneCanApproach(drone, resource)
+	return drone:CanReachBuildingSpot(self, resource == "charge" and "Drone" or "Workdrone")
+end
+
 function RechargeStation:DroneApproach(drone, resource)
 	return drone:GotoBuildingSpot(self, resource == "charge" and "Drone" or "Workdrone")
 end
@@ -214,6 +218,7 @@ DefineClass.NotBuildingRechargeStation = {
 	working = true, -- totally not building though.
 	
 	DroneApproach = RechargeStation.DroneApproach,
+	DroneCanApproach = RechargeStation.DroneCanApproach,
 	LeadIn = RechargeStation.LeadIn,
 	LeadOut = RechargeStation.LeadOut,
 	AttachSign = RechargeStation.AttachSign,

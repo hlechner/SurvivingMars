@@ -43,14 +43,15 @@ local day_duration = const.DayDuration
 
 local function GetDustStormDescr()
 	local map_data = ActiveMaps[MainMapID]
-	if map_data.MapSettings_DustStorm == "disabled" then
+	local preset_name = map_data.MapSettings_DustStorm
+	if preset_name == "disabled" then
 		return
 	end
 	
 	local data = DataInstances.MapSettings_DustStorm
-	local dust_storm = data[map_data.MapSettings_DustStorm] or data["DustStorm_VeryLow"]
+	local dust_storm = data[preset_name] or data["DustStorm_VeryLow"]
 	
-	local orig_data = dust_storm and not dust_storm.forbidden and dust_storm
+	local orig_data = (dust_storm and not dust_storm.forbidden) and dust_storm
 	return OverrideDisasterDescriptor(orig_data)
 end
 

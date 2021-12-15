@@ -687,6 +687,10 @@ function ResourceStockpileBase:DroneUnloadResource(drone, request, resource, amo
 	end
 end
 
+function ResourceStockpileBase:DroneCanApproach(drone, resource)
+	return TaskRequester.DroneCanApproach(self, drone, resource) --we got spots so this should work
+end
+
 function ResourceStockpileBase:DroneApproach(drone, resource)
 	return TaskRequester.DroneApproach(self, drone, resource) --we got spots so this should work
 end

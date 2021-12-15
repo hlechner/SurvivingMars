@@ -410,15 +410,14 @@ function ClearWasteRockConstructionSite:AddResource(amount, resource)
 	self:UpdateLSProgress(amount)
 end
 
-function ClearWasteRockConstructionSite:FindCommandCenters()
+function ClearWasteRockConstructionSite:FindDroneNodes()
 	local b =  self:GetBBox(const.CommandCenterMaxRadius * const.GridSpacing)
-	local centers = GetRealm(self):MapGet(b, "DroneControl")
-	local additional_centers = FindAdditionalCommandCenters(self)
-	return table.union(centers, additional_centers)
+	
+	return GetRealm(self):MapGet(b, "DroneNode")
 end
 
 function ClearWasteRockConstructionSite:ConnectToCommandCenters()
-	table.map(self:FindCommandCenters(), DroneControl.ConnectLandscapeConstructions)
+	table.map(self:FindDroneNodes(), DroneNode.ConnectLandscapeConstructions)
 end
 
 local max_t = 10
@@ -452,7 +451,6 @@ function ClearWasteRockConstructionSite:GetOuputPile()
 	return p
 end
 
-local construction_site_auto_construct_tick = ConstructionSite.building_update_time --wont go faster, but doesn't do much else
 construction_site_auto_transfer_amount = 2000
 construction_site_auto_clean_amount = 5000
 function ClearWasteRockConstructionSite:UnloadRequest(req)

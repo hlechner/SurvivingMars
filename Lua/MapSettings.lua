@@ -123,7 +123,9 @@ function MapSettingsEditor:ActionSave()
 	end
 end
 
-g_DisastersSettings = false
+if FirstLoad then
+	g_DisastersSettings = false
+end
 
 function OverrideDisasterDescriptor(original)
 	return original

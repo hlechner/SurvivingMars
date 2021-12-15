@@ -35,6 +35,7 @@ DefineClass.RCSafari = {
 	GetModifiedBSphereRadius = UngridedObstacle.GetModifiedBSphereRadius,
 	priority = 3,
 	DroneApproach = BaseRover.DroneApproach,
+	DroneCanApproach = BaseRover.DroneCanApproach,
 	reveal_range = 180,
 
 	--ui

@@ -675,8 +675,16 @@ DefineClass.Passage = {
 	update_visuals_thread = false,
 }
 
+function PassageGridElement:DroneCanApproach(drone, resource)
+	return self.passage_obj:DroneCanApproach(drone, resource)
+end
+
 function PassageGridElement:DroneApproach(drone, resource)
 	return self.passage_obj:DroneApproach(drone, resource)
+end
+
+function Passage:DroneCanApproach(drone, resource)
+	return drone:CanReachBuildingsSpot(#self.elements_under_construction > 0 and self.elements_under_construction or self.elements, drone.work_spot_task)
 end
 
 function Passage:DroneApproach(drone, resource)
@@ -1852,6 +1860,10 @@ function PassageConstructionSite:GameInit()
 	self:DestroyAttaches("PassageCurtain")
 end
 
+function PassageConstructionSite:DroneCanApproach()
+	return ConstructionSite.DroneCanApproach(self)
+end
+
 function PassageConstructionSite:DroneApproach()
 	return ConstructionSite.DroneApproach(self)
 end
@@ -1919,7 +1931,7 @@ function PassageConstructionSite:Complete(quick_build)
 	end
 	
 	local po = self.passage_obj
-	local bld = PassageGridElement:new{
+	local bld = PassageGridElement:new({
 		dome = self.dome,
 		adjacent_dome = self.adjacent_dome,
 		connections = self.connections,
@@ -1927,7 +1939,7 @@ function PassageConstructionSite:Complete(quick_build)
 		r = self.r,
 		passage_obj = po,
 		node_idx = self.node_idx,
-	}
+	}, self:GetMapID())
 	
 	bld:SetPos(self:GetPos())
 	bld:SetAngle(self:GetAngle())

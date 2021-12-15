@@ -461,6 +461,15 @@ local drone_enter_cmd = {
 	TransferAllResources = true,
 }
 
+function SpaceElevator:DroneCanApproach(drone, r)
+	if not IsValid(self) then return end
+	if drone_enter_cmd[drone.command] and IsKindOf(drone, "Drone") then
+		return true
+	else
+		return drone:CanReachBuildingSpot(self, drone.work_spot_task)
+	end
+end
+
 function SpaceElevator:DroneApproach(drone, r)
 	drone:ExitHolder(self)
 	if not IsValid(self) then return end

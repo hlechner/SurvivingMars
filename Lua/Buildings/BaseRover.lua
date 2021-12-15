@@ -269,17 +269,33 @@ function BaseRover:Repair()
 	RebuildInfopanel(self)
 end
 
+local function GetDroneApproachPos(object, drone)
+		local c, r = object:GetBSphere()
+		local d_r = drone:GetRadius()
+		local v = object:GetPos() - drone:GetPos()
+		v = SetLen(Rotate(v, InteractionRand(360*60, "drone goto pos")), r + d_r) --better randomize it then closest to avoid drone collisions
+		v = v + object:GetPos()
+	return v
+end
+
+function BaseRover:DroneCanApproach(drone, reason)
+	if not IsValid(self) then return false end
+	
+	if not self:HasSpot(self:GetState(), drone.work_spot_task) then
+		local v = GetDroneApproachPos(self, drone)
+		return drone:HasPath(v)
+	else
+		return drone:CanReachBuildingSpot(self, drone.work_spot_task)
+	end
+end
+
 function BaseRover:DroneApproach(drone, reason)
 	drone:ExitHolder(self)
 	
 	if not IsValid(self) then return false end
 	
 	if not self:HasSpot(self:GetState(), drone.work_spot_task) then
-		local c, r = self:GetBSphere()
-		local d_r = drone:GetRadius()
-		local v = self:GetPos() - drone:GetPos()
-		v = SetLen(Rotate(v, InteractionRand(360*60, "drone goto pos")), r + d_r) --better randomize it then closest to avoid drone collisions
-		v = v + self:GetPos()
+		local v = GetDroneApproachPos(self, drone)
 		return drone:Goto(v)
 	else
 		return drone:GotoBuildingSpot(self, drone.work_spot_task)

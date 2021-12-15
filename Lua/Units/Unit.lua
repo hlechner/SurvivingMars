@@ -426,6 +426,11 @@ function Unit:GotoUnitSpot(unit, spot)
 	Sleep(1000)
 end
 
+function Unit:CanReachBuildingsSpot(buildings, spot)
+	local result = self:HasPath(buildings, spot)
+	return result
+end
+
 function Unit:GotoBuildingsSpot(buildings, spot)
 	local result = self:ExitHolder(AveragePoint2D(buildings)) and self:Goto(buildings, spot)
 	if result then
@@ -439,6 +444,42 @@ function Unit:GotoBuildingsSpot(buildings, spot)
 		end
 	end
 	return result
+end
+
+function Unit:CanReachBuildingSpot(building, spot, dest_tolerance, min_z, max_z)
+	if not IsValid(building) then
+		return false
+	end
+	
+	local begin_idx = spot and building:GetSpotBeginIndex("idle", spot) or -1
+	local goto_a1, goto_a2
+	if building:HasMember("destroyed") and building.destroyed and building.orig_state and spot and building.orig_state[spot] then
+		goto_a1 = building.orig_state[spot]
+	else
+		goto_a1, goto_a2 = building, spot
+	end
+	
+	-- Check if path is available
+	local result
+	if goto_a2 then
+		if min_z and max_z then
+			result = self:HasPath_NoDestlock(goto_a1, goto_a2, min_z, max_z)
+		else
+			result = self:HasPath_NoDestlock(goto_a1, goto_a2)
+		end
+	else
+		result = self:HasPath_NoDestlock(goto_a1)
+	end
+	
+	if not result then
+		local idx = spot and building:GetNearestSpot("idle", spot, self)
+		local spot_pos = (goto_a2 or not idx) and building:GetSpotPos(idx or -1) or goto_a1[idx - begin_idx + 1]
+		local path_end = self:FindClosestPoint(spot_pos) or spot_pos
+		if path_end:Dist2D(spot_pos) > (dest_tolerance or 2*guim) then
+			return false
+		end
+	end
+	return true
 end
 
 function Unit:GotoBuildingSpot(building, spot, force_teleport, dest_tolerance, min_z, max_z)

@@ -241,7 +241,7 @@ end
 local dust_class_flags = const.cfConstructible + const.cfDecal
 local decal_enum_flags = const.efBakedTerrainDecal + const.efBakedTerrainDecalLarge
 function SetObjDust(obj, normalized_dust, in_dome)
-	if obj and obj:GetClassFlags(dust_class_flags) ~= 0 and obj:GetEnumFlags(decal_enum_flags) == 0 then
+	if IsValid(obj) and obj:GetClassFlags(dust_class_flags) ~= 0 and obj:GetEnumFlags(decal_enum_flags) == 0 then
 		obj:SetDust(normalized_dust, in_dome and const.DustMaterialInterior or const.DustMaterialExterior)
 	end
 end

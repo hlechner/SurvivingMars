@@ -522,7 +522,7 @@ function RocketBase:Unload()
 	self.rovers = self.rovers or self:SpawnRovers()
 	self:AttachRovers(self.rovers)
 	
-	self:SpawnDronesFromEarth()
+	local drones_list = self:SpawnDronesFromEarth()
 	self:OpenDoor()
 	--needs to happen after rover's game init (so default desires have booted)
 	--so we use opendoor's sleep to make sure all rovers are initialized.
@@ -540,7 +540,8 @@ function RocketBase:Unload()
 	end
 	local out = self:GetSpotPos(self:GetSpotBeginIndex("Roverout"))
 	self:UnloadRovers(rovers, out)
-	self:UnloadDrones(self.drones)
+	drones_list = #drones_list > 0 and drones_list or self.drones
+	self:UnloadDrones(drones_list)
 	self:UnloadCargoObjects(self.cargo, out)
 	
 	self.placement = nil
@@ -642,7 +643,7 @@ function RocketBase:WaitLaunchOrder()
 		if self:IsLaunchAutomated() and not self:HasCargoSpaceLeft() and not issue then
 			self:SetCommand("Countdown")
 		end
-		if issue == "cargo" then
+		if issue == "unloading" then
 			self:WaitForResources()
 		else
 			Sleep(5000)
@@ -1671,6 +1672,10 @@ local special_cmd = {
 	EmergencyPower = true,
 }
 
+function RocketBase:DroneCanApproach(drone, r)
+	return true
+end
+
 function RocketBase:DroneApproach(drone, r)
 	drone:ExitHolder(self)
 	if not IsValid(self) then return end
@@ -1752,16 +1757,21 @@ function RocketBase:SpawnDronesFromEarth()
 	if not idx then
 		idx = self.cargo["Drone"] and "Drone"
 	end
+	
+	local spawned_drones = {}
 
 	if idx then
 		local number_of_carried_drones = self.cargo[idx].amount
 		
 		for i = 1, number_of_carried_drones do
-			self:SpawnDrone()
+			local drone = self:SpawnDrone()
+			if drone then table.insert(spawned_drones, drone) end
 		end
 		
 		self.cargo[idx].amount = 0
 	end
+	
+	return spawned_drones
 end
 
 function RocketBase:SpawnDrone()
@@ -1775,6 +1785,7 @@ function RocketBase:SpawnDrone()
 	local spawn_pos = self:GetSpotLoc(self:GetSpotBeginIndex(self.drone_spawn_spot))
 	drone:SetPos(spawn_pos)
 	CreateGameTimeThread(Drone.SetCommand, drone, "Embark")
+	return drone
 end
 
 function RocketBase:FillTransports() --needs to happen after rover's game init (so default desires have booted)
@@ -2025,11 +2036,11 @@ function RocketBase:GetLaunchIssue(skip_flight_ban)
 	
 	local fuel = self:HasExtraFuel()
 	if fuel then 
-		return "cargo"
+		return "unloading"
 	end
 	
 	if self:IsUnloadingCargo() then
-		return "cargo"
+		return "unloading"
 	end
 end
 
@@ -2045,26 +2056,31 @@ local function CargoLaunchIssue(rocket, host)
 		}, false, host)
 		
 		if res and res == 1 then
-			rocket:SetCommand("Countdown")
-			Msg("RocketManualLaunch", rocket)
-		end			
+			rocket:DepartNow()
+		end
 	end, rocket)
 end
 
-launch_issue_popups = { ["missions_suspended"] = function(rocket, host) ShowPopupNotification("LaunchIssue_MissionSuspended", false, false, host) end,
-	["dust_storm"] = function(rocket, host) ShowPopupNotification("LaunchIssue_DustStorm", false, false, host) end,
-	["not_landed"] = function(rocket, host) ShowPopupNotification("LaunchIssue_NotLanded", false, false, host) end,
-	["fuel"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Fuel", false, false, host) end,
-	["maintenance"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Maintenance", false, false, host) end,
-	["disabled"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Disabled", false, false, host) end,
-	["cargo"] = function(rocket, host) CargoLaunchIssue(rocket, host) end,
-}
+function RocketBase:GetLaunchIssuePopups()
+	local launch_issue_popups = { ["missions_suspended"] = function(rocket, host) ShowPopupNotification("LaunchIssue_MissionSuspended", false, false, host) end,
+		["dust_storm"] = function(rocket, host) ShowPopupNotification("LaunchIssue_DustStorm", false, false, host) end,
+		["not_landed"] = function(rocket, host) ShowPopupNotification("LaunchIssue_NotLanded", false, false, host) end,
+		["fuel"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Fuel", false, false, host) end,
+		["maintenance"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Maintenance", false, false, host) end,
+		["disabled"] = function(rocket, host) ShowPopupNotification("LaunchIssue_Disabled", false, false, host) end,
+		["unloading"] = function(rocket, host) CargoLaunchIssue(rocket, host) end,
+	}
+	return launch_issue_popups
+end
 
 function RocketBase:PromptLaunchIssue()
 	local issue = self:GetLaunchIssue()
-	if issue and launch_issue_popups[issue] then
-		launch_issue_popups[issue](self, GetInGameInterface())
-		return true
+	if issue then
+		local popups = self:GetLaunchIssuePopups()
+		if popups[issue] then
+			popups[issue](self, GetInGameInterface())
+			return true
+		end
 	end
 	return false
 end
@@ -2074,10 +2090,12 @@ function RocketBase:UILaunch() -- blizzard promised no broadcast
 		self:ToggleDemolish()
 	end
 	
-	if self:PromptLaunchIssue() then
-		return
+	if not self:PromptLaunchIssue() then
+		self:DepartNow()
 	end
-	
+end
+
+function RocketBase:DepartNow()
 	-- all ok
 	if self.command~="Countdown" and self.command~="TakeOff" then	
 		self:SetCommand("Countdown")

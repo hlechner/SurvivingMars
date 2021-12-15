@@ -378,31 +378,7 @@ function GetConstructionDescription(class, cost1, dont_modify) --class is a buil
 	end
 	
 	-- electricity, air, water production
-	if IsKindOfClasses(template_class, "Farm", "OpenFarm") then
-		texts[#texts+1] = T(12186, "Base production: <icon_Food> <if_all(has_dlc('armstrong'),has_researched('MartianVegetation'))>or <icon_Seeds></if> based on crop")
-	elseif IsKindOf(template_class, "Pasture") then
-		texts[#texts+1] = T(12471, "Base production: <icon_Food> based on breed")
-	else
-		local production = {}
-		for i = 1, #production_props do
-			local prop = table.find_value(properties, "id", production_props[i][1])
-			if prop and template_class[prop.id] ~= 0 then
-				local resource_name = production_props[i][2]
-				if not resource_name then
-					local resource_id = template_class[production_props[i][3]]
-					if resource_id and resource_id ~= "" and resource_id ~= "WasteRock" then
-						resource_name = GetResourceInfo(resource_id).id
-					end
-				end
-				if resource_name then
-					production[#production + 1] = FormatResource(empty_table, template_class[prop.id], resource_name)
-				end
-			end
-		end
-		if next(production) then
-			texts[#texts+1] = T(3967, "Base production: ") .. table.concat(production, " ")
-		end
-	end
+	texts[#texts+1] = template_class:GetBuildMenuProductionText(production_props)
 	
 	return table.concat(texts, "\n")
 end
@@ -666,15 +642,18 @@ end
 
 local button_ease_total_duration = 150
 function XBuildMenu:EaseInButtons(buttons, start_time, open)
-	assert(#buttons > 0)
-	for i=1,#buttons do
+	local num_buttons = #buttons
+	assert(num_buttons > 0)
+	if num_buttons == 0 then return end
+
+	for i=1,num_buttons do
 		buttons[i]:SetVisible(not open, "instant")
 	end
 	
-	local step_duration = button_ease_total_duration / #buttons
+	local step_duration = button_ease_total_duration / num_buttons
 	
-	local first = open and 1 or #buttons
-	local last = open and #buttons or 1
+	local first = open and 1 or num_buttons
+	local last = open and num_buttons or 1
 	local step = open and 1 or -1
 	start_time = (start_time or GetPreciseTicks()) + 80
 	for i=first,last,step do

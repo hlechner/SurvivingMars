@@ -294,11 +294,8 @@ function Drone:SetCommandCenter(command_center, do_not_orphan)
 		else
 			self:RestrictArea(command_center:GetPos(), 0)
 		end
-	elseif old_command_center and not self:IsDead() and not do_not_orphan then --dead drones cannot be orphans.
-		--just became orphan.
-		self.is_orphan = true
-		RequestNewObjsNotif(g_OrphanedDrones, self, self:GetMapID(), true)
-		self:RestrictArea(point30, 0)
+	elseif not self.is_orphan and not self:IsDead() and not do_not_orphan then --dead drones cannot be orphans.
+		self:Orphan()
 	end
 	
 	if not self:IsDead() then
@@ -312,6 +309,12 @@ end
 
 function Drone:CanBeThawed() --i.e. can be repaired when frozne
 	return not HasColdWave(self:GetMapID()) or GetHeatAt(self) >= const.DefaultFreezeHeat
+end
+
+function Drone:Orphan()
+	self.is_orphan = true
+	RequestNewObjsNotif(g_OrphanedDrones, self, self:GetMapID(), true)
+	self:RestrictArea(point30, 0)
 end
 
 function Drone:FindDroneToRepair()
@@ -688,13 +691,13 @@ function Drone:GoHome(min, max, pos, ui_str_override)
 	local filter = function(...) 
 			return GetPointOutsideDomesIn(object_hex_grid, ...) and buildable_grid:IsBuildableZone(...)
 		end
-	pos = self:GoToRandomPos(max, min, pos, filter)
-	if not pos then
+	local result = self:GoToRandomPos(max, min, pos, filter)
+	if not result then
 		local fallback_filter = function(...) 
 				return GetPointOutsideDomesIn(object_hex_grid, ...)
 			end
-		self:GoToRandomPos(max, min, pos, fallback_filter) --go in hollow rocks
-		if not pos then --stuck drone
+		result = self:GoToRandomPos(max, min, pos, fallback_filter) --go in hollow rocks
+		if not result then --stuck drone
 			Sleep(1000)
 		end
 	end
@@ -722,6 +725,7 @@ function Drone:WaitingCommand() --orphanned drone command, not broken drones wit
 		self:SetCommandCenter(new_dcc)
 		return
 	end
+	if not self.is_orphan then self:Orphan() end
 	self:OnStartWaitingCommand()
 	self:StartFX("WaitingCommand")
 	self:PushDestructor(function(self)
@@ -844,13 +848,20 @@ function Drone:ImproveDemandRequest(s_request, d_request, resource, amount, must
 	end
 end
 
+function ShouldCheckPathDestination(drone)
+	local path_check_environments = {"Underground", "Asteroid"}
+	return table.find(path_check_environments, GetEnvironment(drone))
+end
+
 const.MaxUnreachablesInTable = 16 --will keep up to this much unreachables
 --capture unreachable buildings with this wrapper
 function Drone:ApproachWrapper(building, resource)
 	if not IsValid(building) or not building:IsValidPos() then
 		return
 	end
-	local result = building:DroneApproach(self, resource)
+	
+	local can_approach = self:ExitHolder(building) and (not ShouldCheckPathDestination(self) or building:DroneCanApproach(self, resource))
+	local result = can_approach and building:DroneApproach(self, resource)
 	if not result then
 		local unreachable_buildings = self.unreachable_buildings or setmetatable({version = g_DroneUnreachablesVersion}, weak_keys_meta)
 		if self.unreachable_buildings_count >= const.MaxUnreachablesInTable then
