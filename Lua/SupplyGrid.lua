@@ -451,7 +451,7 @@ function SupplyGridFragment:UpdateGrid(update, update_consumer_state)
 		self.update_visuals = false
 		local args = self.update_visuals_args
 		self.update_visuals_args = false
-		local realm = GetRealm(self)
+		local realm = GetRealmByID(self.city.map_id)
 		realm:SuspendPassEdits("SupplyGridFragment.UpdateGrid")
 		for _, element in ipairs(self.elements) do
 			element.building:UpdateVisuals(supply_resource, args and table.unpack(args) or nil)

@@ -695,7 +695,7 @@ Display a custom on-screen notification.
 @param string image - path to the notification icon.
 @param function callback - optional. Function called when the user clicks the notification.
 @param table params - optional. additional parameters.
-@param string map_id - map the notification belongs to.
+@param string map_id - map the notification belongs to. Use false for global notifications (default=MainMapID).
 Additional parameters are supplied to the translatable texts, but can also be used to tweak the functionality of the notification:
 - _'cycle_objs'_ will cause the camera to cycle through a list of _GameObjects_ or _points_ when the user clicks the notification.
 - _'priority'_ changes the priority of the notification (choose between _"Normal"_, _"Important"_ and _"Critical"_; default=_"Normal"_).
@@ -709,8 +709,14 @@ function AddCustomOnScreenNotification(id, title, text, image, callback, params,
 	assert(not OnScreenNotificationPresets[id], string.format("Custom OnScreenNotification: Duplicates the id of preset.(id - %s).",tostring(id)))
 	params = params or {}
 	local cycle_objs = params.cycle_objs
-
-	map_id = map_id or ""
+	
+	if map_id == nil then
+		map_id = MainMapID
+	elseif map_id == false then
+		assert(not cycle_objs)
+		map_id = ""
+	end
+	
 	id = id .. map_id
 	local entry = pack_params(id, callback, params, cycle_objs, map_id)
 

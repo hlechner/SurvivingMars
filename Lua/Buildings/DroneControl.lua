@@ -1014,8 +1014,8 @@ end
 
 function DoesAnyDroneControlServiceAtPoint(map_id, pt)
 	local realm = GetRealmByID(map_id)
-	return realm:MapCount(pt, "hex", const.CommandCenterMaxRadius, "DroneNode", 
+	return realm:MapContains(pt, "hex", const.CommandCenterMaxRadius, "DroneNode", 
 		function(center)
 			return (IsKindOfClasses(center, "DroneHub") or center.working) and HexAxialDistance(center, pt) <= center.work_radius
-		end) > 0
+		end)
 end

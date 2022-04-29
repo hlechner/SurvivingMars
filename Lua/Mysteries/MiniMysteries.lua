@@ -11,24 +11,23 @@ function MiniMysteries:StartMiniMystery(mini_mystery_name, map_id, mini_mystery)
 		RunSequenceList(seq_list, map_id)
 		self.has_mini_mystery = false
 		self.mini_mystery = false
+		self.previous_mini_mysteries = self.previous_mini_mysteries or {}
 		table.insert(self.previous_mini_mysteries, mini_mystery_name)
 	end)
 end
 
-function MiniMysteries:FilterPresets(presets, force_mini_mystery)
-	if not self.previous_mini_mysteries then self.previous_mini_mysteries = {} end
-	
-	local PresetFilter = function(_,preset)
-		local available_sequences = #table.subtraction(preset.sequences, self.previous_mini_mysteries) > 0
-		
-		if force_mini_mystery and not self.has_mini_mystery then
-			return available_sequences
+function MiniMysteries:FilterPresets(presets, require_mini_mystery)
+	if require_mini_mystery and not self.has_mini_mystery then
+		-- Filter for presets with mini mysteries that have not yet occured which is required further down the line
+		local previous_mini_mysteries = self.previous_mini_mysteries or {}
+		local PresetFilter = function(_,preset)
+			local available_sequences = table.subtraction(preset.sequences, previous_mini_mysteries)
+			return #available_sequences > 0
 		end
-		
-		return not (self.has_mini_mystery and available_sequences)
+		return table.ifilter(presets, PresetFilter)
+	else
+		return presets
 	end
-	
-	return table.ifilter(presets, PresetFilter)
 end
 
 function MiniMysteries:GetNumColonists()

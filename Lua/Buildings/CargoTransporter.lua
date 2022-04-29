@@ -147,8 +147,10 @@ function CargoTransporter:Load(manifest, quick_load, transfer_available)
 	end
 	
 	for _,prefab in pairs(prefabs) do
-		self:AddCargoAmount(prefab.class, prefab.amount)
-		self.city:AddPrefabs(prefab.class, -prefab.amount, false)
+		if prefab.amount ~= 0 then
+			self:AddCargoAmount(prefab.class, prefab.amount)
+			self.city:AddPrefabs(prefab.class, -prefab.amount, false)
+		end
 	end
 	
 	return rovers, drones, crew, prefabs
@@ -205,18 +207,31 @@ function CargoTransporter:GatherAvailableCargo(manifest, quick_load, transfer_av
 end
 
 local function FilterColonists(colonists, label, amount)
+	local ignored_traits = label == "Tourist" and {} or { "Tourist" }
+	ignored_traits = g_SeniorsCanWork and table.union(ignored_traits, { "Child" }) or table.union(ignored_traits, { "Senior", "Child" })
+	
+	local filtered_units = {}
+	
 	local all_filter = function(i, col)
 		return (label == "Colonist" or col.traits[label])
 	end
-	local adult_filter = function(i, col)
-		return not col.traits.Child and all_filter(i, col)
+	
+	local traits_filter = function(i, col)
+		if table.find(filtered_units, col) then return false end
+		for _, trait in ipairs(ignored_traits or empty_table) do
+			if col.traits[trait] then return false end
+		end
+		return true
 	end
 	
-	local list = table.ifilter(colonists or empty_table, adult_filter) 
-	if #list < amount then
-		list = table.ifilter(colonists or empty_table, all_filter) 
+	local specialized_units = table.ifilter(colonists or empty_table, all_filter)
+	filtered_units = table.ifilter(specialized_units or empty_table, traits_filter)
+	while #filtered_units < amount and #ignored_traits > 0 do
+		table.remove(ignored_traits, 1)
+		filtered_units = table.union(filtered_units, table.ifilter(specialized_units or empty_table, traits_filter))
 	end
-	return list
+	
+	return filtered_units
 end
 
 function CargoTransporter:GatherAvailableColonists(amount, label, quick_load, transfer_available)
@@ -238,7 +253,7 @@ function CargoTransporter:GatherAvailableColonists(amount, label, quick_load, tr
 	if #list >= amount or quick_load or transfer_available then
 		local crew = {}
 		while #list > 0 and #crew < amount do
-			local unit = table.rand(list, InteractionRand("PickCrew"))
+			local unit = list[1]
 			table.remove_value(list, unit)
 			table.insert(crew, unit)
 		end

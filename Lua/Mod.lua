@@ -200,5 +200,10 @@ function OnMsg.OnModLuaError(mod, err, stack)
 		return
 	end
 	ReportedModLuaError = true
-	CreateMessageBox(T(6902, "Warning"), T(12646, "Mod-related problem detected in the game logic. Try disabling the mods in case of unexpected game behavior."), T(1000136, "OK"))
+	local mod_title = mod.title or mod.id
+	if mod_title then
+		CreateMessageBox(T(6902, "Warning"), T{14537, "A problem was detected in the '<mod_name>' mod. Try disabling this or related mods in case of unexpected game behavior.", mod_name = Untranslated(mod_title)}, T(1000136, "OK"))
+	else
+		CreateMessageBox(T(6902, "Warning"), T(12646, "Mod-related problem detected in the game logic. Try disabling the mods in case of unexpected game behavior."), T(1000136, "OK"))
+	end
 end

@@ -452,9 +452,9 @@ end
 
 function ObjectHexGrid:GetBuilding(q, r)
 	if r then
-		return self:GetObject(q, r, nil, "LifeSupportGridElement", function (obj) return not IsKindOf(obj, "ElectricityGridElement") end)
+		return self:GetObject(q, r, nil, "TransportGridObject")
 	else
-		return self:GetObjectAtPos(q, nil, "LifeSupportGridElement", function (obj) return not IsKindOf(obj, "ElectricityGridElement") end)
+		return self:GetObjectAtPos(q, nil, "TransportGridObject")
 	end
 end
 
@@ -476,9 +476,9 @@ end
 
 function ObjectHexGrid:GetBuildingNoDome(q, r)
 	if r then
-		return self:GetObject(q, r, nil, "LifeSupportGridElement", function (obj) return not IsKindOfClasses(obj, "ElectricityGridElement", "Dome", "DomeInterior") end)
+		return self:GetObject(q, r, nil, "TransportGridObject", function (obj) return not IsKindOfClasses(obj, "Dome", "DomeInterior") end)
 	else
-		return self:GetObjectAtPos(q, nil, "LifeSupportGridElement", function (obj) return not IsKindOfClasses(obj, "ElectricityGridElement", "Dome", "DomeInterior") end)
+		return self:GetObjectAtPos(q, nil, "TransportGridObject", function (obj) return not IsKindOfClasses(obj, "Dome", "DomeInterior") end)
 	end
 end
 
@@ -664,3 +664,9 @@ function HexGetUnits(realm, obj, entity, pos, angle, test, filter, classes, forc
 	local unit_classes = classes or "Unit"
 	return (test and realm:MapGet(unit_area, unit_classes, unit_filter) and grid_val ~= 0) or (not test and realm:MapGet(unit_area, unit_classes, unit_filter))
 end
+
+-- Class that defines transport grid objects. Generally transport grid objects of different types can be used on the same grid hex
+DefineClass.TransportGridObject =
+{
+	__parents = { "GridObject" },
+}

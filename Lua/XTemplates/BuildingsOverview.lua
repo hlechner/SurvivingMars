@@ -222,6 +222,28 @@ PlaceObj('XTemplate', {
 							'Text', T(932771917833, --[[XTemplate BuildingsOverview Text]] "Production Buildings"),
 						}),
 						PlaceObj('XTemplateTemplate', {
+							'comment', "transportation buildings",
+							'__template', "CommandCenterButton",
+							'RolloverTitle', T(14539, --[[XTemplate BuildingsOverview RolloverTitle]] "Transportation"),
+							'Margins', box(-12, 0, 0, -14),
+							'OnContextUpdate', function (self, context, ...)
+								local dlg = GetDialog(self)
+								local transportation = dlg.context.transportation
+								self:SetIcon(transportation == false and "UI/Icons/ColonyControlCenter/transportation_off.tga" or "UI/Icons/ColonyControlCenter/transportation_on.tga")
+								self:SetRolloverText(GetBuildingsFilterRollover(context, T(14540, "Toggle filtering of Transportation.")))
+								self:SetRolloverHint(transportation ~= false and T(9787, "<left_click> Hide filtered objects") or T(9788, "<left_click> Show filtered objects"))
+								local hint_gamepad = transportation ~= false and T(9789, "<ButtonA> Hide filtered objects") or T(9790, "<ButtonA> Show filtered objects")
+								hint_gamepad = hint_gamepad .. " " .. T(9802, "<RB> Inspect")
+								self:SetRolloverHintGamepad(hint_gamepad)
+								self:SetToggled(transportation ~= false)
+							end,
+							'OnPress', function (self, gamepad)
+								ToggleCommandCenterFilter(self, "transportation", true)
+							end,
+							'Icon', "UI/Icons/ColonyControlCenter/transportation_off.tga",
+							'Text', T(14541, --[[XTemplate BuildingsOverview Text]] "Transportation"),
+						}),
+						PlaceObj('XTemplateTemplate', {
 							'comment', "services",
 							'__template', "CommandCenterButton",
 							'RolloverTitle', T(133797343482, --[[XTemplate BuildingsOverview RolloverTitle]] "Services"),
@@ -406,15 +428,16 @@ PlaceObj('XTemplate', {
 						'ActionToolbar', "ActionBar",
 						'ActionGamepad', "ButtonX",
 						'OnAction', function (self, host, source)
+							host.context.decorations = nil
 							host.context.dome = nil
 							host.context.inside_buildings = nil
+							host.context.other = nil
 							host.context.outside_buildings = nil
-							host.context.decorations = nil
 							host.context.power_producers = nil
 							host.context.production_buildings = nil
-							host.context.services = nil
 							host.context.residential = nil
-							host.context.other = nil
+							host.context.services = nil
+							host.context.transportation = nil
 							host:ResolveId("idContent"):RespawnContent()
 						end,
 					}),

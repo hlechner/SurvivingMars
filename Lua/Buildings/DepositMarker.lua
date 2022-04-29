@@ -51,8 +51,9 @@ function FindUnobstructedDepositPos(marker, dont_move_if_obstruct)
 	assert(not marker.is_placed)
 	
 	-- don't spawn deposits on top of other deposits
-	local function GetDepositsAtPos(realm, pos_x, pos_y)
-		return realm:MapGet(point(pos_x, pos_y), const.HexSize, "Deposit");
+	local function IsBlockedByDeposit(marker, realm, pos_x, pos_y)
+		local block_range = IsKindOf(marker, "SurfaceDepositMarker") and 1 or 2
+		return realm:MapCount(point(pos_x, pos_y), const.HexSize * block_range, "Deposit") > 0
 	end
 
 	-- check for buildings on the required position, don't place surface deposits if buildings are in the way
@@ -64,7 +65,7 @@ function FindUnobstructedDepositPos(marker, dont_move_if_obstruct)
 	local game_map = GameMaps[map_id]
 	local object_hex_grid = game_map.object_hex_grid
 	local realm = game_map.realm
-	local obstructed = IsDepositObstructed(object_hex_grid, mx, my, radius) or #GetDepositsAtPos(realm, mx, my) > 0
+	local obstructed = IsDepositObstructed(object_hex_grid, mx, my, radius) or IsBlockedByDeposit(marker, realm, mx, my)
 	local unobstructed = false
 	if obstructed and marker.new_pos_if_obstruct and not dont_move_if_obstruct then
 		local GetMapSectorXY = GetMapSectorXY
@@ -72,47 +73,29 @@ function FindUnobstructedDepositPos(marker, dont_move_if_obstruct)
 		local sx, sy
 		local buildable_grid = game_map.buildable
 		
-		local remaining_tries = 10
-		while obstructed and remaining_tries > 0 do
-			remaining_tries = remaining_tries - 1
-			local x, y = FindBuildableAround(object_hex_grid, buildable_grid, mx, my, {
-				max_depth = GetMapSectorTile(map_id) / const.GridSpacing,
-				wrong_value = "wrong",
-				continue_check = function(qi, ri)
-					local xi, yi = HexToWorld(qi, ri)
-					if IsDepositObstructed(object_hex_grid, xi, yi, radius) then
-						return true -- would continue searching in that directon
-					end
-					if GetMapSectorXY(city, xi, yi) ~= sector then
-						if not sx then
-							sx, sy = xi, yi
-						end
-						return "wrong" -- would stop searching in that directon
-					end
-				end,
-			})
-			
-			if x then
-				if remaining_tries > 0 and #GetDepositsAtPos(realm, x, y) > 0 then
-					local new_pos = GetPlayableAreaNearby(game_map, point(x, y), const.HexSize * 4, const.HexSize * 2, function(dx, dy)
-						return #GetDepositsAtPos(realm, dx, dy)
-					end)
-					if new_pos then
-						mx, my = new_pos:x(), new_pos:y()
-					else
-						break
-					end
-				else
-					obstructed = false
-					unobstructed = true
-					mx, my = x, y
-				end
-			else
-				mx, my = sx, sy
-				if not mx or not my then
-					break
-				end
+		local f_continue = function(qi, ri)
+			local xi, yi = HexToWorld(qi, ri)
+			if IsDepositObstructed(object_hex_grid, xi, yi, radius) or IsBlockedByDeposit(marker, realm, xi, yi) then
+				return true -- would continue searching in that directon
 			end
+			
+			if GetMapSectorXY(city, xi, yi) ~= sector then
+				if not sx then
+					sx, sy = xi, yi
+				end
+				return "wrong" -- would stop searching in that directon
+			end
+		end
+		
+		local max_depth = GetMapSectorTile(map_id) / const.GridSpacing
+		local x, y = FindBuildableAround(object_hex_grid, buildable_grid, mx, my, f_continue, max_depth, "wrong")
+		
+		if x then
+			obstructed = false
+			unobstructed = true
+			mx, my = x, y
+		else
+			mx, my = sx, sy
 		end
 	end
 	

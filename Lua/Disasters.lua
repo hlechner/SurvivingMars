@@ -79,3 +79,23 @@ function SavegameFixups.StopDisasters()
 		StopGlobalGameTimeThread("Meteors")
 	end
 end
+
+local function RestartDisasterThread(disaster, rule_name, thread_name)
+	local map_data = ActiveMaps[MainMapID]
+	local rule_value = disaster .. "_GameRule"
+	local setting_name = "MapSettings_" .. disaster
+	if map_data[setting_name] ~= "disabled" and map_data[setting_name] ~= rule_value and IsGameRuleActive(rule_name) then
+		map_data[setting_name] = rule_value
+		RestartGlobalGameTimeThread(thread_name)
+	end
+end
+
+function SavegameFixups.UpdateMaxDisasters(metadata)
+	if metadata.active_mods and #metadata.active_mods > 0 then
+		RestartDisasterThread("Meteor", "Armageddon", "Meteors")
+		RestartDisasterThread("Meteor", "Armageddon", "MeteorStorm")
+		RestartDisasterThread("ColdWave", "WinterIsComing", "ColdWave")
+		RestartDisasterThread("DustStorm", "DustInTheWind", "DustStorm")
+		RestartDisasterThread("DustDevils", "Twister", "DustDevils")
+	end
+end

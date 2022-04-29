@@ -28,9 +28,9 @@ PlaceObj('XTemplate', {
 			'name', "Highlight(self, highlight)",
 			'func', function (self, highlight)
 				if self.idSectionTitle.visible then
-						self.idHighlight:SetVisible(highlight)
-						PlayFX("UIInfoPanelItemHover", highlight and "start" or "end", self, self.Id)
-					end
+					if self.idHighlight then self.idHighlight:SetVisible(highlight) end
+					PlayFX("UIInfoPanelItemHover", highlight and "start" or "end", self, self.Id)
+				end
 			end,
 		}),
 		PlaceObj('XTemplateFunc', {

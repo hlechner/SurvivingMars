@@ -301,7 +301,7 @@ function GridSwitchConstructionController:UpdateConstructionStatuses(pt)
 			self.construction_statuses[#self.construction_statuses + 1] = ConstructionStatus.BlockingObjects
 		end
 	else
-		local b = HexGetBuilding(object_hex_grid, q, r)
+		local b = HexGetBuildingNoDome(object_hex_grid, q, r)
 		if b then --any building blocks
 			self.construction_statuses[#self.construction_statuses + 1] = ConstructionStatus.BlockingObjects
 		end

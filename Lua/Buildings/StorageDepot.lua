@@ -648,6 +648,11 @@ function UniversalStorageDepot:TestReqConsistency()
 	return true
 end
 
+function UniversalStorageDepot:GetUIEffectsRow()
+	return Building.GetUIEffectsRow(self)
+		.. (#self.storable_resources > 1 and Untranslated(" <icon_Resources>") or "")
+end
+
 function dbg_TestMapDepots()
 	MapForEach(true, "UniversalStorageDepot", function(o) o:TestReqConsistency() end)
 end
@@ -960,12 +965,10 @@ end
 function MechanizedDepot:DroneLoadResource(drone, request, resource, amount)
 	self:TryStore()
 	self:UpdateStockpileDesire()
-	if self.demolishing then
-		self:WakupDemolishThread()
-	end
+	self:WakeUpDemolishThread()
 end
 
-function MechanizedDepot:WakupDemolishThread()
+function MechanizedDepot:WakeUpDemolishThread()
 	Wakeup(self.demolish_wait_unload_thread)
 end
 
@@ -1630,7 +1633,7 @@ function MechanizedDepot:CheatEmpty()
 	else
 		self:ClearAllResources()
 	end
-	self:WakupDemolishThread()
+	self:WakeUpDemolishThread()
 end
 
 --mechanized stock lane

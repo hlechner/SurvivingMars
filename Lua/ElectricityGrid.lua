@@ -258,7 +258,7 @@ end
 const.GroundOffsetForLosTest = 15*guim --about the height of a pipe
 
 DefineClass.ElectricityGridElement = { -- cables
-	__parents = {"ElectricityGridObject", "Shapeshifter", "Constructable", "DustGridElement", "SupplyGridSwitch", "BreakableSupplyGridElement"},
+	__parents = {"ElectricityGridObject", "TransportGridObject", "Shapeshifter", "Constructable", "DustGridElement", "SupplyGridSwitch", "BreakableSupplyGridElement"},
 	flags = { gofPermanent = true },
 	properties = {
 		{name = "Connections", id = "conn", editor = "number"},
@@ -612,9 +612,9 @@ function PlaceCableLine(city, start_q, start_r, dir, steps, test, elements_requi
 	for i = 0, steps do
 		local q = start_q + i * dq
 		local r = start_r + i * dr
-		local bld = object_hex_grid:GetObject(q, r, nil, "LifeSupportGridElement", 
+		local bld = object_hex_grid:GetObject(q, r, nil, "TransportGridObject",
 						function (obj)
-							return not IsKindOfClasses(obj, "ElectricityGridElement", "GridSwitchConstructionSite")
+							return not IsKindOfClasses(obj, "GridSwitchConstructionSite")
 						end)
 		local cable = HexGetCable(object_hex_grid, q, r)
 		local pipe = HexGetPipe(object_hex_grid, q, r)

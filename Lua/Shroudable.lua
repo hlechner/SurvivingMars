@@ -24,7 +24,9 @@ function Shroudable:ClearOwnRubble()
 	self.shrouding_rubble = {}
 end
 
-function SavegameFixups.ClearRubbleTables()
+function SavegameFixups.ClearRubbleTables2()
+	-- We're potentially adjusting nightlight settings on old saves here, force update to multimap variant
+	FixupNightlightState()
 	MapsForEach("map", "Shroudable", function(o)
 		local rubble_table = o.shrouding_rubble or empty_table
 		for i = #rubble_table, 1, -1  do

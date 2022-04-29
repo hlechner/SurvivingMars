@@ -430,8 +430,7 @@ end
 function Building:GameInit()
 	PlayFX("Spawn", "start", self, self:HasMember("building_class_proto") and self.building_class_proto or nil)
 	
-	local object_hex_grid = GetObjectHexGrid(self)
-	local dome = GetDomeAtPoint(object_hex_grid, self)
+	local dome = GetDomeForBuilding(self)
 	if dome and dome ~= self then
 		self:InitInside(dome)
 	else

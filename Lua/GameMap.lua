@@ -88,6 +88,7 @@ end
 function OnMsg.SwitchMap(map_id)
 	ActiveGameMap = GameMaps[map_id]
 	Landscape_SetGrid(ActiveGameMap.landscape_grid)
+	UpdateRenderLandscape()
 end
 
 function OnMsg.SwitchMap(map_id, previous_map_id)

@@ -168,6 +168,30 @@ PlaceObj('XTemplate', {
 						'Text', T(216365787860, --[[XTemplate TransportationOverview Text]] "ROCKETS"),
 					}),
 					PlaceObj('XTemplateTemplate', {
+						'comment', "trains",
+						'__dlc', "prunariu",
+						'__condition', function (parent, context) return IsDlcAvailable("prunariu") end,
+						'__template', "CommandCenterButton",
+						'RolloverTitle', T(14367, --[[XTemplate TransportationOverview RolloverTitle]] "Trains"),
+						'Margins', box(-12, 0, 0, 10),
+						'OnContextUpdate', function (self, context, ...)
+							local dlg = GetDialog(self)
+							local trains = dlg.context.trains
+							self:SetIcon(not trains and "UI/Icons/ColonyControlCenter/train_off.tga" or "UI/Icons/ColonyControlCenter/train_on.tga")
+							self:SetRolloverText(GetTransportationFilterRollover(context, T(14368, "Toggle filtering of buildings related to Trains: Stations and Tracks.")))
+							self:SetRolloverHint(trains ~= false and T(9787, "<left_click> Hide filtered objects") or T(9788, "<left_click> Show filtered objects"))
+							local hint_gamepad = trains ~= false and T(9789, "<ButtonA> Hide filtered objects") or T(9790, "<ButtonA> Show filtered objects")
+							hint_gamepad = hint_gamepad .. " " .. T(9802, "<RB> Inspect")
+							self:SetRolloverHintGamepad(hint_gamepad)
+							self:SetToggled(not not trains)
+						end,
+						'OnPress', function (self, gamepad)
+							ToggleCommandCenterFilter(self, "trains", false)
+						end,
+						'Icon', "UI/Icons/Buildings/Train.tga",
+						'Text', T(14369, --[[XTemplate TransportationOverview Text]] "TRAINS"),
+					}),
+					PlaceObj('XTemplateTemplate', {
 						'comment', "rovers",
 						'__template', "CommandCenterButton",
 						'RolloverTitle', T(951182332337, --[[XTemplate TransportationOverview RolloverTitle]] "RC Rovers"),

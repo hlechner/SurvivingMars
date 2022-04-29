@@ -2672,30 +2672,6 @@ EntityData["DecorInt_06"] = {
 		material_type = "Metal",
 	},
 }
-EntityData["DecorInt_07"] = {
-	category_Decors = true,
-	entity = {
-		material_type = "Metal",
-	},
-}
-EntityData["DecorInt_08"] = {
-	category_Decors = true,
-	entity = {
-		material_type = "Metal",
-	},
-}
-EntityData["DecorInt_09"] = {
-	category_Decors = true,
-	entity = {
-		material_type = "Metal",
-	},
-}
-EntityData["DecorInt_10"] = {
-	category_Decors = true,
-	entity = {
-		material_type = "Metal",
-	},
-}
 EntityData["DecorInt_11"] = {
 	category_Decors = true,
 	entity = {
@@ -3165,24 +3141,6 @@ EntityData["DomeGrass_02"] = {
 	},
 }
 EntityData["DomeGrass_03"] = {
-	category_Decals = true,
-	entity = {
-		class_parent = "DomeGrass",
-	},
-}
-EntityData["DomeGrass_04"] = {
-	category_Decals = true,
-	entity = {
-		class_parent = "DomeGrass",
-	},
-}
-EntityData["DomeGrass_05"] = {
-	category_Decals = true,
-	entity = {
-		class_parent = "DomeGrass",
-	},
-}
-EntityData["DomeGrass_06"] = {
 	category_Decals = true,
 	entity = {
 		class_parent = "DomeGrass",
@@ -7724,22 +7682,6 @@ EntityData["Rocks_02"] = {
 		material_type = "Rock",
 	},
 }
-EntityData["Rocks_03"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
-EntityData["Rocks_04"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
 EntityData["Rocks_05"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
@@ -7765,22 +7707,6 @@ EntityData["RocksDark_02"] = {
 	},
 }
 EntityData["RocksDark_03"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition,WasteRockObstructor",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
-EntityData["RocksDark_04"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition,WasteRockObstructor",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
-EntityData["RocksDark_05"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
 		class_parent = "Deposition,WasteRockObstructor",
@@ -7851,22 +7777,6 @@ EntityData["RocksLight_02"] = {
 	},
 }
 EntityData["RocksLight_03"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
-EntityData["RocksLight_04"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
-EntityData["RocksLight_05"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
 		class_parent = "Deposition",
@@ -7970,14 +7880,6 @@ EntityData["RocksSlate_02"] = {
 		material_type = "Rock",
 	},
 }
-EntityData["RocksSlate_03"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
 EntityData["RocksSlate_04"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
@@ -7987,22 +7889,6 @@ EntityData["RocksSlate_04"] = {
 	},
 }
 EntityData["RocksSlate_05"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
-EntityData["RocksSlate_06"] = {
-	category_StonesRocksCliffs = true,
-	entity = {
-		class_parent = "Deposition",
-		fade_category = "Never",
-		material_type = "Rock",
-	},
-}
-EntityData["RocksSlate_07"] = {
 	category_StonesRocksCliffs = true,
 	entity = {
 		class_parent = "Deposition",

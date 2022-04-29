@@ -29,7 +29,18 @@ function ResetLandscapeGrid(map_id)
 		landscape_grid = grid
 	end
 	Landscape_SetGrid(landscape_grid)
-	hr.RenderLandscape = next(Landscapes) and 1 or 0
+	UpdateRenderLandscape()
+end
+
+function UpdateRenderLandscape()
+	local landscape_found = false
+	for mark, landscape in pairs(Landscapes) do
+		if landscape and landscape.map_id == ActiveMapID then
+			landscape_found = true
+			break
+		end
+	end
+	hr.RenderLandscape = landscape_found and 1 or 0
 end
 
 function OnMsg.DoneMap()
@@ -119,7 +130,7 @@ function LandscapeMarkStart(map_id, pt)
 		}
 		Landscapes[mark] = landscape
 		hr.LandscapeCurrentMark = mark
-		hr.RenderLandscape = 1
+		UpdateRenderLandscape()
 	end
 	landscape.height = GetTerrainByID(map_id):GetHeight(pt)
 	landscape.start = pt
@@ -131,7 +142,8 @@ function LandscapeMarkCancel()
 	if not landscape then
 		return
 	end
-	local count, primes, bbox = Landscape_MarkErase(LandscapeMark, landscape.bbox, landscape.grid, true)
+	local invalidate_grid = landscape.map_id == ActiveMapID
+	local count, primes, bbox = Landscape_MarkErase(LandscapeMark, landscape.bbox, landscape.grid, true, invalidate_grid)
 	landscape.bbox = bbox
 	landscape.primes = primes
 	return count
@@ -300,8 +312,10 @@ local function LandscapeDelete(landscape)
 	end
 	
 	Landscapes[mark] = nil
-	hr.RenderLandscape = next(Landscapes) and 1 or 0
-	Landscape_MarkErase(mark, landscape.bbox, landscape.grid)
+	UpdateRenderLandscape()
+	
+	local invalidate_grid = landscape.map_id == ActiveMapID
+	Landscape_MarkErase(mark, landscape.bbox, landscape.grid, false, invalidate_grid)
 	
 	if landscape.pass_bbox then
 		GetTerrainByID(landscape.map_id):RebuildPassability(landscape.pass_bbox)

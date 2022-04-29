@@ -511,7 +511,8 @@ function OnMsg.ConstructionSiteRemoved(site)
 	if not landscape then
 		return
 	end
-	Landscape_MarkErase(mark, landscape.bbox, GetLandscapeGrid(site))
+	local invalidate_grid = landscape.map_id == ActiveMapID
+	Landscape_MarkErase(mark, landscape.bbox, GetLandscapeGrid(site), false, invalidate_grid)
 	Landscapes[mark] = nil
-	hr.RenderLandscape = next(Landscapes) and 1 or 0
+	UpdateRenderLandscape()
 end

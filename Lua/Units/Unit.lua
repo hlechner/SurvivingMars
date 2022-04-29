@@ -349,6 +349,10 @@ function Unit:ExitBuilding(building, target, entrance_type, spot_name)
 
 	assert(building:GetMapID() == self:GetMapID())
 	if building:GetMapID() ~= self:GetMapID() then
+		if self.holder == building then
+			-- The unit is in invalid state so we want to remove the holder
+			self:SetHolder(false)
+		end
 		return
 	end
 
@@ -1104,7 +1108,7 @@ function Unit:EnterTransporter(transporter)
 	end
 	self:SetHolder(transporter)
 	self:UpdateOutside()
-	self:SetCommand("Disappear", "keep in holder", transporter.keep_cargo_in_labels and "keep_in_labels")
+	self:Disappear("keep in holder", transporter.keep_cargo_in_labels and "keep_in_labels")
 end
 
 function Unit:StartDisembark(building)

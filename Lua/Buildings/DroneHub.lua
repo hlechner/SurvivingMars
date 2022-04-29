@@ -85,7 +85,7 @@ function DroneHub:OnSetWorking(working)
 end
 
 function DroneHub:OnModifiableValueChanged(prop, old_val, new_val)
-	if prop == "service_area_max" then
+	if prop == "service_area_max" and IsObjectSelected(self) then
 		ChangeHexRanges(self)
 	end
 end

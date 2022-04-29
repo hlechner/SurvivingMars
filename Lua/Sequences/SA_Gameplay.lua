@@ -992,7 +992,7 @@ DefineClass.SA_CustomNotification = {
 		{ id = "exp_reg",	  name = T(3730, "Countdown Register"),editor = "text", default = "", help = "Sequence register holding the expiration to replace the default expiration" },
 		{ id = "pos_reg",	  name = T(3731, "Position Register"),editor = "text", default = "", help = "Sequence register holding the position the camera will move to if notif is clicked" },
 		{ id = "dismissable", name = T(4101, "Dismissable"), editor = "dropdownlist", items = { "dismissable", "not dismissable", "no change" }, default = "no change", },
-		{ id = "multimap", name = T("Show on all maps"), editor = "bool", default = false, help = "Determines if the notification is persistent between maps", }
+		{ id = "multimap", name = T(14538, "Show on all maps"), editor = "bool", default = false, help = "Determines if the notification is persistent between maps", }
 	},
 	
 	Menu = "Gameplay",
@@ -1059,9 +1059,10 @@ function SA_CustomNotification:Exec(seq_player, ip, seq, registers)
 		CreateGameTimeThread(function()
 			while true do
 				Sleep(self.interval*1000)
-
+				
 				--Check if notification still exists
-				local notif = GetOnScreenNotification(self.id, map_id)
+				local idx = table.find(g_ActiveOnScreenNotifications, 1, self.id)
+				local notif = idx and GetOnScreenNotification(self.id, map_id)
 				if not notif then break end
 				
 				--Update expiration time

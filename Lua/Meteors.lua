@@ -314,14 +314,6 @@ GlobalGameTimeThread("MeteorStorm", function()
 	end
 end)
 
-local meteor_pos = false
-local meteor_range = 0
-local function filter(obj)
-	return obj:IsCloser(meteor_pos, meteor_range + obj:GetRadius())
-	and not IsObjInDome(obj)
-	and (IsKindOf(obj, "ResourceStockpileBase") or not obj:GetParent())
-end
-
 GlobalVar("g_MeteorsPredicted", {})
 GlobalVar("g_MeteorImpactIdx", 0)		-- currently shown meteor impact through the On-Screen Notification
 
@@ -373,10 +365,22 @@ function BaseMeteor:Done()
 	end
 end
 
+local meteor_pos = false
+local meteor_range = 0
+local function filter(obj)
+	return obj:IsCloser(meteor_pos, meteor_range + obj:GetRadius())
+	and not IsObjInDome(obj)
+	and (IsKindOf(obj, "ResourceStockpileBase") or not obj:GetParent())
+end
+
+function BaseMeteor:GetQueryFilter()
+	return filter
+end
+
 function BaseMeteor:GetQuery()
 	meteor_pos = self.dest or self:GetVisualPos()
 	meteor_range = self.range
-	return meteor_pos, meteor_range + GetEntityMaxSurfacesRadius() , "Drone", "Colonist", "Building", "BaseRover", "ResourceStockpileBase", "ElectricityGridElement", "LifeSupportGridElement", "PassageGridElement" , filter
+	return meteor_pos, meteor_range + GetEntityMaxSurfacesRadius() , "Drone", "Colonist", "Building", "BaseRover", "ResourceStockpileBase", "TransportGridObject", "PassageGridElement" , self:GetQueryFilter()
 end
 
 OnSoilGridChanged = empty_func

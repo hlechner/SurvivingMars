@@ -38,7 +38,7 @@ end,
 
 PlaceObj('Milestone', {
 	Complete = function (self)
-if GetRealmByID(MainMapID):MapCount("map", "SubsurfaceDeposit", function(o) return o.revealed and o.resource == "Water" end ) > 0 then return true end
+if GetRealmByID(MainMapID):MapContains("map", "SubsurfaceDeposit", function(o) return o.revealed and o.resource == "Water" end ) then return true end
 	while true do
 		local ok, deposit = WaitMsg("WaterDepositRevealed")
 		if deposit:GetMapID() == MainMapID then
@@ -233,7 +233,7 @@ end,
 
 PlaceObj('Milestone', {
 	Complete = function (self, city)
-	return Milestone_WorkshopWorkersPercent(city, 40)
+return Milestone_WorkshopWorkersPercent(city, 40)
 end,
 	SortKey = 16000,
 	bonus_score = 3000,

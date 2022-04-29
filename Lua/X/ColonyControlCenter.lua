@@ -465,11 +465,60 @@ function GetCommandCenterLifeSupportGrids(context)
 	return result
 end
 
-local function IsBuildingOther(building)
+function IsCCBuildingTransportation(building)
+	return IsKindOfClasses(building, "DroneControl", "ShuttleHub")
+end
+
+function IsCCBuildingStorage(building)
+	return IsKindOfClasses(building, "ResourceStockpileBase", "WaterStorage", "AirStorage", "ElectricityStorage")
+end
+
+function IsCCBuildingOther(building)
 	if IsKindOf(building, "GridTransfer") then return true end
 	return building.build_category ~= "Decorations" and
 		GetTopLevelBuildMenuCategory(building.build_category) ~= "Terraforming" and
+		not IsCCBuildingTransportation(building) and
 		not IsKindOfClasses(building, "ResourceStockpileBase", "WaterStorage", "AirStorage", "ElectricityStorage", "ElectricityProducer", "ResourceProducer", "WaterProducer", "AirProducer", "Service", "Residence", "Workshop", "DroneFactory")
+end
+
+local function IsCCBuilding(building)
+	return not building.count_as_building and (not IsKindOfClasses(building, "UniversalStorageDepot", "WasteRockDumpSite") and (not IsDlcAvailable("armstrong") or not IsKindOf(building, "LandscapeLake")))
+end
+
+function FilterCommandCenterBuildings(buildings, context)
+	local any_filter = context.decorations or
+		context.other or
+		context.power_producers ~= false or
+		context.production_buildings ~= false or
+		context.residential or
+		context.services ~= false or
+		context.storages or
+		context.terraforming or
+		context.transportation
+
+	local IsCCBuildingTransportation = IsCCBuildingTransportation
+	local IsCCBuildingStorage = IsCCBuildingStorage
+	local IsCCBuildingOther = IsCCBuildingOther
+
+	for i = #buildings, 1, -1 do
+		local building = buildings[i]
+		if IsCCBuilding(building) or IsKindOfClasses(building, "PassageRamp", "PassageGridElement", "Passage", "ConstructionSite") or
+			context.inside_buildings == false and context.outside_buildings ~= false and building.parent_dome or
+			context.outside_buildings == false and context.inside_buildings ~= false and not building.parent_dome or
+			any_filter and not context.decorations and building.build_category == "Decorations" or
+			any_filter and not context.storages and IsCCBuildingStorage(building) or
+			any_filter and context.power_producers == false and IsKindOf(building, "ElectricityProducer") and not IsKindOf(building, "GridTransfer") or
+			any_filter and context.production_buildings == false and IsKindOfClasses(building, "ResourceProducer", "WaterProducer", "AirProducer", "DroneFactory") and not IsKindOf(building, "GridTransfer") or
+			any_filter and context.services == false and (IsKindOf(building, "Service") or IsKindOf(building, "Workshop")) and (building.build_category ~= "Decorations" or not context.decorations) or
+			any_filter and not context.residential and IsKindOf(building, "Residence") or
+			any_filter and not context.terraforming and IsDlcAvailable("armstrong") and GetTopLevelBuildMenuCategory(building.build_category) == "Terraforming" or
+			any_filter and not context.transportation and IsCCBuildingTransportation(building) or
+			any_filter and not context.other and IsCCBuildingOther(building) or
+			building.destroyed or building.bulldozed
+		then
+			table.remove(buildings, i)
+		end
+	end
 end
 
 function GetCommandCenterBuildings(context)
@@ -492,34 +541,9 @@ function GetCommandCenterBuildings(context)
 	else
 		buildings = table.icopy(UICity.labels.Building) or empty_table
 	end
-	local any_filter = context.decorations or
-		context.storages or
-		context.power_producers ~= false or
-		context.production_buildings ~= false or
-		context.services ~= false or
-		context.residential or
-		context.terraforming or
-		context.other
 		
-	for i = #buildings, 1, -1 do
-		local building = buildings[i]
-		if (not building.count_as_building and (not IsKindOfClasses(building, "UniversalStorageDepot", "WasteRockDumpSite") and (not IsDlcAvailable("armstrong") or not IsKindOf(building, "LandscapeLake")))) or
-			IsKindOfClasses(building, "PassageRamp", "PassageGridElement", "Passage", "ConstructionSite") or
-			context.inside_buildings == false and context.outside_buildings ~= false and building.parent_dome or
-			context.outside_buildings == false and context.inside_buildings ~= false and not building.parent_dome or
-			any_filter and not context.decorations and building.build_category == "Decorations" or
-			any_filter and not context.storages and IsKindOfClasses(building, "ResourceStockpileBase", "WaterStorage", "AirStorage", "ElectricityStorage") or
-			any_filter and context.power_producers == false and IsKindOf(building, "ElectricityProducer") and not IsKindOf(building, "GridTransfer") or
-			any_filter and context.production_buildings == false and IsKindOfClasses(building, "ResourceProducer", "WaterProducer", "AirProducer", "DroneFactory") and not IsKindOf(building, "GridTransfer") or
-			any_filter and context.services == false and (IsKindOf(building, "Service") or IsKindOf(building, "Workshop")) and (building.build_category ~= "Decorations" or not context.decorations) or
-			any_filter and not context.residential and IsKindOf(building, "Residence") or
-			any_filter and not context.terraforming and IsDlcAvailable("armstrong") and GetTopLevelBuildMenuCategory(building.build_category) == "Terraforming" or
-			any_filter and not context.other and IsBuildingOther(building) or
-			building.destroyed or building.bulldozed
-		then
-			table.remove(buildings, i)
-		end
-	end
+	FilterCommandCenterBuildings(buildings, context)
+	
 	local build_categories = table.invert(table.map(BuildCategories, "id"))
 	local subcategories = BuildMenuSubcategories
 	table.stable_sort(buildings, function(a, b)
@@ -1079,7 +1103,7 @@ end
 
 function GetBuildingsFilterRollover(context, description)
 	local rows = {}
-	local dome_name = context.dome and (T(9773, "Dome: ") .. context.dome:GetDisplayName()) or T(9774, "In the entire Colony")
+	local dome_name = not not context.dome and (T(9773, "Dome: ") .. context.dome:GetDisplayName()) or T(9774, "In the entire Colony")
 	local inside_buildings = context.inside_buildings ~= false and T(367336674138, "Inside Buildings")
 	local outside_buildings = context.outside_buildings ~= false and T(885971788025, "Outside Buildings")
 	if inside_buildings then
@@ -1091,23 +1115,25 @@ function GetBuildingsFilterRollover(context, description)
 		rows[#rows + 1] = T{9668, "<inside_buildings><outside_buildings>", 
 			inside_buildings = inside_buildings or "", outside_buildings = outside_buildings or ""}
 	end
-	local decorations = context.decorations and T(435618535856, "Decorations")
-	local storages = context.storages and T(82, "Storages")
+	local decorations = not not context.decorations and T(435618535856, "Decorations")
+	local storages = not not context.storages and T(82, "Storages")
 	local power_producers = context.power_producers ~= false and T(416682488997, "Power Producers")
 	local production_buildings = context.production_buildings ~= false and T(932771917833, "Production Buildings")
 	local services = context.services ~= false and T(133797343482, "Services")
-	local residential = context.residential and T(316855249043, "Residential Buildings")
-	local terraforming = context.terraforming and T(12095, "Terraforming Buildings")
-	local other = context.other and T(814424953825, "Other Buildings")
-	decorations =          add_separator(decorations, storages, power_producers, production_buildings, services, residential, terraforming, other)
-	storages =             add_separator(             storages, power_producers, production_buildings, services, residential, terraforming, other)
-	power_producers =      add_separator(                       power_producers, production_buildings, services, residential, terraforming, other)
-	production_buildings = add_separator(                                        production_buildings, services, residential, terraforming, other)
-	services =             add_separator(                                                              services, residential, terraforming, other)
-	residential =          add_separator(                                                                        residential, terraforming, other)
-	terraforming =         add_separator(                                                                                     terraforming, other)
-	if decorations or storages or power_producers or production_buildings or services or residential or terraforming or other then
-		rows[#rows + 1] = T{12187, "<decorations><storages><power_producers><production_buildings><services><residential><terraforming><other>", 
+	local residential = not not context.residential and T(316855249043, "Residential Buildings")
+	local terraforming = not not context.terraforming and T(12095, "Terraforming Buildings")
+	local transportation = not not context.transportation and T(716941050141, "Transportation")
+	local other = not not context.other and T(814424953825, "Other Buildings")
+	decorations =          add_separator(decorations, storages, power_producers, production_buildings, services, residential, terraforming, transportation, other)
+	storages =             add_separator(             storages, power_producers, production_buildings, services, residential, terraforming, transportation, other)
+	power_producers =      add_separator(                       power_producers, production_buildings, services, residential, terraforming, transportation, other)
+	production_buildings = add_separator(                                        production_buildings, services, residential, terraforming, transportation, other)
+	services =             add_separator(                                                              services, residential, terraforming, transportation, other)
+	residential =          add_separator(                                                                        residential, terraforming, transportation, other)
+	terraforming =         add_separator(                                                                                     terraforming, transportation, other)
+	transportation =       add_separator(                                                                                                   transportation, other)
+	if decorations or storages or power_producers or production_buildings or services or residential or terraforming or transportation or other then
+		rows[#rows + 1] = T{12187, "<decorations><storages><power_producers><production_buildings><services><residential><terraforming><transportation><other>", 
 			decorations = decorations or "",
 			storages = storages or "",
 			power_producers = power_producers or "",
@@ -1115,6 +1141,7 @@ function GetBuildingsFilterRollover(context, description)
 			services = services or "",
 			residential = residential or "",
 			terraforming = terraforming or "",
+			transportation = transportation or "",
 			other = other or "",}
 	end
 	
@@ -1253,24 +1280,28 @@ function SetColonistsSorting(button, sort_type)
 	XUpdateRolloverWindow(button)
 end
 
+function GetCommandCenterActiveTransportFilters(context)
+	local filters = {}
+	filters.drone_hubs = context.drone_hubs or nil
+	filters.drone_assemblers = context.drone_assemblers or nil
+	filters.shuttle_hubs = context.shuttle_hubs or nil
+	filters.rockets = context.rockets or nil
+	filters.rovers = context.rovers or nil
+	return filters
+end
+
 function GetCommandCenterTransportsList(context)
 	local labels = UICity.labels
 	local list = {}
+
+	local active_filters = GetCommandCenterActiveTransportFilters(context)
+	local no_filters = table.count(active_filters) == 0
 	
-	local no_filters = not (
-		context.drone_hubs ~= false or
-		context.drone_assemblers or
-		context.shuttle_hubs or
-		context.rockets or
-		context.rovers ~= false)
-	
-	local drone_hubs =    (no_filters or context.drone_hubs ~= false) and labels.DroneHub     or empty_table
-	local assemblers =    (no_filters or context.drone_assemblers)    and labels.DroneFactory or empty_table
-	local rockets =       (no_filters or context.rockets)             and labels.AllRockets   or empty_table
-	
-	local rc_rovers = (no_filters or context.rovers ~= false) and labels.Rover or empty_table
-	
-	local shuttle_hubs = (no_filters or context.shuttle_hubs) and labels.ShuttleHub   or empty_table
+	local drone_hubs =    (no_filters or active_filters.drone_hubs)       and labels.DroneHub     or empty_table
+	local assemblers =    (no_filters or active_filters.drone_assemblers) and labels.DroneFactory or empty_table
+	local rockets =       (no_filters or active_filters.rockets)          and labels.AllRockets   or empty_table
+	local rc_rovers =     (no_filters or active_filters.rovers)           and labels.Rover        or empty_table
+	local shuttle_hubs =  (no_filters or active_filters.shuttle_hubs)     and labels.ShuttleHub   or empty_table
 	
 	local sort_func = function(a,b) return a.name < b.name end
 	if #(drone_hubs or "") > 0 then

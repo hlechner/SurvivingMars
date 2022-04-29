@@ -177,7 +177,7 @@ function ExplorerRover:LogRP(rp)
 end
 
 function ExplorerRover:TransferToMap(map_id)
-	if self.command ~= "WaitToAppear" then
+	if self.command == "Analyze" then
 		self:SetCommand("Idle")
 	end
 	BaseRover.TransferToMap(self, map_id)

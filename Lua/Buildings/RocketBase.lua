@@ -376,6 +376,11 @@ function RocketBase:WaitInOrbit(arrive_time)
 	self:SetCommand("LandOnMars", self.landing_site)
 end
 
+function RocketBase:OnLanded()
+	--@@@msg RocketLanded,rocket- fired when a rocket has landed on Mars.
+	Msg("RocketLanded", self)
+end
+
 function RocketBase:LandOnMars(site, from_ui)
 	self.reserved_site = nil
 	self.landing_site = site
@@ -408,9 +413,9 @@ function RocketBase:LandOnMars(site, from_ui)
 	local velocity = self.orbital_velocity
 
 	local first_arrival = self.first_arrival
-	if first_arrival then	
+	if first_arrival then
 		altitude = self.orbital_altitude_first
-		velocity = self.orbital_velocity_first	
+		velocity = self.orbital_velocity_first
 		self.first_arrival = nil
 		
 		HintDisable("HintRocket")
@@ -500,8 +505,8 @@ function RocketBase:LandOnMars(site, from_ui)
 
 	self:SetIsNightLightPossible(true)
 
-	--@@@msg RocketLanded,rocket- fired when a rocket has landed on Mars.
-	Msg("RocketLanded", self)
+	self:OnLanded()
+
 	if from_ui then	
 		self:PopDestructor() -- landing site cleanup
 	end

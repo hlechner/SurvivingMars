@@ -1064,11 +1064,12 @@ GlobalVar("g_NocturnalAdaptation", false)
 function Colonist:ChangeWorkplacePerformance()
 	local workplace = self.workplace
 
-	local away_from_home_dome = workplace and
-		(workplace.parent_dome and workplace.parent_dome ~= self.dome
-			or (self.dome and not self.dome:IsInLabel("Workplace", workplace)))
+	local preferred_work_dome = workplace and self.dome
+	local working_home_dome = preferred_work_dome and
+		(workplace.parent_dome and workplace.parent_dome == preferred_work_dome
+			or preferred_work_dome:IsInLabel("Workplace", workplace))
 
-	if away_from_home_dome then
+	if preferred_work_dome and not working_home_dome then
 		self:SetModifier("performance", "home_dome", -g_Consts.NonHomeDomePerformancePenalty, 0, T(8757, "<red>Not working in home dome <amount></color>"))
 	else
 		self:SetModifier("performance", "home_dome", 0, 0)
@@ -1272,16 +1273,8 @@ end
 
 ----------------------- Service Buildings, Leisure, Visits -----------------------
 
-local dome_walk_dist = const.ColonistMaxDomeWalkDist
-local dome_passage_dist = const.ColonistMinDistToIgnorePassage
-local GetDomesPassagePath = GetDomesPassagePath
-local IsLRTransportAvailable = IsLRTransportAvailable
-
-function Colonist:TryToEmigrate(current_dome)
-	current_dome = current_dome or IsUnitInDome(self)
-	--- try to recal the dome
+function Colonist:TryToEmigrateToDome(current_dome, dest_dome, transport_mode, transport_mode_dist)
 	local transport_task = self.transport_task
-	local dest_dome, walking, dist = self:FindEmigrationDome(current_dome)
 	if not dest_dome then
 		if transport_task then
 			self:ClearTransportRequest()
@@ -1289,16 +1282,20 @@ function Colonist:TryToEmigrate(current_dome)
 		return
 	end
 	
-	if walking then --git goin
+	if transport_mode == "walk" then
 		local passage_path
+		local passage_path_domes = 0
+		local dome_walk_dist = const.ColonistMaxDomeWalkDist
+		local dome_passage_dist = const.ColonistMinDistToIgnorePassage
 		local min_dist = GetAtmosphereBreathable(self:GetMapID()) and dome_passage_dist or dome_walk_dist
-		if dist > min_dist then
+		if transport_mode_dist > min_dist then
 			-- try to lead the colonist through the dome passages if the domes are in the same network
 			passage_path = GetDomesPassagePath(current_dome, dest_dome)
+			passage_path_domes = passage_path and (#passage_path - 2) or 0
 		end
-		if not passage_path
-		or dist < dome_passage_dist and #passage_path < 10
-		or not IsLRTransportAvailable(self.city) then
+
+		if not passage_path or (transport_mode_dist < dome_passage_dist and passage_path_domes < const.ColonistMaxPassagePassthroughDomes)
+				or not IsLRTransportAvailable(self.city) then
 			self:ClearTransportRequest()
 			dest_dome:ReserveResidence(self)
 			self:SetCommand("TransportByFoot", dest_dome, passage_path)
@@ -1309,18 +1306,24 @@ function Colonist:TryToEmigrate(current_dome)
 	if transport_task then
 		if dest_dome ~= transport_task.dest_dome then
 			dest_dome:ReserveResidence(self)
-			transport_task.dest_dome = dest_dome		
+			transport_task.dest_dome = dest_dome
 		end
 		return
 	end
 	
-	local src_dome = current_dome or self.dome or FindNearestObject(self.city.labels.Dome, self)
+	local src_dome = current_dome or self.dome or FindNearestObject(self.city.labels.Community, self)
 	--check shuttle availability,
 	--if shuttles are available register for transport, shuttle will Setcommand when it picks up the task
 	if IsTransportAvailableBetween(src_dome, dest_dome) and CreateColonistTransportTask(self, src_dome, dest_dome) then
 		dest_dome:ReserveResidence(self)
 		self.transport_task.state = "almost_ready_for_pickup" --so a shuttle can immidiately pick this task up
 	end
+end
+
+function Colonist:TryToEmigrate(current_dome)
+	current_dome = current_dome or IsUnitInDome(self)
+	local dest_dome, transport_mode, transport_mode_dist = self:FindEmigrationDome(current_dome)
+	return self:TryToEmigrateToDome(current_dome, dest_dome, transport_mode, transport_mode_dist)
 end
 
 function Colonist:CancelResidenceReservation()
@@ -1439,6 +1442,15 @@ function Colonist:UpdateAgeTrait()
 			Msg("ColonistBecameYouth", self)
 		end
 	end
+end
+
+function Colonist:ShouldLeaveForWork()
+	if self.workplace then
+		local hour = UIColony.hour
+		local workshift_start = const.DefaultWorkshifts[self.workplace_shift][1]
+		return hour >= workshift_start - 1 and hour <= workshift_start + 3
+	end
+	return false
 end
 
 function Colonist:Idle()
@@ -1568,16 +1580,12 @@ function Colonist:Idle()
 		end
 	end
 	
-	if self.workplace then
-		local hour = UIColony.hour
-		local workshift_start = const.DefaultWorkshifts[self.workplace_shift][1]
-		if hour >= (workshift_start - 1) and hour <= (workshift_start + 3) then
-			if not self.workplace:IsSuitable(self) then
-				self:SetWorkplace(false)
-			elseif traits.Fit or self.stat_health >= g_Consts.LowStatLevel then
-				self:SetCommand("Work")
-			end
-		end	
+	if self:ShouldLeaveForWork() then
+		if not self.workplace:IsSuitable(self) then
+			self:SetWorkplace(false)
+		elseif traits.Fit or self.stat_health >= g_Consts.LowStatLevel then
+			self:SetCommand("Work")
+		end
 	end
 	
 	if time - self.last_rest > const.HourDuration * 30 then
@@ -2090,7 +2098,77 @@ function Colonist:SetSpecialization(specialist, init)
 	--@@@msg NewSpecialist,colonist - fired when a colonist gains a specialization
 	Msg("NewSpecialist", self)
 end
+
 -------------------------------------- Transport -----------------------------------------------
+
+function FindTransportationModeToCommunity(community, pos, shuttles_available)
+	-- dome to dome dist is cached, thus IsInWalkingDist is fast
+	local can_walk, walk_distance = IsInWalkingDistDome(community, pos)
+	if can_walk then
+		return "walk", walk_distance
+	elseif shuttles_available then
+		return "shuttle", walk_distance -- walk_distance can safely be reused
+	end
+	return false
+end
+
+function Colonist:FindEmigrationCommunities(pos, need_work, eval_threshold, work_threshold, home_threshold, ignore_community)
+	local communities = self.city.labels.Community or false
+	if not communities then
+		return empty_table
+	end
+
+	local traits = self.traits
+	local eval = eval_threshold
+	local work_available, home_available = work_threshold, home_threshold
+	local shuttles_available = IsLRTransportAvailable(self.city)
+
+	local best_matches = {}
+	local beat_threshold = false
+
+	for _, community in pairs(communities) do
+		if community ~= ignore_community and community:CanVisit() and community:CanAcceptNewColonists() then
+			local mode, mode_distance = FindTransportationModeToCommunity(community, pos, shuttles_available)
+			if mode then
+				local new_eval = community:GetScoreFor(traits)
+				if new_eval >= Max(eval, 0) then
+					local new_home_available = not community.overpopulated and community:HasFreeLivingSpaceFor(traits)
+					if not home_available or new_home_available then -- if homeless, try changing community even if doesn't have living space available.
+						local new_work_available = need_work and community:HasFreeWorkplacesAround(self)
+						local better_home = not home_available and new_home_available
+						local better_work = not work_available and new_work_available
+						local better_home_work = better_home or (need_work and better_work)
+						local better_eval = beat_threshold and new_eval >= eval or new_eval > eval
+						if better_eval or better_home_work then
+							beat_threshold = true
+							if new_eval > eval or better_home_work then
+								best_matches = {}
+								eval = new_eval
+								work_available = new_work_available
+								home_available = new_home_available
+							end
+
+							best_matches[#best_matches + 1] = { community = community, mode_distance = mode_distance, mode = mode }
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return best_matches
+end
+
+function Colonist:PickEmigrationCommunity(candidates)
+	if #candidates > 0 then
+		-- Randomize matches in order to avoid moving all colonist to the first one that pass their criteria
+		-- TODO: Filter based on mode and distance and/or travel time
+		local pick = table.rand(candidates)
+		return pick.community, pick.mode, pick.mode_distance
+	else
+		return false
+	end	
+end
 
 function Colonist:FindEmigrationDome(current_dome)
 	--check is forced by user to go to any dome
@@ -2101,8 +2179,8 @@ function Colonist:FindEmigrationDome(current_dome)
 		if forced_dome == my_dome then
 			return
 		end
-		local is_walking, dist = IsInWalkingDistDome(forced_dome, pos)
-		return forced_dome, is_walking, dist
+		local mode, mode_dist = FindTransportationModeToCommunity(forced_dome, pos)
+		return forced_dome, mode, mode_dist
 	end
 	local can_work = self:CanWork()
 	local need_work = can_work and not IsValid(self.workplace) and not self.user_forced_workplace
@@ -2110,7 +2188,6 @@ function Colonist:FindEmigrationDome(current_dome)
 	--check if match filters to its dome or any other dome
 	local traits = self.traits
 	local eval = -1
-	local chosen
 	local work_available, home_available
 	if my_dome then
 		if not my_dome.accept_colonists then
@@ -2124,47 +2201,9 @@ function Colonist:FindEmigrationDome(current_dome)
 			work_available = need_work and my_dome:HasFreeWorkplacesAround(self)
 		end
 	end
-	local LR_transport_available = IsLRTransportAvailable(self.city)
-	local is_walking, dist
-	local domes = self.city.labels.Community or false
-	if not domes then
-		return false
-	end
-	-- randomize starting dome to avoid moving all colonist to the first one that pass their criteria
-	local count_domes = #domes
-	local start_idx = self:Random(count_domes)
-	for i = 1, count_domes do
-		local idx = start_idx + i
-		if idx > count_domes then 
-			idx = idx - count_domes
-		end	
-		local dome = domes[idx]
-		
-		if my_dome ~= dome and dome.ui_working and dome.accept_colonists and not dome.overpopulated and not dome.destroyed and not dome.demolishing then
-			-- dome to dome dist is cached, thus IsInWalkingDist is fast
-			local new_is_walking, new_dist = IsInWalkingDistDome(dome, pos)
-			if new_is_walking or LR_transport_available then
-				local new_eval = dome:GetScoreFor(traits)
-				if new_eval >= Max(eval, 0) then
-					local new_home_available = dome:HasFreeLivingSpaceFor(traits)
-					if not home_available or new_home_available then -- if homeless, try changing dome even if doesn't have living space available.
-						local new_work_available = need_work and dome:HasFreeWorkplacesAround(self)
-						if new_eval > eval -- the new dome is a better match for our traits
-						or not home_available and new_home_available -- if homeless, change dome if it has living space regardless of other conditions
-						or need_work and not work_available and new_work_available then -- if unemployed, change dome if it has workplaces
-							chosen = dome
-							eval = new_eval
-							is_walking = new_is_walking
-							dist = new_dist
-							work_available = new_work_available
-							home_available = new_home_available
-						end
-					end
-				end
-			end
-		end
-	end
-	return chosen, is_walking, dist
+
+	local best_matches = self:FindEmigrationCommunities(pos, need_work, eval, work_available, home_available, my_dome)	
+	return self:PickEmigrationCommunity(best_matches)
 end
 
 function Colonist:Goto(pos, ...)
@@ -2616,7 +2655,7 @@ function Colonist:CanReachBuilding(bld)
 	if same_map and my_dome ~= bld then
 		local his_dome = bld.parent_dome
 		local communities = self.city.labels.Community or empty_table
-		his_dome = not his_dome and FindNearestObject(communities, self) or his_dome
+		his_dome = not his_dome and FindNearestObject(communities, bld) or his_dome
 
 		if my_dome ~= his_dome and not IsInWalkingDist(my_dome or self:GetNavigationPos(), his_dome)
 			and (not my_dome or not IsTransportAvailableBetween(my_dome, his_dome)) then

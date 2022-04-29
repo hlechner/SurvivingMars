@@ -69,10 +69,12 @@ end
 
 function ClearWasteRockConstructionSite:InitBlockPass(ls)
 	ls = ls or Landscapes[self.mark]
-	ls.apply_block_pass = true
-	local terrain = GetTerrain(self)
-	terrain:RebuildPassability(ls.pass_bbox)
-	self:ScatterUnitsUnderneath()
+	if ls.pass_bbox then
+		ls.apply_block_pass = true
+		local terrain = GetTerrain(self)
+		terrain:RebuildPassability(ls.pass_bbox)
+		self:ScatterUnitsUnderneath()
+	end
 end
 
 function ClearWasteRockConstructionSite:Getdescription() 

@@ -917,7 +917,7 @@ function Passage:OnSetDemolishing(val)
 	end
 end
 
-function Passage:WakupDemolishThread()
+function Passage:WakeUpDemolishThread()
 	Wakeup(self.demolishing_thread)
 end
 
@@ -981,7 +981,7 @@ function Passage:TraverseTunnel(unit, start_point, end_point, param, element)
 		table.remove_entry(self.traversing_colonists, unit)
 		
 		if self.demolishing and #self.traversing_colonists <= 0 then
-			self:WakupDemolishThread()
+			self:WakeUpDemolishThread()
 		end
 	end)
 

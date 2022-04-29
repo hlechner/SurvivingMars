@@ -60,7 +60,7 @@ DefineClass.AirGridFragment = {
 -- every water grid fragment has a corresponding air grid with the same elements (because water and air run in the same pipes)
 -- adding or removing elements in the water grid does the same in the air grid
 function WaterGrid:Init()
-	self.air_grid = AirGridFragment:new({ city = self.city }, self:GetMapID())
+	self.air_grid = AirGridFragment:new({ city = self.city }, self.city.map_id)
 end
 
 function WaterGrid:Done()
@@ -480,7 +480,7 @@ function SavegameFixups.ApplyTemporalConstructionBlockToAllPipes()
 end
 
 DefineClass.LifeSupportGridElement = {
-	__parents = { "LifeSupportGridObject", "Shapeshifter", "Constructable", "DustGridElement", "SupplyGridSwitch", "BreakableSupplyGridElement", "SkinChangeable" },
+	__parents = { "LifeSupportGridObject", "TransportGridObject", "Shapeshifter", "Constructable", "DustGridElement", "SupplyGridSwitch", "BreakableSupplyGridElement", "SkinChangeable" },
 	flags = { efApplyToGrids = false, gofPermanent = true, gofTemporalConstructionBlock = true },
 	is_tall = true,
 	properties = {

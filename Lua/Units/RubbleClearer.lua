@@ -21,7 +21,12 @@ end
 function RubbleClearer:ClearRubble(rubble)
 	if not IsValid(rubble) then return end
 
-	local reached_rubble = rubble:DroneApproach(self, "ClearRubble")
+	local reached_rubble = self:GotoBuildingSpot(rubble, self.work_spot_task)
+	
+	if not reached_rubble then 
+		reached_rubble = self:GotoBuildingSpot(rubble, self.work_spot_task, false, 6*const.HexHeight)
+	end 
+	
 	if not reached_rubble then return end
 	
 	if not IsValid(rubble) then return end

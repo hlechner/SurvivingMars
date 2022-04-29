@@ -268,7 +268,15 @@ TFormat.ResearchPoints = function(context_obj, points)
 	return T{4856, "<em><points><image UI/Icons/res_experimental_research.tga></em>", points = points}
 end
 TFormat.time = function(context_obj, time)
-	return FormatDuration((time or 0) / const.HourDuration)
+	local hours = (time or 0) / const.HourDuration
+	local remainder = hours % 1
+	if remainder > 0 and const.HourFractions > 0 then
+		local hoursPrecision = 10 ^ const.HourFractions
+		local hoursMul = hours * hoursPrecision
+		hoursMul = floatfloor(hoursMul)
+		hours = DivAsFloats(hoursMul, hoursPrecision)
+	end
+	return FormatDuration(hours)
 end
 TFormat.timeH = function(context_obj, hours)
 	return FormatDuration(hours or 0)
@@ -502,7 +510,7 @@ function PickTwoVolunteers(crew)
 end
 
 function GetAvailableResidences(city)
-	local city = city or UICity
+	local city = city or MainCity
 	local sum = 0
 
 	local communities = city.labels.Community or empty_table
@@ -517,7 +525,7 @@ function GetAvailableResidences(city)
 end 
 
 function GetDomesInWalkableDistance(city, pos, exclude)
-	local city = city or UICity
+	local city = city or MainCity
 	exclude = exclude or empty_table
 	local domes, dome_dist = {}, {}
 	if pos == InvalidPos() then

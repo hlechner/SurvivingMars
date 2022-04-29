@@ -8,9 +8,12 @@ end
 
 function IsResupplyItemAvailable(name)
 	local item = GetResupplyItem(name)
-	local override_prerequisites = BuildMenuPrerequisiteOverrides[item.id] == true
-	local locked = not override_prerequisites and item.locked
-	return item and not locked
+	if item then
+		local override_prerequisites = BuildMenuPrerequisiteOverrides[item.id] == true
+		local locked = not override_prerequisites and item.locked
+		return not locked
+	end
+	return false
 end
 
 function GetResupplyItemPrice(item)
@@ -78,7 +81,7 @@ Change price or weight of resupply item. If called multiple times, first sums pe
 --]]
 function ModifyResupplyParam(id, param, percent)
 	local def = GetResupplyItem(id)
-	return ModifyResupplyDef(def, param, percent)
+	return def and ModifyResupplyDef(def, param, percent)
 end
 
 --[[@@@

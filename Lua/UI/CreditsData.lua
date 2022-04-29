@@ -121,9 +121,22 @@ Richard van Beersum
 
 
 
-CONTENT CREATOR PACK CREATION
+IN-DOME BUILDINGS PACK
 
 Sylvain Maupetit
+
+
+
+MARTIAN EXPRESS
+
+Lucian Hada
+Sylvain Maupetit
+
+
+
+FUTURE CONTEMPORARY ASSET PACK
+
+Teerapat Kitjawijit
 
 
 

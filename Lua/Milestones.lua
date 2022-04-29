@@ -98,6 +98,7 @@ function MilestoneRestartThreads()
 					score = milestone:GetScore()
 				})
 				if milestone.trigger_fireworks then
+					hr.ShowFireworks = AccountStorage.Options.ShowFireworks == "On" and 1 or 0
 					TriggerFireworks(MainMapID)
 				end
 				local sponsor = GetMissionSponsor()

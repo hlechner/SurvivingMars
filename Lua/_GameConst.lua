@@ -3,6 +3,7 @@
 const.DayDuration = const.Scale.sols
 const.HoursPerDay = const.Scale.sols / const.Scale.hours
 const.HourDuration = const.Scale.hours
+const.HourFractions = 1
 const.MinutesPerHour = 60
 const.MinuteDuration = const.HourDuration / const.MinutesPerHour
 assert(const.HourDuration % const.MinutesPerHour == 0)
@@ -118,6 +119,7 @@ const.ColonistMaxWaitInDomeTurnedOff = 2 * const.HourDuration --the amount of ti
 const.ColonistMaxDepartureRocketDist = 1200 * guim --when leaving, a rocket cant be used if placed beyond that distance from the dome
 const.ColonistMaxDomeWalkDist = 400 * guim -- distance between two domes to consider them in walk range
 const.ColonistMinDistToIgnorePassage = 1200 * guim -- distance between two domes to provoke colos to request a shuttle, even if connected with passage.
+const.ColonistMaxPassagePassthroughDomes = 8 -- the maximum amount of domes to passthrough while using passages
 
 const.CargoRequestItemMax = 9999 -- maximum quantity per cargo item request
 
@@ -151,7 +153,7 @@ ResourceDescription = {
 	{ name = "MachineParts",     display_name = T(3516, "Machine Parts"),    display_icon = "UI/Icons/Buildings/res_machine_parts.tga", unit_amount = const.ResourceScale, color = RGB(63, 7, 245), entity = "ResourceMachineParts", description = T(7913, "Advanced materials often used to construct and maintain Extractors and Factories."), },
 	{ name = "PreciousMetals",   display_name = T(4139, "Rare Metals"),      display_icon = "UI/Icons/Buildings/res_precious_metals.tga", unit_amount = const.ResourceScale, color = RGB(245, 163, 7), entity = "ResourcePreciousMetals", description = T(7985, "Can be exported to Earth for Funding or processed into Electronics.") },
 	{ name = "WasteRock",        display_name = T(4518, "Waste Rock"),       display_icon = "UI/Icons/Buildings/res_waste_rock.tga", unit_amount = const.ResourceScale, color = RGB(0, 255, 0), entity = {"ResourceWasteRock_01", "ResourceWasteRock_02", "ResourceWasteRock_03"}, description = T(14360, "Waste materials usually introduced as a byproduct of mining and landscaping activities.") },
-	{ name = "BlackCube",        display_name = T(4764, "Black Cubes"),      display_icon = "UI/Icons/Buildings/res_black_box.tga", unit_amount = const.ResourceScale, color = RGB(0, 0, 0), entity = "Resource", },
+	{ name = "BlackCube",        display_name = T(4764, "Black Cubes"),      display_icon = "UI/Icons/Buildings/res_black_cube.tga", unit_amount = const.ResourceScale, color = RGB(0, 0, 0), entity = "Resource", },
 	{ name = "Water",            display_name = T(681, "Water"),             display_icon = "UI/Icons/Buildings/res_water.tga", unit_amount = const.ResourceScale, color = RGB(0, 237, 255), deep_enabled = true },
 	{ name = "Food",             display_name = T(1022, "Food"),             display_icon = "UI/Icons/Buildings/res_food.tga", unit_amount = const.ResourceScale, color = RGB(128, 255, 0), entity = "ResourceFood", description = T(7914, "Colonists arrive with nominal Food supply, but will soon need additional provisions to survive."), },
 	{ name = "Fuel",             display_name = T(4765, "Fuel"),             display_icon = "UI/Icons/Buildings/res_fuel.tga", unit_amount = const.ResourceScale, color = RGB(255, 128, 0), entity = "ResourceFuel", description = T(7986, "Advanced resource produced in Fuel Refineries from Water. Required for the refuelling of Rockets. Highly explosive.") },	
@@ -261,6 +263,7 @@ const.TagLookupTable["/disabled_text"]  = "</color>"
 const.TagLookupTable["white_shadow"]   = "<shadowcolor 233 242 255>"
 const.TagLookupTable["/white_shadow"]  = "</shadowcolor>"
 
+const.TagLookupTable["icon_Resources"]    = "<image UI/Icons/res_all.tga 1300>"
 const.TagLookupTable["icon_Concrete"]     = "<image UI/Icons/res_concrete.tga 1300>"
 const.TagLookupTable["icon_Metals"]       = "<image UI/Icons/res_metal.tga 1300>"
 const.TagLookupTable["icon_Polymers"]     = "<image UI/Icons/res_polymers.tga 1300>"
@@ -304,6 +307,7 @@ const.TagLookupTable["icon_TemperatureTP_alt"]= "<image UI/Icons/res_temperature
 const.TagLookupTable["icon_WaterTP_alt"]      = "<image UI/Icons/res_water_2.tga 1300>"
 const.TagLookupTable["icon_VegetationTP_alt"] = "<image UI/Icons/res_vegetation.tga 1300>"
 
+const.TagLookupTable["icon_Resources_orig"]       = "<image UI/Icons/res_all.tga>"
 const.TagLookupTable["icon_Concrete_orig"]        = "<image UI/Icons/res_concrete.tga>"
 const.TagLookupTable["icon_Metals_orig"]          = "<image UI/Icons/res_metal.tga>"
 const.TagLookupTable["icon_Polymers_orig"]        = "<image UI/Icons/res_polymers.tga>"
@@ -312,8 +316,8 @@ const.TagLookupTable["icon_BlackCube_orig"]       = "<image UI/Icons/res_black_b
 const.TagLookupTable["icon_Electronics_orig"]     = "<image UI/Icons/res_electronics.tga>"
 const.TagLookupTable["icon_MachineParts_orig"]    = "<image UI/Icons/res_machine_parts.tga>"
 const.TagLookupTable["icon_PreciousMetals_orig"]  = "<image UI/Icons/res_precious_metals.tga>"
-const.TagLookupTable["icon_PreciousMinerals_orig"]  = "<image UI/Icons/res_precious_minerals.tga>"
-const.TagLookupTable["icon_Seeds_orig"]             = "<image UI/Icons/res_seeds.tga>"
+const.TagLookupTable["icon_PreciousMinerals_orig"]= "<image UI/Icons/res_precious_minerals.tga>"
+const.TagLookupTable["icon_Seeds_orig"]           = "<image UI/Icons/res_seeds.tga>"
 const.TagLookupTable["icon_Fuel_orig"]            = "<image UI/Icons/res_fuel.tga>"
 const.TagLookupTable["icon_Food_orig"]            = "<image UI/Icons/res_food.tga>"
 const.TagLookupTable["icon_Power_orig"]           = "<image UI/Icons/res_electricity.tga>"
@@ -335,6 +339,7 @@ const.TagLookupTable["icon_MysteryResource_orig"] = "<image UI/Icons/res_mystery
 const.TagLookupTable["icon_Prefab_orig"]          = "<image UI/Icons/res_prefab.tga>"
 const.TagLookupTable["icon_ScannedResources_orig"]= "<image UI/Icons/res_scanned.tga>"
 
+const.TagLookupTable["icon_Resources_small"]      = "<image UI/Icons/res_all.tga 800>"
 const.TagLookupTable["icon_Food_small"]       = "<image UI/Icons/res_food.tga 800>"
 const.TagLookupTable["icon_Power_small"]      = "<image UI/Icons/res_electricity.tga 800>"
 const.TagLookupTable["icon_Concrete_small"]   = "<image UI/Icons/res_concrete.tga 800>"

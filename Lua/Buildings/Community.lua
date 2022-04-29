@@ -63,6 +63,10 @@ function Community:GetDamageDecrease()
 	return 0
 end
 
+function Community:CanAcceptNewColonists()
+	return self.ui_working and self.accept_colonists and not self.overpopulated
+end
+
 function Community:CyclePolicy(policy_member, broadcast, max)
 	if not self:GetUIInteractionState() then 
 		return

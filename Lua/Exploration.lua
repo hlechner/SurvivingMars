@@ -1009,7 +1009,7 @@ function Exploration:InitialExplore(realm, eligible_sectors_with_surface_deposit
 			deposit, resource = "SubsurfaceDepositPreciousMetals", "PreciousMetals"
 		end
 		
-		if deposit and realm:MapCount("map", deposit) == 0 then
+		if deposit and not realm:MapContains("map", deposit) then
 			local marker = realm:MapFindNearest(self.InitialSector.area:Center(), "map", "SubsurfaceDepositMarker", function(o)
 					return not o.is_placed and o.resource == resource and o.depth_layer <= 1
 				end)

@@ -47,7 +47,6 @@ DefineClass.BlockingDomeInterior = {
 }
 GlobalVar("g_DomeVersion", 0)
 GlobalVar("g_DomeToDomeDist", {}, weak_keys_meta)
-local dome_walk_dist = const.ColonistMaxDomeWalkDist
 local IsPoint = IsPoint
 local IsKindOf = IsKindOf
 local IsPointInsideObject2D = IsPointInsideObject2D
@@ -57,7 +56,6 @@ local IsValidPos = CObject.IsValidPos
 local GetTopmostParent = GetTopmostParent
 local invalid_pos = InvalidPos()
 local GetPassablePointNearby = GetPassablePointNearby
-local min_dist_to_ignore_passage = const.ColonistMinDistToIgnorePassage
 
 
 --[[@@@
@@ -126,10 +124,27 @@ function IsObjInDome(obj)
 			return parent
 		end
 	end
+	if obj:HasMember("template") then
+		if obj.template.build_category == "Wonders" then
+			return false
+		end
+	end
+	
 	local object_hex_grid = GetObjectHexGrid(obj)
 	return GetDomeAtPoint(object_hex_grid, obj)
 end
 local IsObjInDome = IsObjInDome
+
+function GetDomeForBuilding(bld)
+	assert(IsKindOf(bld, "Building"))
+	if bld:HasMember("template") then
+		if bld.template.build_category == "Wonders" then
+			return false
+		end
+	end
+	local object_hex_grid = GetObjectHexGrid(bld)
+	return GetDomeAtPoint(object_hex_grid, bld)
+end
 
 --[[@@@
 Check if an unit is located in a dome.
@@ -140,7 +155,6 @@ Specialized procedure for faster checking if a unit is located in a dome (coloni
 ]]
 function IsUnitInDome(unit)
 	if unit.holder then
-		assert(unit:GetMapID() == unit.holder:GetMapID())
 		return IsObjInDome(unit.holder)
 	else
 		local object_hex_grid = GetObjectHexGrid(unit)
@@ -179,7 +193,7 @@ local function ResolvePos(realm, bld1, bld2)
 	return pos and invalid_pos ~= pos and realm:GetPassablePointNearby(pos)
 end
 
-local function CheckDist(map_id, bld1, bld2)
+local function CheckWalkableDistance(map_id, bld1, bld2)
 	local realm = GetRealmByID(map_id)
 	local p1, p2 = ResolvePos(realm, bld1, bld2), ResolvePos(realm, bld2, bld1)
 	if not p1 or not p2 then
@@ -190,6 +204,8 @@ local function CheckDist(map_id, bld1, bld2)
 	end
 
 	local len_sl = p1:Dist2D(p2)
+
+	local dome_walk_dist = const.ColonistMaxDomeWalkDist
 	if len_sl > dome_walk_dist then
 		return false, len_sl, true
 	end
@@ -223,7 +239,7 @@ function UpdateDistToDomes(cur_dome, action)
 			if dome ~= cur_dome then
 				local walkable, dist, too_far = unpack(map[cur_dome][dome] or empty_table)
 				if not too_far then
-					local new_walkable, new_dist, new_too_far = CheckDist(map_id, cur_dome, dome)
+					local new_walkable, new_dist, new_too_far = CheckWalkableDistance(map_id, cur_dome, dome)
 					if walkable ~= new_walkable or dist ~= new_dist or too_far ~= new_too_far then
 						local data = {new_walkable, new_dist, new_too_far}
 						map[cur_dome][dome] = data
@@ -253,11 +269,12 @@ function IsInWalkingDistDome(bld1, bld2)
 	local dist = dist_map and dist_map[bld2]
 	local map_id = not IsPoint(bld1) and bld1:GetMapID() or bld2:GetMapID()
 	if dist then
+		local min_dist_to_ignore_passage = const.ColonistMinDistToIgnorePassage
 		--only when bld1 and bld2 are domes can there be cache, hence
 		return dist[1] or AreDomesConnectedWithPassage(bld1, bld2) 
 			and (GetOpenAirBuildings(map_id) or not IsLRTransportAvailable(Cities[map_id]) or dist[2] <= min_dist_to_ignore_passage), dist[2]
 	end
-	return CheckDist(map_id, bld1, bld2)
+	return CheckWalkableDistance(map_id, bld1, bld2)
 end
 
 function AreDomesConnected(bld1, bld2)
@@ -458,6 +475,22 @@ function Dome:InitResourceSpots()
 	end
 end
 
+function Dome:GetDomesInRange()
+	local domes_in_range = self.domes_in_range
+	if not domes_in_range or self.domes_in_range_version ~= self.dome_dist_version then
+		domes_in_range = setmetatable({}, weak_keys_meta)
+		for dome, dist in pairs(g_DomeToDomeDist[self] or empty_table) do
+			if dist[1] and IsBuildingInDomeRange(self, dome) then
+				domes_in_range[dome] = true
+			end
+		end
+		self.domes_in_range = domes_in_range
+		self.domes_in_range_version = self.dome_dist_version
+		self.connected_version = self.connected_version + 1
+	end
+	return domes_in_range
+end
+
 function Dome:GetConnectedDomes()
 	local connected_passages = self.connected_domes or empty_table
 	if not GetOpenAirBuildings(self:GetMapID()) then
@@ -485,20 +518,8 @@ function Dome:GetConnectedDomes()
 	return connected_union or empty_table
 end
 
-function Dome:GetDomesInRange()	
-	local domes_in_range = self.domes_in_range
-	if not domes_in_range or self.domes_in_range_version ~= self.dome_dist_version then
-		domes_in_range = setmetatable({}, weak_keys_meta)
-		for dome, dist in pairs(g_DomeToDomeDist[self] or empty_table) do
-			if dist[1] and IsBuildingInDomeRange(self, dome) then
-				domes_in_range[dome] = true
-			end
-		end
-		self.domes_in_range = domes_in_range
-		self.domes_in_range_version = self.dome_dist_version
-		self.connected_version = self.connected_version + 1
-	end
-	return domes_in_range
+function Dome:GetCommutableDomes(colonist, reason, params)
+	return self:GetConnectedDomes()
 end
 
 function Dome:UpdateNotWorkingBuildingsNotification()
@@ -2601,7 +2622,7 @@ function Dome:GetService(need, colonist, starving)
 	if not max_comfort_service and self.allow_service_in_connected and self.accept_colonists then
 		--try domes connected with passages.
 		local dome_service_fail = ServiceFailure.NotTried
-		for dome in pairs(self:GetConnectedDomes()) do
+		for dome in pairs(self:GetCommutableDomes(colonist, "service", need)) do
 			if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then --quarantine
 				max_comfort_service, dome_service_fail = GetMaxComfortAvailableServiceInDome(dome, need, colonist)
 				fail = Max(fail, dome_service_fail)
@@ -2622,7 +2643,7 @@ function Dome:GetService(need, colonist, starving)
 	
 	local minpile = self:GetClosestFoodPile(colonist)
 	if not minpile and self.allow_service_in_connected and self.accept_colonists then
-		for dome in pairs(self:GetConnectedDomes()) do
+		for dome in pairs(self:GetCommutableDomes(colonist, "service", need)) do
 			if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then --foreachconnecteddome?
 				minpile = dome:GetClosestFoodPile(colonist)
 				if minpile then
@@ -2642,7 +2663,7 @@ end
 function Dome:ChooseTraining(colonist)
 	local workplace, shift = Workforce.ChooseTraining(self, colonist)
 	if not workplace and self.allow_work_in_connected and self.accept_colonists then
-		for dome in pairs(self:GetConnectedDomes()) do
+		for dome in pairs(self:GetCommutableDomes(colonist, "training")) do
 			if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then
 				workplace, shift = ChooseTraining(colonist, dome.labels.TrainingBuilding, workplace, shift)
 			end
@@ -2657,7 +2678,7 @@ function Dome:ChooseWorkplace(colonist)
 	local lst = self.labels.Workplace
 	local lst1
 	if self.allow_work_in_connected and self.accept_colonists then
-		for dome in pairs(self:GetConnectedDomes()) do
+		for dome in pairs(self:GetCommutableDomes(colonist, "work")) do
 			if dome:CanColonistsFromDifferentDomesWorkServiceTrainHere() then
 				lst1 = lst1 or {}
 				table.insert(lst1, dome.labels.Workplace)
@@ -2678,13 +2699,9 @@ function Dome:ChooseResidence(colonist)
 end
 
 function Dome:HasFreeWorkplacesAround(colonist)
-	for _, b in ipairs(self.labels.Workplace or empty_table) do
-		if not b.destroyed and b.ui_working and b:CanWorkHere(colonist) and b:HasFreeWorkSlots() then
-			return true
-		end
-	end
-	if self.allow_work_in_connected then
-		for d in pairs(self:GetConnectedDomes()) do
+	local result = Workforce.HasFreeWorkplacesAround(self, colonist)
+	if not result and self.allow_work_in_connected then
+		for d in pairs(self:GetCommutableDomes(colonist, "work")) do
 			if d.allow_work_in_connected then
 				for _, b in ipairs(d.labels.Workplace or empty_table) do
 					if not b.destroyed and b.ui_working and b:CanWorkHere(colonist) and b:HasFreeWorkSlots() then
@@ -2695,7 +2712,7 @@ function Dome:HasFreeWorkplacesAround(colonist)
 		end
 	end
 
-	return false
+	return result
 end
 
 function Dome:GetSecurityStationDamageDecrease()
@@ -3058,24 +3075,19 @@ function Dome:TriggerFireworks(time, count, particle)
 	assert(count > 0, "Fireworks count must be positive.")
 	CreateGameTimeThread(function(dome, time, count, particle)
 		local end_time = GameTime() + time
-		local firework_count = 0
 		PlayFX("Fireworks", "start", self)
-		while firework_count < count do
-			if not IsValid(dome) then
-				return
-			end
-			firework_count = firework_count + 1
-			local i, pos, dir = GetRandomFirework(dome, particle)
+		for firework_count = 0, count, 1 do
+			if GameTime() > end_time then return end
+			if not IsValid(dome) then return end
+			local idx, pos, dir = GetRandomFirework(dome, particle)
 			PlayFX({
-				actionFXClass = "Fireworks_" .. i,
+				actionFXClass = "Fireworks_" .. idx,
 				actionFXMoment = "start", 
 				action_pos = pos, 
 				action_dir = dir,
 				action_map_id = dome:GetMapID(),
 			})
-			if firework_count ~= count then
-				Sleep(time/count)
-			end
+			Sleep(time/count)
 		end
 		PlayFX("Fireworks", "end", self)
 	end, self, time, count, particle)
@@ -3214,13 +3226,13 @@ function TriggerFireworks(map_id)
 	local domes = city.labels.Dome
 	if #domes < 11 then
 		for i = 1, #domes do
-			domes[i]:TriggerFireworks(3*const.HourDuration, 60)
+			domes[i]:TriggerFireworks(const.HourDuration, 15)
 		end
 	else
 		local domes_copy = table.copy(domes)
 		table.shuffle(domes_copy)
 		for i = 1, 10 do
-			domes_copy[i]:TriggerFireworks(3*const.HourDuration, 60)
+			domes_copy[i]:TriggerFireworks(const.HourDuration, 15)
 		end
 	end
 end
